@@ -30,11 +30,18 @@ export async function POST(req: NextRequest) {
 
     await dbConnect()
     const body = await req.json()
+    
+    console.log('Creating expense:', body) // For debugging
+    
     const expense = await ExpenseItem.create(body)
 
     return NextResponse.json(expense, { status: 201 })
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to create expense' }, { status: 500 })
+  } catch (error: any) {
+    console.error('Error creating expense:', error)
+    return NextResponse.json({ 
+      error: 'Failed to create expense',
+      details: error.message 
+    }, { status: 500 })
   }
 }
 

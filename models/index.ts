@@ -36,7 +36,7 @@ const expenseCategorySchema = new Schema({
 // Expense Item Schema
 const expenseItemSchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
-  categoryId: { type: Schema.Types.ObjectId, ref: 'ExpenseCategory', required: true },
+  categoryId: { type: Schema.Types.ObjectId, ref: 'ExpenseCategory' },
   itemName: { type: String, required: true },
   detail: String,
   price: { type: Number, required: true },

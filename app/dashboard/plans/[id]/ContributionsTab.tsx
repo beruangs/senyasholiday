@@ -28,6 +28,8 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [editingPayment, setEditingPayment] = useState<string | null>(null)
   const [paymentAmount, setPaymentAmount] = useState(0)
+  const [editingTotalPayment, setEditingTotalPayment] = useState<string | null>(null)
+  const [totalPaymentAmount, setTotalPaymentAmount] = useState(0)
 
   useEffect(() => {
     fetchData()
@@ -142,6 +144,59 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       }
     } catch (error) {
       toast.error('Gagal mengupdate pembayaran')
+    }
+  }
+
+  const updateTotalPayment = async (participantId: string, totalPaymentAmount: number) => {
+    const pc = participantContributions.find(p => p.participant._id === participantId)
+    if (!pc) return
+
+    try {
+      const promises = []
+      let remainingPayment = totalPaymentAmount
+
+      // Prioritize paying nominal first, then bakaran
+      if (pc.nominal && remainingPayment > 0) {
+        const nominalPaid = Math.min(remainingPayment, pc.nominal.amount)
+        remainingPayment -= nominalPaid
+        
+        promises.push(
+          fetch('/api/contributions', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              _id: pc.nominal._id,
+              paid: nominalPaid,
+              isPaid: nominalPaid >= pc.nominal.amount,
+              paidAt: nominalPaid >= pc.nominal.amount ? new Date() : null,
+            }),
+          })
+        )
+      }
+
+      if (pc.bakaran && remainingPayment > 0) {
+        const bakaranPaid = Math.min(remainingPayment, pc.bakaran.amount)
+        
+        promises.push(
+          fetch('/api/contributions', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              _id: pc.bakaran._id,
+              paid: bakaranPaid,
+              isPaid: bakaranPaid >= pc.bakaran.amount,
+              paidAt: bakaranPaid >= pc.bakaran.amount ? new Date() : null,
+            }),
+          })
+        )
+      }
+
+      await Promise.all(promises)
+      toast.success('Pembayaran total diupdate')
+      setEditingTotalPayment(null)
+      fetchData()
+    } catch (error) {
+      toast.error('Gagal mengupdate pembayaran total')
     }
   }
 
@@ -408,6 +463,9 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                     ⚠ Kekurangan
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">
+                    💳 Input Bayar
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">
                     Status
                   </th>
                 </tr>
@@ -537,6 +595,55 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                       )}
                     </td>
                     <td className="px-6 py-4 text-center">
+                      {pc.remaining > 0 ? (
+                        editingTotalPayment === pc.participant._id ? (
+                          <div className="flex flex-col items-center space-y-2">
+                            <input
+                              type="number"
+                              min="0"
+                              max={pc.remaining}
+                              value={totalPaymentAmount}
+                              onChange={(e) => setTotalPaymentAmount(Number(e.target.value))}
+                              className="w-32 px-3 py-2 text-sm border-2 border-primary-400 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-center font-semibold"
+                              placeholder="Jumlah bayar"
+                              autoFocus
+                            />
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => updateTotalPayment(pc.participant._id, totalPaymentAmount)}
+                                className="px-3 py-1.5 bg-green-500 text-white hover:bg-green-600 rounded-lg transition-colors text-xs font-semibold flex items-center space-x-1"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                                <span>Simpan</span>
+                              </button>
+                              <button
+                                onClick={() => setEditingTotalPayment(null)}
+                                className="px-3 py-1.5 bg-gray-300 text-gray-700 hover:bg-gray-400 rounded-lg transition-colors text-xs font-semibold"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              Sisa: {formatCurrency(Math.max(0, pc.remaining - totalPaymentAmount))}
+                            </p>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEditingTotalPayment(pc.participant._id)
+                              setTotalPaymentAmount(pc.remaining)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center space-x-2 mx-auto"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                            <span>Bayar</span>
+                          </button>
+                        )
+                      ) : (
+                        <span className="text-green-600 text-sm font-semibold">✓ Lunas</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
                       {pc.isPaid ? (
                         <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-800 border-2 border-green-300">
                           <Check className="w-3.5 h-3.5 mr-1" />
@@ -571,6 +678,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                   <td className="px-6 py-5 text-right text-xl text-red-600">
                     {grandTotalRemaining > 0 ? formatCurrency(grandTotalRemaining) : '-'}
                   </td>
+                  <td className="px-6 py-5 text-center text-gray-600">-</td>
                   <td className="px-6 py-5 text-center">
                     <span className="text-sm">
                       {grandTotalRemaining === 0 ? '✓ Selesai' : `${participantContributions.filter(pc => pc.isPaid).length}/${participantContributions.length} Lunas`}
@@ -636,6 +744,58 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                     </div>
                   )}
                 </div>
+
+                {/* Mobile Payment Input */}
+                {pc.remaining > 0 && (
+                  <div className="mt-4">
+                    {editingTotalPayment === pc.participant._id ? (
+                      <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4 space-y-3">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          💳 Input Pembayaran:
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max={pc.remaining}
+                          value={totalPaymentAmount}
+                          onChange={(e) => setTotalPaymentAmount(Number(e.target.value))}
+                          className="w-full px-4 py-2.5 text-base border-2 border-primary-400 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-center font-semibold"
+                          placeholder="Masukkan jumlah bayar"
+                          autoFocus
+                        />
+                        <p className="text-sm text-center text-gray-600">
+                          Sisa setelah bayar: <span className="font-bold text-red-600">{formatCurrency(Math.max(0, pc.remaining - totalPaymentAmount))}</span>
+                        </p>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => updateTotalPayment(pc.participant._id, totalPaymentAmount)}
+                            className="flex-1 px-4 py-2.5 bg-green-500 text-white hover:bg-green-600 rounded-lg transition-colors font-semibold flex items-center justify-center space-x-2"
+                          >
+                            <Save className="w-4 h-4" />
+                            <span>Simpan</span>
+                          </button>
+                          <button
+                            onClick={() => setEditingTotalPayment(null)}
+                            className="px-4 py-2.5 bg-gray-300 text-gray-700 hover:bg-gray-400 rounded-lg transition-colors font-semibold"
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditingTotalPayment(pc.participant._id)
+                          setTotalPaymentAmount(pc.remaining)
+                        }}
+                        className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all font-semibold shadow-md hover:shadow-lg flex items-center justify-center space-x-2"
+                      >
+                        <DollarSign className="w-5 h-5" />
+                        <span>Bayar Sekarang</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
             

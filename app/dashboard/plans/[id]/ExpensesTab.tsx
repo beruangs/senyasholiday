@@ -64,8 +64,12 @@ export default function ExpensesTab({ planId }: { planId: string }) {
         setShowForm(false)
         setFormData({ itemName: '', detail: '', price: 0, quantity: 1, total: 0 })
         fetchExpenses()
+      } else {
+        const errorData = await res.json()
+        toast.error(errorData.details || 'Gagal menambahkan pengeluaran')
       }
     } catch (error) {
+      console.error('Error:', error)
       toast.error('Gagal menambahkan pengeluaran')
     }
   }
