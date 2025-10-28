@@ -1,0 +1,514 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { Lock, Calendar, MapPin, DollarSign, Users } from 'lucide-react'
+import { toast } from 'sonner'
+import { format } from 'date-fns'
+import { id } from 'date-fns/locale'
+
+export default function PublicPlanPage() {
+  const params = useParams()
+  const router = useRouter()
+  const planId = params.id as string
+  
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [password, setPassword] = useState('')
+  const [plan, setPlan] = useState<any>(null)
+  const [rundowns, setRundowns] = useState<any[]>([])
+  const [expenses, setExpenses] = useState<any[]>([])
+  const [participants, setParticipants] = useState<any[]>([])
+  const [contributions, setContributions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'rundown' | 'keuangan' | 'iuran'>('rundown')
+
+  useEffect(() => {
+    fetchPlan()
+  }, [planId])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchAllData()
+    }
+  }, [isAuthenticated])
+
+  const fetchPlan = async () => {
+    try {
+      const res = await fetch(`/api/plans/${planId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setPlan(data)
+        // If no password required, authenticate automatically
+        if (!data.hasPassword) {
+          setIsAuthenticated(true)
+        }
+      }
+    } catch (error) {
+      toast.error('Gagal memuat data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchAllData = async () => {
+    try {
+      const [rundownsRes, expensesRes, participantsRes, contributionsRes] = await Promise.all([
+        fetch(`/api/rundowns?planId=${planId}`),
+        fetch(`/api/expenses?planId=${planId}`),
+        fetch(`/api/participants?planId=${planId}`),
+        fetch(`/api/contributions?planId=${planId}`),
+      ])
+
+      if (rundownsRes.ok) setRundowns(await rundownsRes.json())
+      if (expensesRes.ok) setExpenses(await expensesRes.json())
+      if (participantsRes.ok) setParticipants(await participantsRes.json())
+      if (contributionsRes.ok) setContributions(await contributionsRes.json())
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    }
+  }
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Simple password check (in production, this should be done server-side)
+    if (password === plan?.password) {
+      setIsAuthenticated(true)
+      toast.success('Akses diberikan!')
+    } else {
+      toast.error('Password salah!')
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
+
+  if (!plan) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Plan tidak ditemukan</h1>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          >
+            Kembali ke Beranda
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (plan.hasPassword && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-white flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+          <div className="flex justify-center mb-6">
+            <Image src="/logo.png" alt="SEN YAS DADDY" width={80} height={80} className="rounded-xl" />
+          </div>
+          <div className="text-center mb-6">
+            <Lock className="w-12 h-12 text-primary-600 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{plan.title}</h1>
+            <p className="text-gray-600">Rencana ini dilindungi password</p>
+          </div>
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                placeholder="Masukkan password"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            >
+              Akses Rencana
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  const grandTotal = expenses.reduce((sum, exp) => sum + exp.total, 0)
+  const nominalContributions = contributions.filter((c) => c.type === 'nominal')
+  const bakaranContributions = contributions.filter((c) => c.type === 'bakaran')
+  const nominalTotal = nominalContributions.reduce((sum, c) => sum + c.amount, 0)
+  const bakaranTotal = bakaranContributions.reduce((sum, c) => sum + c.amount, 0)
+
+  const groupedRundowns = rundowns.reduce((acc: any, rundown) => {
+    const date = rundown.date
+    if (!acc[date]) acc[date] = []
+    acc[date].push(rundown)
+    return acc
+  }, {})
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-primary-600 text-white py-8 md:py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center mb-4">
+            <Image src="/logo.png" alt="SEN YAS DADDY" width={60} height={60} className="rounded-lg" />
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-center mb-2">{plan.title}</h1>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-primary-100">
+            <div className="flex items-center">
+              <MapPin className="w-5 h-5 mr-2" />
+              {plan.destination}
+            </div>
+            <div className="flex items-center">
+              <Calendar className="w-5 h-5 mr-2" />
+              {format(new Date(plan.startDate), 'd MMM', { locale: id })} -{' '}
+              {format(new Date(plan.endDate), 'd MMM yyyy', { locale: id })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('rundown')}
+              className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
+                activeTab === 'rundown'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500'
+              }`}
+            >
+              <Calendar className="w-5 h-5" />
+              <span>Rundown</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('keuangan')}
+              className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
+                activeTab === 'keuangan'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500'
+              }`}
+            >
+              <DollarSign className="w-5 h-5" />
+              <span>Keuangan</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('iuran')}
+              className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
+                activeTab === 'iuran'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500'
+              }`}
+            >
+              <Users className="w-5 h-5" />
+              <span>Iuran</span>
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === 'rundown' && (
+          <div className="space-y-6">
+            {Object.keys(groupedRundowns).length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-lg">
+                <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">Belum ada rundown tersedia</p>
+              </div>
+            ) : (
+              Object.keys(groupedRundowns)
+                .sort()
+                .map((date) => (
+                  <div key={date} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="bg-primary-50 px-6 py-3 border-b border-primary-100">
+                      <h3 className="font-semibold text-primary-900">
+                        {format(new Date(date), 'EEEE, d MMMM yyyy', { locale: id })}
+                      </h3>
+                    </div>
+                    <div className="divide-y divide-gray-200">
+                      {groupedRundowns[date].map((rundown: any) => (
+                        <div key={rundown._id} className="p-6">
+                          {rundown.time && (
+                            <span className="text-sm font-medium text-primary-600 mb-1 block">
+                              {rundown.time}
+                            </span>
+                          )}
+                          <h4 className="font-semibold text-gray-900 mb-2">{rundown.activity}</h4>
+                          {rundown.location && (
+                            <p className="text-sm text-gray-600 mb-1">📍 {rundown.location}</p>
+                          )}
+                          {rundown.notes && (
+                            <p className="text-sm text-gray-600 mt-2">{rundown.notes}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        )}
+
+        {activeTab === 'keuangan' && (
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            {expenses.length === 0 ? (
+              <div className="text-center py-12">
+                <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">Belum ada data keuangan</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          No
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Keperluan
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Detail
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                          Harga
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          QTY
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {expenses.map((expense, index) => (
+                        <tr key={expense._id}>
+                          <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
+                          <td className="px-6 py-4 text-sm text-gray-900">{expense.itemName}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{expense.detail || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                            {formatCurrency(expense.price)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 text-center">
+                            {expense.quantity}
+                          </td>
+                          <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">
+                            {formatCurrency(expense.total)}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="bg-primary-50 font-bold">
+                        <td colSpan={5} className="px-6 py-4 text-right text-gray-900">
+                          TOTAL
+                        </td>
+                        <td className="px-6 py-4 text-right text-primary-600 text-lg">
+                          {formatCurrency(grandTotal)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'iuran' && (
+          <div className="space-y-6">
+            {contributions.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-lg">
+                <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">Belum ada data iuran</p>
+              </div>
+            ) : (
+              <>
+                {/* Iuran Nominal */}
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  <div className="bg-primary-50 px-6 py-3 border-b border-primary-100">
+                    <h3 className="font-semibold text-primary-900">Iuran Nominal</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            No
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Nama
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                            Nominal
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {participants.map((participant, index) => {
+                          const contribution = nominalContributions.find(
+                            (c: any) => c.participantId === participant._id
+                          )
+                          return (
+                            <tr key={participant._id}>
+                              <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
+                              <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                                {participant.name}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                                {contribution ? formatCurrency(contribution.amount) : '-'}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                {contribution && (
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                      contribution.isPaid
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-red-100 text-red-800'
+                                    }`}
+                                  >
+                                    {contribution.isPaid ? 'SUDAH' : 'BELUM'}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        <tr className="bg-primary-50 font-bold">
+                          <td colSpan={2} className="px-6 py-4 text-gray-900">
+                            TOTAL
+                          </td>
+                          <td className="px-6 py-4 text-primary-600 text-right">
+                            {formatCurrency(nominalTotal)}
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Iuran Bakaran */}
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  <div className="bg-primary-50 px-6 py-3 border-b border-primary-100">
+                    <h3 className="font-semibold text-primary-900">Iuran Bakaran</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            No
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Nama
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                            Nominal
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {participants.map((participant, index) => {
+                          const contribution = bakaranContributions.find(
+                            (c: any) => c.participantId === participant._id
+                          )
+                          return (
+                            <tr key={participant._id}>
+                              <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
+                              <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                                {participant.name}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                                {contribution ? formatCurrency(contribution.amount) : '-'}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                {contribution && (
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                      contribution.isPaid
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-red-100 text-red-800'
+                                    }`}
+                                  >
+                                    {contribution.isPaid ? 'SUDAH' : 'BELUM'}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        <tr className="bg-primary-50 font-bold">
+                          <td colSpan={2} className="px-6 py-4 text-gray-900">
+                            TOTAL
+                          </td>
+                          <td className="px-6 py-4 text-primary-600 text-right">
+                            {formatCurrency(bakaranTotal)}
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Grand Total */}
+                <div className="bg-primary-600 text-white rounded-lg p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-primary-100 text-sm mb-1">Total Iuran</p>
+                      <p className="text-2xl font-bold">{formatCurrency(nominalTotal + bakaranTotal)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-primary-100 text-sm mb-1">
+                        Urungan @ {participants.length} Orang
+                      </p>
+                      <p className="text-xl font-semibold">
+                        {formatCurrency((nominalTotal + bakaranTotal) / participants.length)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="text-center py-8">
+        <button
+          onClick={() => router.push('/')}
+          className="px-6 py-3 border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+        >
+          ← Kembali ke Beranda
+        </button>
+      </div>
+    </div>
+  )
+}
