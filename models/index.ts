@@ -55,12 +55,13 @@ const participantSchema = new Schema({
 // Contribution/Iuran Schema
 const contributionSchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
+  expenseItemId: { type: Schema.Types.ObjectId, ref: 'ExpenseItem', required: true },
   participantId: { type: Schema.Types.ObjectId, ref: 'Participant', required: true },
   amount: { type: Number, required: true },
   isPaid: { type: Boolean, default: false },
   paid: { type: Number, default: 0 }, // Amount that has been paid (for partial payments)
   paidAt: Date,
-  type: { type: String, enum: ['nominal', 'bakaran'], default: 'nominal' }, // nominal or bakaran (food)
+  createdAt: { type: Date, default: Date.now },
 })
 
 // Split Payment Schema (for splitting specific expenses)

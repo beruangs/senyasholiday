@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, DollarSign, Users, Edit2, Save, X } from 'lucide-react'
+import { Plus, Trash2, DollarSign, Users, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Participant {
@@ -11,11 +11,11 @@ interface Participant {
 
 interface Contribution {
   _id?: string
+  expenseItemId: string
   participantId: string
   amount: number
   paid: number
   isPaid: boolean
-  type: 'nominal' | 'bakaran'
 }
 
 interface Expense {
@@ -28,16 +28,24 @@ interface Expense {
   categoryId?: string
 }
 
+interface ExpenseWithContributions extends Expense {
+  contributors?: Array<{
+    participantName: string
+    amount: number
+  }>
+  contributorCount?: number
+}
+
 export default function ExpensesTab({ planId }: { planId: string }) {
-  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [expenses, setExpenses] = useState<ExpenseWithContributions[]>([])
   const [participants, setParticipants] = useState<Participant[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [showAddPeople, setShowAddPeople] = useState(false)
+  const [expandedExpense, setExpandedExpense] = useState<string | null>(null)
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string>('')
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
-  const [nominalAmount, setNominalAmount] = useState(0)
-  const [bakaranAmount, setBalkaranAmount] = useState(0)
+  const [splitAmount, setSplitAmount] = useState(0)
   const [formData, setFormData] = useState<Expense>({
     itemName: '',
     detail: '',
@@ -58,20 +66,41 @@ export default function ExpensesTab({ planId }: { planId: string }) {
         fetch(`/api/contributions?planId=${planId}`),
       ])
 
+      let expensesData: Expense[] = []
+      let participantsData: Participant[] = []
+      let contributionsData: Contribution[] = []
+
       if (expensesRes.ok) {
-        const data = await expensesRes.json()
-        setExpenses(data)
+        expensesData = await expensesRes.json()
       }
 
       if (participantsRes.ok) {
-        const data = await participantsRes.json()
-        setParticipants(data)
+        participantsData = await participantsRes.json()
+        setParticipants(participantsData)
       }
 
       if (contributionsRes.ok) {
-        const data = await contributionsRes.json()
-        setContributions(data)
+        contributionsData = await contributionsRes.json()
+        setContributions(contributionsData)
       }
+
+      // Add contributors info to expenses
+      const expensesWithDetails: ExpenseWithContributions[] = expensesData.map(expense => {
+        const expenseContributions = contributionsData.filter(c => c.expenseItemId === expense._id)
+        const contributors = expenseContributions.map(c => ({
+          participantName:
+            participantsData.find(p => p._id === c.participantId)?.name || 'Unknown',
+          amount: c.amount,
+        }))
+
+        return {
+          ...expense,
+          contributors,
+          contributorCount: expenseContributions.length,
+        }
+      })
+
+      setExpenses(expensesWithDetails)
     } catch (error) {
       toast.error('Gagal memuat data')
     } finally {
@@ -126,79 +155,67 @@ export default function ExpensesTab({ planId }: { planId: string }) {
     }
   }
 
-  const addPeopleToContributions = async () => {
+  const addParticipantsToExpense = async () => {
+    if (!selectedExpenseId) {
+      toast.error('Pilih pengeluaran terlebih dahulu')
+      return
+    }
+
     if (selectedParticipants.length === 0) {
       toast.error('Pilih minimal 1 peserta')
       return
     }
 
-    if (nominalAmount === 0 && bakaranAmount === 0) {
-      toast.error('Isi minimal satu jenis iuran')
+    if (splitAmount <= 0) {
+      toast.error('Masukkan nominal iuran')
       return
     }
 
     try {
-      const promises = selectedParticipants.flatMap((participantId) => {
-        const requests = []
-
-        if (nominalAmount > 0) {
-          requests.push(
-            fetch('/api/contributions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                holidayPlanId: planId,
-                participantId,
-                amount: nominalAmount,
-                paid: 0,
-                isPaid: false,
-                type: 'nominal',
-              }),
-            })
-          )
-        }
-
-        if (bakaranAmount > 0) {
-          requests.push(
-            fetch('/api/contributions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                holidayPlanId: planId,
-                participantId,
-                amount: bakaranAmount,
-                paid: 0,
-                isPaid: false,
-                type: 'bakaran',
-              }),
-            })
-          )
-        }
-
-        return requests
-      })
+      const promises = selectedParticipants.map(participantId =>
+        fetch('/api/contributions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            holidayPlanId: planId,
+            expenseItemId: selectedExpenseId,
+            participantId,
+            amount: splitAmount,
+            paid: 0,
+            isPaid: false,
+          }),
+        })
+      )
 
       await Promise.all(promises)
-      toast.success(`Berhasil menambahkan ${selectedParticipants.length} orang ke iuran`)
-      setShowAddPeople(false)
+      toast.success(`Berhasil menambahkan ${selectedParticipants.length} peserta ke iuran`)
+      setSelectedExpenseId('')
       setSelectedParticipants([])
-      setNominalAmount(0)
-      setBalkaranAmount(0)
+      setSplitAmount(0)
+      setExpandedExpense(null)
       fetchData()
     } catch (error) {
       toast.error('Gagal menambahkan peserta')
     }
   }
 
-  const toggleSelectAll = () => {
-    const availableParticipants = participants.filter(p =>
-      !contributions.some(c => c.participantId === p._id)
-    )
+  const deleteContribution = async (expenseId: string, participantId: string) => {
+    if (!confirm('Yakin ingin menghapus iuran ini?')) return
 
-    if (selectedParticipants.length === availableParticipants.length) {
-      setSelectedParticipants([])
-    } else {
-      setSelectedParticipants(availableParticipants.map(p => p._id))
+    try {
+      const res = await fetch(
+        `/api/contributions?expenseItemId=${expenseId}&participantId=${participantId}`,
+        {
+          method: 'DELETE',
+        }
+      )
+
+      if (res.ok) {
+        toast.success('Iuran berhasil dihapus')
+        fetchData()
+      }
+    } catch (error) {
+      toast.error('Gagal menghapus iuran')
     }
   }
 
@@ -210,11 +227,14 @@ export default function ExpensesTab({ planId }: { planId: string }) {
     }).format(amount)
   }
 
-  const availableParticipants = participants.filter(p =>
-    !contributions.some(c => c.participantId === p._id)
-  )
-
   const grandTotal = expenses.reduce((sum, exp) => sum + exp.total, 0)
+  const selectedExpense = expenses.find(e => e._id === selectedExpenseId)
+  const availableParticipants = participants.filter(
+    p =>
+      !contributions.some(
+        c => c.expenseItemId === selectedExpenseId && c.participantId === p._id
+      )
+  )
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>
@@ -222,191 +242,6 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Add People for Contributions */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Penambahan Orang Iuran</h2>
-          <button
-            onClick={() => setShowAddPeople(!showAddPeople)}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Tambah Orang untuk Iuran</span>
-          </button>
-        </div>
-
-        {showAddPeople && (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 shadow-xl mb-6">
-            <h3 className="font-bold text-blue-900 mb-4 flex items-center space-x-2 text-lg">
-              <Users className="w-6 h-6" />
-              <span>Tambah Peserta ke Iuran</span>
-            </h3>
-
-            <div className="space-y-5">
-              {/* Participant Selection */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Pilih Peserta ({selectedParticipants.length} dipilih)
-                  </label>
-                  {availableParticipants.length > 0 && (
-                    <button
-                      onClick={toggleSelectAll}
-                      className="text-sm text-primary-600 hover:text-primary-700 font-semibold hover:underline transition-colors"
-                    >
-                      {selectedParticipants.length === availableParticipants.length ? '✕ Batal Semua' : '✓ Pilih Semua'}
-                    </button>
-                  )}
-                </div>
-
-                {availableParticipants.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto bg-white p-4 rounded-xl border-2 border-gray-200 shadow-inner">
-                    {availableParticipants.map(participant => (
-                      <label
-                        key={participant._id}
-                        className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all ${
-                          selectedParticipants.includes(participant._id)
-                            ? 'bg-primary-100 border-2 border-primary-500 shadow-md'
-                            : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100 hover:border-gray-300'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedParticipants.includes(participant._id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedParticipants([...selectedParticipants, participant._id])
-                            } else {
-                              setSelectedParticipants(selectedParticipants.filter(id => id !== participant._id))
-                            }
-                          }}
-                          className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 focus:ring-2"
-                        />
-                        <span className="text-sm font-medium text-gray-900">{participant.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white p-6 rounded-xl border-2 border-dashed border-gray-300 text-center">
-                    <p className="text-sm text-gray-500">
-                      {participants.length === 0
-                        ? 'Belum ada peserta. Tambahkan peserta terlebih dahulu di tab Peserta.'
-                        : 'Semua peserta sudah ditambahkan ke iuran.'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Amount Inputs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    💰 Iuran Nominal per Orang
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-3 text-gray-500 font-medium">Rp</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={nominalAmount}
-                      onChange={(e) => setNominalAmount(Number(e.target.value))}
-                      className="w-full pl-14 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    🍔 Iuran Bakaran per Orang
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-3 text-gray-500 font-medium">Rp</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={bakaranAmount}
-                      onChange={(e) => setBalkaranAmount(Number(e.target.value))}
-                      className="w-full pl-14 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Summary */}
-              {selectedParticipants.length > 0 && (nominalAmount > 0 || bakaranAmount > 0) && (
-                <div className="bg-white p-5 rounded-xl border-2 border-primary-300 shadow-md">
-                  <p className="text-sm font-bold text-gray-800 mb-3 flex items-center space-x-2">
-                    <DollarSign className="w-4 h-4 text-primary-600" />
-                    <span>Ringkasan:</span>
-                  </p>
-                  <ul className="text-sm space-y-2 text-gray-700">
-                    <li className="flex items-center space-x-2">
-                      <span className="w-2 h-2 bg-primary-500 rounded-full"></span>
-                      <span>
-                        <strong>{selectedParticipants.length}</strong> orang dipilih
-                      </span>
-                    </li>
-                    {nominalAmount > 0 && (
-                      <li className="flex items-center space-x-2">
-                        <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                        <span>
-                          Nominal: <strong>{formatCurrency(nominalAmount)}</strong> per orang
-                        </span>
-                      </li>
-                    )}
-                    {bakaranAmount > 0 && (
-                      <li className="flex items-center space-x-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        <span>
-                          Bakaran: <strong>{formatCurrency(bakaranAmount)}</strong> per orang
-                        </span>
-                      </li>
-                    )}
-                    <li className="flex items-center space-x-2 pt-2 mt-2 border-t-2 border-primary-200">
-                      <span className="w-2 h-2 bg-primary-600 rounded-full"></span>
-                      <span className="font-bold text-primary-700">
-                        Total per orang: {formatCurrency(nominalAmount + bakaranAmount)}
-                      </span>
-                    </li>
-                    <li className="flex items-center space-x-2 text-base">
-                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                      <span className="font-bold text-red-600">
-                        Grand Total: {formatCurrency((nominalAmount + bakaranAmount) * selectedParticipants.length)}
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex justify-end space-x-3 pt-2">
-                <button
-                  onClick={() => {
-                    setShowAddPeople(false)
-                    setSelectedParticipants([])
-                    setNominalAmount(0)
-                    setBalkaranAmount(0)
-                  }}
-                  className="px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors font-medium"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={addPeopleToContributions}
-                  disabled={selectedParticipants.length === 0 || (nominalAmount === 0 && bakaranAmount === 0)}
-                  className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                  ✓ Tambahkan
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Expenses Section */}
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Tabel Keuangan</h2>
@@ -510,90 +345,42 @@ export default function ExpensesTab({ planId }: { planId: string }) {
             <p className="text-gray-600">Belum ada pengeluaran. Catat pengeluaran sekarang!</p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            {/* Table for desktop */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      No
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Keperluan
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Detail
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Harga
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      QTY
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {expenses.map((expense, index) => (
-                    <tr key={expense._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {index + 1}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {expense.itemName}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {expense.detail || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatCurrency(expense.price)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                        {expense.quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">
-                        {formatCurrency(expense.total)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => deleteExpense(expense._id!)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg inline-flex items-center justify-center"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="bg-primary-50 font-bold">
-                    <td colSpan={5} className="px-6 py-4 text-right text-gray-900">
-                      TOTAL
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-primary-600 text-lg">
-                      {formatCurrency(grandTotal)}
-                    </td>
-                    <td></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Card view for mobile */}
-            <div className="md:hidden divide-y divide-gray-200">
-              {expenses.map((expense, index) => (
-                <div key={expense._id} className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-xs text-gray-500">#{index + 1}</span>
-                      <h4 className="font-semibold text-gray-900">{expense.itemName}</h4>
-                      {expense.detail && (
-                        <p className="text-sm text-gray-600">{expense.detail}</p>
-                      )}
+          <div className="space-y-4">
+            {expenses.map((expense, index) => (
+              <div
+                key={expense._id}
+                className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+              >
+                {/* Desktop View */}
+                <div className="hidden md:block">
+                  <div className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 cursor-pointer">
+                    <div className="flex-1 flex items-center space-x-4">
+                      <span className="text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded">
+                        #{index + 1}
+                      </span>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">{expense.itemName}</h3>
+                        {expense.detail && (
+                          <p className="text-sm text-gray-600">{expense.detail}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-gray-900">{formatCurrency(expense.total)}</p>
+                        <p className="text-xs text-gray-500">
+                          {expense.price} x {expense.quantity}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setExpandedExpense(expandedExpense === expense._id ? null : (expense._id || ''))
+                        }
+                        className="ml-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
+                      >
+                        <Users className="w-4 h-4" />
+                        <span>
+                          {expense.contributorCount || 0} peserta
+                        </span>
+                      </button>
                     </div>
                     <button
                       onClick={() => deleteExpense(expense._id!)}
@@ -602,27 +389,228 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
+
+                  {/* Expanded Contributors Section */}
+                  {expandedExpense === expense._id && (
+                    <div className="border-t border-gray-200 bg-gray-50 p-6 space-y-4">
+                      {/* Add Participants Form */}
+                      <div className="bg-white border-2 border-primary-200 rounded-lg p-4 space-y-4">
+                        <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
+                          <Users className="w-5 h-5 text-primary-600" />
+                          <span>Tambah Peserta Iuran</span>
+                        </h4>
+
+                        {availableParticipants.length > 0 ? (
+                          <>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Pilih Peserta ({selectedParticipants.length} dipilih)
+                              </label>
+                              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 max-h-40 overflow-y-auto bg-gray-50 p-3 rounded border border-gray-200">
+                                {availableParticipants.map(participant => (
+                                  <label
+                                    key={participant._id}
+                                    className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-all ${
+                                      selectedParticipants.includes(participant._id)
+                                        ? 'bg-primary-100 border border-primary-500'
+                                        : 'bg-white border border-gray-200 hover:border-primary-300'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedParticipants.includes(participant._id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedParticipants([
+                                            ...selectedParticipants,
+                                            participant._id,
+                                          ])
+                                        } else {
+                                          setSelectedParticipants(
+                                            selectedParticipants.filter(
+                                              id => id !== participant._id
+                                            )
+                                          )
+                                        }
+                                      }}
+                                      className="w-4 h-4 rounded text-primary-600"
+                                    />
+                                    <span className="text-sm text-gray-700">{participant.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Nominal Iuran per Orang <span className="text-red-500">*</span>
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-4 top-3 text-gray-500 font-medium">
+                                  Rp
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={splitAmount}
+                                  onChange={(e) => setSplitAmount(Number(e.target.value))}
+                                  className="w-full pl-14 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                                  placeholder="0"
+                                />
+                              </div>
+                              {selectedParticipants.length > 0 && splitAmount > 0 && (
+                                <p className="text-sm text-gray-600 mt-2">
+                                  Total: {formatCurrency(splitAmount * selectedParticipants.length)}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedExpenseId('')
+                                  setSelectedParticipants([])
+                                  setSplitAmount(0)
+                                }}
+                                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                              >
+                                Batal
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedExpenseId(expense._id!)
+                                  addParticipantsToExpense()
+                                }}
+                                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                              >
+                                Tambah
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-sm text-gray-600">
+                            Semua peserta sudah ditambahkan ke iuran ini.
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Contributors List */}
+                      {expense.contributors && expense.contributors.length > 0 && (
+                        <div className="bg-white rounded-lg p-4">
+                          <h4 className="font-semibold text-gray-900 mb-3">
+                            Peserta Iuran ({expense.contributors.length})
+                          </h4>
+                          <div className="space-y-2">
+                            {expense.contributors.map((contributor, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                              >
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {contributor.participantName}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {formatCurrency(contributor.amount)}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() =>
+                                    deleteContribution(
+                                      expense._id!,
+                                      participants.find(
+                                        p => p.name === contributor.participantName
+                                      )?._id || ''
+                                    )
+                                  }
+                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile View */}
+                <div className="md:hidden p-4 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded inline-block mb-2">
+                        #{index + 1}
+                      </span>
+                      <h3 className="font-semibold text-gray-900">{expense.itemName}</h3>
+                      {expense.detail && (
+                        <p className="text-sm text-gray-600">{expense.detail}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteExpense(expense._id!)}
+                      className="p-2 text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-sm bg-gray-50 p-3 rounded">
                     <div>
-                      <span className="text-gray-500">Harga:</span>
+                      <span className="text-gray-500 text-xs">Harga</span>
                       <p className="font-medium">{formatCurrency(expense.price)}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">QTY:</span>
+                      <span className="text-gray-500 text-xs">QTY</span>
                       <p className="font-medium">{expense.quantity}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Total:</span>
-                      <p className="font-semibold text-primary-600">{formatCurrency(expense.total)}</p>
+                      <span className="text-gray-500 text-xs">Total</span>
+                      <p className="font-bold">{formatCurrency(expense.total)}</p>
                     </div>
                   </div>
+
+                  <button
+                    onClick={() =>
+                      setExpandedExpense(expandedExpense === expense._id ? null : (expense._id || ''))
+                    }
+                    className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>{expense.contributorCount || 0} peserta</span>
+                  </button>
+
+                  {expandedExpense === expense._id && (
+                    <div className="border-t border-gray-200 pt-4 space-y-3">
+                      {expense.contributors && expense.contributors.length > 0 && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <h4 className="font-semibold text-sm text-gray-900 mb-2">
+                            Peserta Iuran
+                          </h4>
+                          <div className="space-y-2">
+                            {expense.contributors.map((contributor, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-sm">
+                                <span className="text-gray-700">{contributor.participantName}</span>
+                                <span className="font-medium text-gray-900">
+                                  {formatCurrency(contributor.amount)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
-              <div className="p-4 bg-primary-50">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-gray-900">GRAND TOTAL</span>
-                  <span className="font-bold text-primary-600 text-lg">{formatCurrency(grandTotal)}</span>
-                </div>
+              </div>
+            ))}
+
+            {/* Grand Total */}
+            <div className="bg-primary-50 border-2 border-primary-200 rounded-lg p-4 font-bold">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-900">TOTAL PENGELUARAN</span>
+                <span className="text-lg text-primary-600">{formatCurrency(grandTotal)}</span>
               </div>
             </div>
           </div>

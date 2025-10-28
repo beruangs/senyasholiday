@@ -54,3 +54,36 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to update contribution' }, { status: 500 })
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const expenseItemId = searchParams.get('expenseItemId')
+    const participantId = searchParams.get('participantId')
+
+    await dbConnect()
+
+    if (expenseItemId && participantId) {
+      // Delete by expenseItemId and participantId
+      const result = await Contribution.deleteOne({
+        expenseItemId,
+        participantId,
+      })
+
+      if (result.deletedCount === 0) {
+        return NextResponse.json({ error: 'Contribution not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({ message: 'Contribution deleted' })
+    } else {
+      return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
+    }
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to delete contribution' }, { status: 500 })
+  }
+}
