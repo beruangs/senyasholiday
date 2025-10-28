@@ -78,19 +78,24 @@ export default function ContributionsTab({ planId }: { planId: string }) {
 
       if (participantsRes.ok) {
         participantsData = await participantsRes.json()
+        console.log('Participants loaded:', participantsData.length)
         setParticipants(participantsData)
       }
 
       if (expensesRes.ok) {
         expensesData = await expensesRes.json()
+        console.log('Expenses loaded:', expensesData.length)
         setExpenseItems(expensesData)
       }
 
       if (contributionsRes.ok) {
         contributionsData = await contributionsRes.json()
+        console.log('Contributions loaded:', contributionsData.length)
+        console.log('Sample contribution:', contributionsData[0])
         setContributions(contributionsData)
       }
     } catch (error) {
+      console.error('Error fetching data:', error)
       toast.error('Gagal memuat data')
     } finally {
       setLoading(false)
@@ -245,13 +250,32 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   // Group contributions by expense
   const groupedContributions: ContributionGroup[] = expenseItems
     .map(expense => {
-      const expenseContributions = contributions.filter(c => c.expenseItemId === expense._id)
+      // Handle both populated (object) and non-populated (string) expenseItemId
+      const expenseContributions = contributions.filter(c => {
+        const contributionExpenseId = typeof c.expenseItemId === 'object' 
+          ? (c.expenseItemId as any)?._id 
+          : c.expenseItemId
+        return contributionExpenseId === expense._id
+      })
+      
+      console.log(`Expense "${expense.itemName}" (${expense._id}): Found ${expenseContributions.length} contributions`)
+      
       const collectorName = participants.find(p => p._id === expense.collectorId)?.name || 'Unknown'
 
-      const contributionsWithDetails = expenseContributions.map(c => ({
-        ...c,
-        participantName: participants.find(p => p._id === c.participantId)?.name || 'Unknown',
-      }))
+      const contributionsWithDetails = expenseContributions.map(c => {
+        // Handle populated participantId
+        const participantId = typeof c.participantId === 'object'
+          ? (c.participantId as any)?._id
+          : c.participantId
+        const participantName = typeof c.participantId === 'object'
+          ? (c.participantId as any)?.name
+          : participants.find(p => p._id === participantId)?.name
+          
+        return {
+          ...c,
+          participantName: participantName || 'Unknown',
+        }
+      })
 
       const totalAmount = expenseContributions.reduce((sum, c) => sum + c.amount, 0)
       const totalPaid = expenseContributions.reduce((sum, c) => sum + c.paid, 0)
