@@ -118,7 +118,7 @@
 
 ### Add Participants:
 1. Select participants (multi-select atau select all)
-2. Input nominal dan/atau bakaran amount
+2. Input nominal
 3. Preview total calculation
 4. Submit → Create contributions via API
 5. Toast notification
