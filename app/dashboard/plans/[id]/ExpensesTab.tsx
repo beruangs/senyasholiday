@@ -167,8 +167,12 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       return
     }
 
-    // Auto-calculate split amount if not manually set
-    const splitAmount = formParticipants.length > 0 ? Math.round(total / formParticipants.length) : 0
+    // Auto-calculate split amount - round to nearest 100 to avoid floating point issues
+    const rawSplitAmount = total / formParticipants.length
+    const splitAmount = Math.round(rawSplitAmount / 100) * 100 // Round to nearest 100
+
+    console.log('Raw split amount:', rawSplitAmount)
+    console.log('Rounded split amount:', splitAmount)
 
     if (splitAmount <= 0) {
       toast.error('Jumlah iuran per orang harus lebih dari 0')
@@ -521,12 +525,12 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                       <div className="bg-white p-3 rounded border-2 border-primary-500">
                         <p className="text-xs text-primary-700 font-semibold">Per Orang</p>
                         <p className="font-bold text-lg text-primary-600">
-                          {formatCurrency(Math.round((formData.price * formData.quantity) / formParticipants.length))}
+                          {formatCurrency(Math.round((formData.price * formData.quantity) / formParticipants.length / 100) * 100)}
                         </p>
                       </div>
                     </div>
                     <p className="text-xs text-gray-600 mt-3">
-                      📌 Nominal ini otomatis dihitung dari total pengeluaran dibagi jumlah peserta yang iuran
+                      📌 Nominal ini otomatis dihitung dari total pengeluaran dibagi jumlah peserta (dibulatkan ke ratusan terdekat)
                     </p>
                   </div>
                 </div>
@@ -544,7 +548,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                     <div>
                       <p className="text-blue-700">Nominal Per Orang:</p>
                       <p className="font-bold text-blue-900">
-                        {formatCurrency(Math.round((formData.price * formData.quantity) / formParticipants.length))}
+                        {formatCurrency(Math.round((formData.price * formData.quantity) / formParticipants.length / 100) * 100)}
                       </p>
                     </div>
                     <div>

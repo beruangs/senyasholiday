@@ -25,17 +25,20 @@ interface Contribution {
 }
 
 interface ContributionGroup {
-  expenseId: string
-  expenseName: string
   collectorId: string
   collectorName: string
+  expenses: Array<{
+    expenseId: string
+    expenseName: string
+    totalAmount: number
+  }>
   contributions: Array<Contribution & {
     participantName: string
+    expenseName: string
   }>
   totalAmount: number
   totalPaid: number
   totalRemaining: number
-  contributors: Contribution[]
 }
 
 export default function ContributionsTab({ planId }: { planId: string }) {
@@ -247,53 +250,71 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     }).format(amount)
   }
 
-  // Group contributions by expense
-  const groupedContributions: ContributionGroup[] = expenseItems
-    .map(expense => {
-      // Handle both populated (object) and non-populated (string) expenseItemId
+  // Group contributions by COLLECTOR (not by expense)
+  const groupedContributions: ContributionGroup[] = (() => {
+    // First, get all unique collectors from expenses
+    const collectorMap = new Map<string, ContributionGroup>()
+
+    expenseItems.forEach(expense => {
+      const collectorId = expense.collectorId || 'unknown'
+      const collectorName = participants.find(p => p._id === collectorId)?.name || 'Unknown'
+
+      if (!collectorMap.has(collectorId)) {
+        collectorMap.set(collectorId, {
+          collectorId,
+          collectorName,
+          expenses: [],
+          contributions: [],
+          totalAmount: 0,
+          totalPaid: 0,
+          totalRemaining: 0,
+        })
+      }
+
+      // Get contributions for this expense
       const expenseContributions = contributions.filter(c => {
         const contributionExpenseId = typeof c.expenseItemId === 'object' 
           ? (c.expenseItemId as any)?._id 
           : c.expenseItemId
         return contributionExpenseId === expense._id
       })
-      
-      console.log(`Expense "${expense.itemName}" (${expense._id}): Found ${expenseContributions.length} contributions`)
-      
-      const collectorName = participants.find(p => p._id === expense.collectorId)?.name || 'Unknown'
 
-      const contributionsWithDetails = expenseContributions.map(c => {
-        // Handle populated participantId
-        const participantId = typeof c.participantId === 'object'
-          ? (c.participantId as any)?._id
-          : c.participantId
-        const participantName = typeof c.participantId === 'object'
-          ? (c.participantId as any)?.name
-          : participants.find(p => p._id === participantId)?.name
+      if (expenseContributions.length > 0) {
+        const group = collectorMap.get(collectorId)!
+        
+        // Add expense info
+        const expenseTotal = expenseContributions.reduce((sum, c) => sum + c.amount, 0)
+        group.expenses.push({
+          expenseId: expense._id!,
+          expenseName: expense.itemName,
+          totalAmount: expenseTotal,
+        })
+
+        // Add contributions with details
+        expenseContributions.forEach(c => {
+          const participantId = typeof c.participantId === 'object'
+            ? (c.participantId as any)?._id
+            : c.participantId
+          const participantName = typeof c.participantId === 'object'
+            ? (c.participantId as any)?.name
+            : participants.find(p => p._id === participantId)?.name
           
-        return {
-          ...c,
-          participantName: participantName || 'Unknown',
-        }
-      })
+          group.contributions.push({
+            ...c,
+            participantName: participantName || 'Unknown',
+            expenseName: expense.itemName,
+          })
 
-      const totalAmount = expenseContributions.reduce((sum, c) => sum + c.amount, 0)
-      const totalPaid = expenseContributions.reduce((sum, c) => sum + c.paid, 0)
-      const totalRemaining = totalAmount - totalPaid
+          group.totalAmount += c.amount
+          group.totalPaid += c.paid
+        })
 
-      return {
-        expenseId: expense._id!,
-        expenseName: expense.itemName,
-        collectorId: expense.collectorId || '',
-        collectorName,
-        contributions: contributionsWithDetails,
-        totalAmount,
-        totalPaid,
-        totalRemaining,
-        contributors: expenseContributions,
+        group.totalRemaining = group.totalAmount - group.totalPaid
       }
     })
-    .filter(group => group.contributions.length > 0)
+
+    return Array.from(collectorMap.values()).filter(group => group.contributions.length > 0)
+  })()
 
   const grandTotal = groupedContributions.reduce((sum, group) => sum + group.totalAmount, 0)
   const grandPaid = groupedContributions.reduce((sum, group) => sum + group.totalPaid, 0)
@@ -446,21 +467,24 @@ export default function ContributionsTab({ planId }: { planId: string }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Grouped Expenses */}
+          {/* Grouped by Collector */}
           {groupedContributions.map(group => (
-            <div key={group.expenseId} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div key={group.collectorId} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
               {/* Header - Collapsible */}
               <button
                 onClick={() =>
-                  setExpandedExpense(expandedExpense === group.expenseId ? null : group.expenseId)
+                  setExpandedExpense(expandedExpense === group.collectorId ? null : group.collectorId)
                 }
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
               >
                 <div className="flex-1 text-left">
-                  <h3 className="font-semibold text-gray-900">
-                    {group.expenseName} - {group.collectorName}
+                  <h3 className="font-semibold text-gray-900 text-lg">
+                    👤 {group.collectorName}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
+                    {group.expenses.map(e => e.expenseName).join(', ')}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
                     {group.contributions.length} peserta iuran
                   </p>
                 </div>
@@ -481,7 +505,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                 </div>
 
                 <div className="text-gray-600">
-                  {expandedExpense === group.expenseId ? (
+                  {expandedExpense === group.collectorId ? (
                     <ChevronUp className="w-5 h-5" />
                   ) : (
                     <ChevronDown className="w-5 h-5" />
@@ -490,7 +514,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
               </button>
 
               {/* Details - Expanded */}
-              {expandedExpense === group.expenseId && (
+              {expandedExpense === group.collectorId && (
                 <div className="border-t border-gray-200 bg-gray-50 divide-y divide-gray-200">
                   {/* Sort contributions by status: Belum (0) -> Sebagian (1) -> Lunas (2) */}
                   {group.contributions
@@ -523,7 +547,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                               <div className="flex-1">
                                 <p className="font-medium text-gray-900">{contrib.participantName}</p>
                                 <p className="text-sm text-gray-600">
-                                  Nominal: {formatCurrency(contrib.amount)}
+                                  {contrib.expenseName} • {formatCurrency(contrib.amount)}
                                 </p>
                               </div>
                               <div className="text-right">
