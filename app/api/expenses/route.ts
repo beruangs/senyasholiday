@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import dbConnect from '@/lib/mongodb'
-import { ExpenseItem, ExpenseCategory } from '@/models'
+import { ExpenseItem, ExpenseCategory, Contribution } from '@/models'
 
 export async function GET(req: NextRequest) {
   try {
@@ -74,7 +74,12 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id')
 
     await dbConnect()
+    
+    // Delete expense
     await ExpenseItem.findByIdAndDelete(id)
+    
+    // Also delete all contributions related to this expense
+    await Contribution.deleteMany({ expenseItemId: id })
 
     return NextResponse.json({ success: true })
   } catch (error) {

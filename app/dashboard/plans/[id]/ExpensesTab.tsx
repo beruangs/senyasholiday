@@ -44,6 +44,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [expandedExpense, setExpandedExpense] = useState<string | null>(null)
   const [selectedExpenseId, setSelectedExpenseId] = useState<string>('')
@@ -121,15 +122,22 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Prevent double submit
+    if (isSubmitting) return
+    setIsSubmitting(true)
+
     const total = formData.price * formData.quantity
 
     if (formParticipants.length === 0) {
       toast.error('Pilih minimal 1 peserta untuk iuran')
+      setIsSubmitting(false)
       return
     }
 
     if (!formCollector) {
       toast.error('Pilih siapa yang mengumpulkan uang')
+      setIsSubmitting(false)
       return
     }
 
@@ -138,6 +146,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
     if (splitAmount <= 0) {
       toast.error('Jumlah iuran per orang harus lebih dari 0')
+      setIsSubmitting(false)
       return
     }
 
@@ -157,6 +166,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       if (!expenseRes.ok) {
         const errorData = await expenseRes.json()
         toast.error(errorData.details || 'Gagal menambahkan pengeluaran')
+        setIsSubmitting(false)
         return
       }
 
@@ -186,10 +196,12 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       setFormParticipants([])
       setFormSplitAmount(0)
       setFormCollector('')
+      setIsSubmitting(false)
       fetchData()
     } catch (error) {
       console.error('Error:', error)
       toast.error('Gagal menambahkan pengeluaran')
+      setIsSubmitting(false)
     }
   }
 
@@ -508,15 +520,24 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                   setFormSplitAmount(0)
                   setFormCollector('')
                 }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={isSubmitting}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
-                Simpan Pengeluaran & Iuran
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <span>Simpan Pengeluaran & Iuran</span>
+                )}
               </button>
             </div>
           </form>

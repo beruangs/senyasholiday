@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     await dbConnect()
     const contributions = await Contribution.find({ holidayPlanId: planId })
       .populate('participantId')
+      .populate('expenseItemId')
       .lean()
 
     return NextResponse.json(contributions)
