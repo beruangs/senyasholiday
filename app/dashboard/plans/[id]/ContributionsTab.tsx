@@ -547,60 +547,42 @@ export default function ContributionsTab({ planId }: { planId: string }) {
 
                     return (
                       <div key={participant.participantId} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start gap-4">
-                          {/* Checkbox */}
-                          <input
-                            type="checkbox"
-                            checked={allSelected}
-                            onChange={() => {
-                              if (allSelected) {
-                                setSelectedContributions(selectedContributions.filter(id => !participantContributionIds.includes(id)))
-                              } else {
-                                setSelectedContributions([...selectedContributions, ...participantContributionIds])
-                              }
-                            }}
-                            className="w-5 h-5 rounded text-primary-600 mt-1"
-                          />
-
+                        <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-gray-900">
-                                  {participant.participantName}
-                                </h4>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  ({participant.expenseNames.join(', ')}) • {formatCurrency(participant.totalAmount)}
-                                </p>
-                              </div>
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                                {status}
-                              </span>
+                            <h4 className="font-semibold text-gray-900">
+                              {participant.participantName}
+                            </h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              ({participant.expenseNames.join(', ')}) • {formatCurrency(participant.totalAmount)}
+                            </p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                            {status}
+                          </span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
+                          <div className="mb-2">
+                            <div className="flex justify-between text-xs text-gray-600 mb-1">
+                              <span>Progress: {percentage}%</span>
+                              <span>{formatCurrency(participant.totalPaid)} / {formatCurrency(participant.totalAmount)}</span>
                             </div>
-
-                            {/* Progress Bar */}
-                            {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
-                              <div className="mb-2">
-                                <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                  <span>Progress: {percentage}%</span>
-                                  <span>{formatCurrency(participant.totalPaid)} / {formatCurrency(participant.totalAmount)}</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
-                                    style={{ width: `${percentage}%` }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Payment Info - Read Only */}
-                            <div className="text-sm text-gray-600">
-                              Terbayar: <span className="font-semibold text-green-600">{formatCurrency(participant.totalPaid)}</span>
-                              {participant.totalRemaining > 0 && (
-                                <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(participant.totalRemaining)}</span></>
-                              )}
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
                             </div>
                           </div>
+                        )}
+
+                        {/* Payment Info - Read Only */}
+                        <div className="text-sm text-gray-600">
+                          Terbayar: <span className="font-semibold text-green-600">{formatCurrency(participant.totalPaid)}</span>
+                          {participant.totalRemaining > 0 && (
+                            <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(participant.totalRemaining)}</span></>
+                          )}
                         </div>
                       </div>
                     )
