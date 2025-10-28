@@ -90,18 +90,38 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
       if (contributionsRes.ok) {
         contributionsData = await contributionsRes.json()
+        console.log('Contributions fetched:', contributionsData.length)
+        console.log('Sample contribution:', contributionsData[0])
         setContributions(contributionsData)
       }
 
       // Add contributors info to expenses
       const expensesWithDetails: ExpenseWithContributions[] = expensesData.map(expense => {
-        const expenseContributions = contributionsData.filter(c => c.expenseItemId === expense._id)
-        const contributors = expenseContributions.map(c => ({
-          participantName:
-            participantsData.find(p => p._id === c.participantId)?.name || 'Unknown',
-          amount: c.amount,
-          participantId: c.participantId,
-        }))
+        // Handle both populated (object) and non-populated (string) expenseItemId
+        const expenseContributions = contributionsData.filter(c => {
+          const contributionExpenseId = typeof c.expenseItemId === 'object' 
+            ? (c.expenseItemId as any)?._id 
+            : c.expenseItemId
+          return contributionExpenseId === expense._id
+        })
+        
+        console.log(`Expense "${expense.itemName}" (${expense._id}): Found ${expenseContributions.length} contributions`)
+        
+        const contributors = expenseContributions.map(c => {
+          // Handle populated participantId
+          const participantId = typeof c.participantId === 'object'
+            ? (c.participantId as any)?._id
+            : c.participantId
+          const participantName = typeof c.participantId === 'object'
+            ? (c.participantId as any)?.name
+            : participantsData.find(p => p._id === participantId)?.name
+            
+          return {
+            participantName: participantName || 'Unknown',
+            amount: c.amount,
+            participantId: participantId,
+          }
+        })
         const collectorName = participantsData.find(p => p._id === expense.collectorId)?.name
 
         return {
@@ -112,6 +132,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
         }
       })
 
+      console.log('Expenses with details:', expensesWithDetails)
       setExpenses(expensesWithDetails)
     } catch (error) {
       toast.error('Gagal memuat data')
