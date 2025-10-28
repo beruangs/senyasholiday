@@ -25,17 +25,9 @@ interface Contribution {
 }
 
 interface ContributionGroup {
-  collectorId: string
-  collectorName: string
-  expenses: Array<{
-    expenseId: string
-    expenseName: string
-    totalAmount: number
-  }>
-  contributions: Array<Contribution & {
-    participantName: string
-    expenseName: string
-  }>
+  participantId: string
+  participantName: string
+  expenseNames: string[]
   totalAmount: number
   totalPaid: number
   totalRemaining: number
@@ -250,70 +242,52 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     }).format(amount)
   }
 
-  // Group contributions by COLLECTOR (not by expense)
+  // Group contributions by PARTICIPANT
   const groupedContributions: ContributionGroup[] = (() => {
-    // First, get all unique collectors from expenses
-    const collectorMap = new Map<string, ContributionGroup>()
+    const participantMap = new Map<string, ContributionGroup>()
 
-    expenseItems.forEach(expense => {
-      const collectorId = expense.collectorId || 'unknown'
-      const collectorName = participants.find(p => p._id === collectorId)?.name || 'Unknown'
+    contributions.forEach(contribution => {
+      const participantId = typeof contribution.participantId === 'object'
+        ? (contribution.participantId as any)?._id
+        : contribution.participantId
 
-      if (!collectorMap.has(collectorId)) {
-        collectorMap.set(collectorId, {
-          collectorId,
-          collectorName,
-          expenses: [],
-          contributions: [],
+      const participantName = typeof contribution.participantId === 'object'
+        ? (contribution.participantId as any)?.name
+        : participants.find(p => p._id === participantId)?.name || 'Unknown'
+
+      const expenseItemId = typeof contribution.expenseItemId === 'object'
+        ? (contribution.expenseItemId as any)?._id
+        : contribution.expenseItemId
+
+      const expenseName = typeof contribution.expenseItemId === 'object'
+        ? (contribution.expenseItemId as any)?.itemName
+        : expenseItems.find(e => e._id === expenseItemId)?.itemName || 'Unknown'
+
+      if (!participantMap.has(participantId)) {
+        participantMap.set(participantId, {
+          participantId,
+          participantName,
+          expenseNames: [],
           totalAmount: 0,
           totalPaid: 0,
           totalRemaining: 0,
         })
       }
 
-      // Get contributions for this expense
-      const expenseContributions = contributions.filter(c => {
-        const contributionExpenseId = typeof c.expenseItemId === 'object' 
-          ? (c.expenseItemId as any)?._id 
-          : c.expenseItemId
-        return contributionExpenseId === expense._id
-      })
-
-      if (expenseContributions.length > 0) {
-        const group = collectorMap.get(collectorId)!
-        
-        // Add expense info
-        const expenseTotal = expenseContributions.reduce((sum, c) => sum + c.amount, 0)
-        group.expenses.push({
-          expenseId: expense._id!,
-          expenseName: expense.itemName,
-          totalAmount: expenseTotal,
-        })
-
-        // Add contributions with details
-        expenseContributions.forEach(c => {
-          const participantId = typeof c.participantId === 'object'
-            ? (c.participantId as any)?._id
-            : c.participantId
-          const participantName = typeof c.participantId === 'object'
-            ? (c.participantId as any)?.name
-            : participants.find(p => p._id === participantId)?.name
-          
-          group.contributions.push({
-            ...c,
-            participantName: participantName || 'Unknown',
-            expenseName: expense.itemName,
-          })
-
-          group.totalAmount += c.amount
-          group.totalPaid += c.paid
-        })
-
-        group.totalRemaining = group.totalAmount - group.totalPaid
+      const group = participantMap.get(participantId)!
+      
+      // Add expense name if not already added
+      if (!group.expenseNames.includes(expenseName)) {
+        group.expenseNames.push(expenseName)
       }
+
+      // Accumulate amounts
+      group.totalAmount += contribution.amount
+      group.totalPaid += contribution.paid
+      group.totalRemaining = group.totalAmount - group.totalPaid
     })
 
-    return Array.from(collectorMap.values()).filter(group => group.contributions.length > 0)
+    return Array.from(participantMap.values())
   })()
 
   const grandTotal = groupedContributions.reduce((sum, group) => sum + group.totalAmount, 0)
@@ -359,7 +333,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
             </div>
             <p className="text-3xl font-bold">{formatCurrency(grandTotal)}</p>
             <p className="text-xs text-primary-200 mt-1">
-              {groupedContributions.reduce((sum, g) => sum + g.contributions.length, 0)} iuran
+              {groupedContributions.length} peserta
             </p>
           </div>
 
@@ -467,191 +441,159 @@ export default function ContributionsTab({ planId }: { planId: string }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Grouped by Collector */}
-          {groupedContributions.map(group => (
-            <div key={group.collectorId} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              {/* Header - Collapsible */}
-              <button
-                onClick={() =>
-                  setExpandedExpense(expandedExpense === group.collectorId ? null : group.collectorId)
-                }
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex-1 text-left">
-                  <h3 className="font-semibold text-gray-900 text-lg">
-                    👤 {group.collectorName}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {group.expenses.map(e => e.expenseName).join(', ')}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {group.contributions.length} peserta iuran
-                  </p>
-                </div>
+          {/* Grouped by Participant */}
+          {groupedContributions
+            .sort((a, b) => {
+              // Sort by status: Belum -> Sebagian -> Lunas
+              const getStatus = (g: ContributionGroup) => {
+                if (g.totalPaid === 0) return 0
+                if (g.totalPaid < g.totalAmount) return 1
+                return 2
+              }
+              return getStatus(a) - getStatus(b)
+            })
+            .map(group => {
+            const status = group.totalPaid === 0 ? 'Belum' : group.totalPaid >= group.totalAmount ? 'Lunas' : 'Sebagian'
+            const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+            const percentage = Math.round((group.totalPaid / group.totalAmount) * 100)
 
-                <div className="flex items-center space-x-4 mr-4">
-                  <div className="text-right">
-                    <p className="text-xs text-gray-600">Total / Terbayar</p>
-                    <p className="font-semibold text-gray-900">
-                      {formatCurrency(group.totalPaid)} / {formatCurrency(group.totalAmount)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-600">Sisa</p>
-                    <p className={`font-semibold ${group.totalRemaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {formatCurrency(group.totalRemaining)}
-                    </p>
-                  </div>
-                </div>
+            // Get all contribution IDs for this participant
+            const participantContributionIds = contributions
+              .filter(c => {
+                const participantId = typeof c.participantId === 'object'
+                  ? (c.participantId as any)?._id
+                  : c.participantId
+                return participantId === group.participantId
+              })
+              .map(c => c._id!)
 
-                <div className="text-gray-600">
-                  {expandedExpense === group.collectorId ? (
-                    <ChevronUp className="w-5 h-5" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5" />
-                  )}
-                </div>
-              </button>
+            const allSelected = participantContributionIds.every(id => selectedContributions.includes(id))
 
-              {/* Details - Expanded */}
-              {expandedExpense === group.collectorId && (
-                <div className="border-t border-gray-200 bg-gray-50 divide-y divide-gray-200">
-                  {/* Sort contributions by status: Belum (0) -> Sebagian (1) -> Lunas (2) */}
-                  {group.contributions
-                    .sort((a, b) => {
-                      const getStatus = (c: typeof a) => {
-                        if (c.paid === 0) return 0 // Belum - top
-                        if (c.paid < c.amount) return 1 // Sebagian - middle
-                        return 2 // Lunas - bottom
-                      }
-                      return getStatus(a) - getStatus(b)
-                    })
-                    .map((contrib, idx) => {
-                    const remaining = contrib.amount - contrib.paid
-                    const isEditing = editingContribution === contrib._id
-                    const percentage = Math.round((contrib.paid / contrib.amount) * 100)
+            return (
+              <div key={group.participantId} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                <div className="px-6 py-4">
+                  <div className="flex items-start gap-4">
+                    {/* Checkbox - selects all contributions for this participant */}
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={() => {
+                        if (allSelected) {
+                          setSelectedContributions(selectedContributions.filter(id => !participantContributionIds.includes(id)))
+                        } else {
+                          setSelectedContributions([...selectedContributions, ...participantContributionIds])
+                        }
+                      }}
+                      className="w-5 h-5 rounded text-primary-600 mt-1"
+                    />
 
-                    return (
-                      <div key={contrib._id} className="px-6 py-4">
-                        <div className="flex items-start gap-4">
-                          {/* Checkbox for bulk selection */}
-                          <input
-                            type="checkbox"
-                            checked={selectedContributions.includes(contrib._id!)}
-                            onChange={() => toggleSelectContribution(contrib._id!)}
-                            className="w-5 h-5 rounded text-primary-600 mt-1"
-                          />
-                          
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-900">{contrib.participantName}</p>
-                                <p className="text-sm text-gray-600">
-                                  {contrib.expenseName} • {formatCurrency(contrib.amount)}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                {contrib.amount === contrib.paid ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
-                                    <Check className="w-3 h-3 mr-1" />
-                                    Lunas
-                                  </span>
-                                ) : contrib.paid > 0 ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold">
-                                    Sebagian
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
-                                    <X className="w-3 h-3 mr-1" />
-                                    Belum
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 text-lg">
+                            {group.participantName}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            ({group.expenseNames.join(', ')}) • {formatCurrency(group.totalAmount)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                            {status}
+                          </span>
+                        </div>
+                      </div>
 
-                        {/* Progress Bar */}
+                      {/* Payment Progress Bar */}
+                      {group.totalPaid > 0 && group.totalPaid < group.totalAmount && (
                         <div className="mb-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-gray-600">
-                              {formatCurrency(contrib.paid)} dari {formatCurrency(contrib.amount)}
-                            </span>
-                            <span className="text-sm font-semibold text-gray-700">{percentage}%</span>
+                          <div className="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>Progress: {percentage}%</span>
+                            <span>{formatCurrency(group.totalPaid)} / {formatCurrency(group.totalAmount)}</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
-                              className={`h-2 rounded-full transition-all ${
-                                remaining === 0 ? 'bg-green-500' : 'bg-primary-500'
-                              }`}
+                              className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${percentage}%` }}
-                            ></div>
+                            />
                           </div>
                         </div>
+                      )}
 
-                        {/* Payment Input */}
-                        {isEditing ? (
-                          <div className="bg-white rounded-lg p-3 border border-primary-300 space-y-3">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Jumlah yang sudah dibayar (Rp)
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                max={contrib.amount}
-                                value={editAmount}
-                                onChange={(e) => setEditAmount(Math.min(Number(e.target.value), contrib.amount))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                autoFocus
-                              />
-                            </div>
-
-                            {editAmount > 0 && editAmount < contrib.amount && (
-                              <div className="bg-blue-50 p-2 rounded text-sm text-blue-800">
-                                Sisa iuran: <span className="font-semibold">{formatCurrency(contrib.amount - editAmount)}</span>
-                              </div>
-                            )}
-
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() =>
-                                  updatePayment(contrib._id!, editAmount)
-                                }
-                                className="flex-1 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center justify-center space-x-1 text-sm font-medium"
-                              >
-                                <Save className="w-4 h-4" />
-                                <span>Simpan</span>
-                              </button>
-                              <button
-                                onClick={() => setEditingContribution(null)}
-                                className="flex-1 px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-medium"
-                              >
-                                Batal
-                              </button>
-                            </div>
+                      {/* Edit Payment Section */}
+                      {editingContribution === group.participantId ? (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Input Pembayaran
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              value={editAmount}
+                              onChange={(e) => setEditAmount(Number(e.target.value))}
+                              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
+                              placeholder="Masukkan jumlah"
+                            />
+                            <button
+                              onClick={() => {
+                                // Update all contributions for this participant
+                                const updatePromises = participantContributionIds.map(id =>
+                                  fetch('/api/contributions', {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify({
+                                      _id: id,
+                                      paid: editAmount,
+                                    }),
+                                  })
+                                )
+                                Promise.all(updatePromises).then(() => {
+                                  toast.success('✅ Pembayaran berhasil diupdate')
+                                  setEditingContribution(null)
+                                  fetchData()
+                                })
+                              }}
+                              className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 text-sm flex items-center gap-1"
+                            >
+                              <Save className="w-4 h-4" />
+                              Simpan
+                            </button>
+                            <button
+                              onClick={() => setEditingContribution(null)}
+                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                            >
+                              Batal
+                            </button>
                           </div>
-                        ) : (
+                        </div>
+                      ) : (
+                        <div className="mt-3 flex items-center gap-2">
                           <button
                             onClick={() => {
-                              setEditingContribution(contrib._id!)
-                              setEditAmount(contrib.paid)
+                              setEditingContribution(group.participantId)
+                              setEditAmount(group.totalPaid)
                             }}
-                            className="w-full px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center space-x-2 text-sm font-medium"
+                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-sm"
                           >
-                            <Edit2 className="w-4 h-4" />
-                            <span>
-                              {contrib.paid > 0 ? 'Edit Pembayaran' : 'Input Pembayaran'}
-                            </span>
+                            <Edit2 className="w-3 h-3" />
+                            Input Pembayaran
                           </button>
-                        )}
+                          
+                          <div className="text-sm text-gray-600">
+                            Terbayar: <span className="font-semibold text-green-600">{formatCurrency(group.totalPaid)}</span>
+                            {group.totalRemaining > 0 && (
+                              <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(group.totalRemaining)}</span></>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            )
+          })}
 
           {/* Grand Total */}
           <div className="bg-gradient-to-r from-primary-50 to-blue-50 border-2 border-primary-200 rounded-lg p-4">

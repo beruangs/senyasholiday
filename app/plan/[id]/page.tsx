@@ -163,63 +163,50 @@ export default function PublicPlanPage() {
 
   const grandTotal = expenses.reduce((sum, exp) => sum + exp.total, 0)
   
-  // Group contributions by COLLECTOR
+  // Group contributions by PARTICIPANT
   const groupedContributions = (() => {
-    const collectorMap = new Map()
+    const participantMap = new Map()
 
-    expenses.forEach(expense => {
-      const collectorId = expense.collectorId || 'unknown'
-      const collectorName = participants.find(p => p._id === collectorId)?.name || 'Unknown'
+    contributions.forEach(contribution => {
+      const participantId = typeof contribution.participantId === 'object'
+        ? contribution.participantId?._id
+        : contribution.participantId
 
-      if (!collectorMap.has(collectorId)) {
-        collectorMap.set(collectorId, {
-          collectorId,
-          collectorName,
-          expenses: [],
-          contributions: [],
+      const participantName = typeof contribution.participantId === 'object'
+        ? contribution.participantId?.name
+        : participants.find(p => p._id === participantId)?.name || 'Unknown'
+
+      const expenseItemId = typeof contribution.expenseItemId === 'object'
+        ? contribution.expenseItemId?._id
+        : contribution.expenseItemId
+
+      const expenseName = typeof contribution.expenseItemId === 'object'
+        ? contribution.expenseItemId?.itemName
+        : expenses.find(e => e._id === expenseItemId)?.itemName || 'Unknown'
+
+      if (!participantMap.has(participantId)) {
+        participantMap.set(participantId, {
+          participantId,
+          participantName,
+          expenseNames: [],
           totalAmount: 0,
           totalPaid: 0,
         })
       }
 
-      // Get contributions for this expense
-      const expenseContributions = contributions.filter(c => {
-        const contributionExpenseId = typeof c.expenseItemId === 'object' 
-          ? c.expenseItemId?._id 
-          : c.expenseItemId
-        return contributionExpenseId === expense._id
-      })
-
-      if (expenseContributions.length > 0) {
-        const group = collectorMap.get(collectorId)
-        
-        const expenseTotal = expenseContributions.reduce((sum, c) => sum + c.amount, 0)
-        group.expenses.push({
-          expenseName: expense.itemName,
-          totalAmount: expenseTotal,
-        })
-
-        expenseContributions.forEach(c => {
-          const participantId = typeof c.participantId === 'object'
-            ? c.participantId?._id
-            : c.participantId
-          const participantName = typeof c.participantId === 'object'
-            ? c.participantId?.name
-            : participants.find(p => p._id === participantId)?.name
-          
-          group.contributions.push({
-            ...c,
-            participantName: participantName || 'Unknown',
-            expenseName: expense.itemName,
-          })
-
-          group.totalAmount += c.amount
-          group.totalPaid += c.paid
-        })
+      const group = participantMap.get(participantId)
+      
+      // Add expense name if not already added
+      if (!group.expenseNames.includes(expenseName)) {
+        group.expenseNames.push(expenseName)
       }
+
+      // Accumulate amounts
+      group.totalAmount += contribution.amount
+      group.totalPaid += contribution.paid
     })
 
-    return Array.from(collectorMap.values()).filter(group => group.contributions.length > 0)
+    return Array.from(participantMap.values())
   })()
 
   const allContributionsTotal = groupedContributions.reduce((sum, g) => sum + g.totalAmount, 0)
@@ -414,70 +401,65 @@ export default function PublicPlanPage() {
               </div>
             ) : (
               <>
-                {/* Group by Collector */}
-                {groupedContributions.map((group, index) => (
-                  <div key={group.collectorId} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div className="bg-primary-50 px-6 py-3 border-b border-primary-100">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-primary-900 flex items-center">
-                            👤 {group.collectorName}
-                          </h3>
-                          <p className="text-sm text-primary-600 mt-1">
-                            {group.expenses.map((exp: any) => exp.expenseName).join(', ')}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-primary-600">Total</p>
-                          <p className="text-lg font-semibold text-primary-900">
-                            {formatCurrency(group.totalAmount)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="divide-y divide-gray-100">
-                      {group.contributions
-                        .sort((a: any, b: any) => {
-                          const statusOrder = { Belum: 0, Sebagian: 1, Lunas: 2 }
-                          const statusA = a.paid === 0 ? 'Belum' : a.paid >= a.amount ? 'Lunas' : 'Sebagian'
-                          const statusB = b.paid === 0 ? 'Belum' : b.paid >= b.amount ? 'Lunas' : 'Sebagian'
-                          return statusOrder[statusA as keyof typeof statusOrder] - statusOrder[statusB as keyof typeof statusOrder]
-                        })
-                        .map((contribution: any) => {
-                          const status = contribution.paid === 0 ? 'Belum' : contribution.paid >= contribution.amount ? 'Lunas' : 'Sebagian'
-                          const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                          
-                          return (
-                            <div key={contribution._id} className="px-6 py-3 hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <p className="font-medium text-gray-900">
-                                    {contribution.participantName}
-                                    <span className="text-gray-500 font-normal ml-2">
-                                      - {contribution.expenseName}
-                                    </span>
-                                  </p>
-                                  {status === 'Sebagian' && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      Dibayar: {formatCurrency(contribution.paid)} / {formatCurrency(contribution.amount)}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="font-semibold text-gray-900">
-                                    {formatCurrency(contribution.amount)}
-                                  </span>
-                                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                                    {status}
-                                  </span>
-                                </div>
+                {/* Group by Participant */}
+                {groupedContributions
+                  .sort((a: any, b: any) => {
+                    const getStatus = (g: any) => {
+                      if (g.totalPaid === 0) return 0
+                      if (g.totalPaid < g.totalAmount) return 1
+                      return 2
+                    }
+                    return getStatus(a) - getStatus(b)
+                  })
+                  .map((group: any) => {
+                    const status = group.totalPaid === 0 ? 'Belum' : group.totalPaid >= group.totalAmount ? 'Lunas' : 'Sebagian'
+                    const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                    const percentage = Math.round((group.totalPaid / group.totalAmount) * 100)
+                    const remaining = group.totalAmount - group.totalPaid
+
+                    return (
+                      <div key={group.participantId} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <div className="px-6 py-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 text-lg">
+                                {group.participantName}
+                              </h3>
+                              <p className="text-sm text-gray-600 mt-1">
+                                ({group.expenseNames.join(', ')}) • {formatCurrency(group.totalAmount)}
+                              </p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                              {status}
+                            </span>
+                          </div>
+
+                          {/* Payment Progress Bar */}
+                          {group.totalPaid > 0 && group.totalPaid < group.totalAmount && (
+                            <div className="mb-3">
+                              <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                <span>Progress: {percentage}%</span>
+                                <span>{formatCurrency(group.totalPaid)} / {formatCurrency(group.totalAmount)}</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${percentage}%` }}
+                                />
                               </div>
                             </div>
-                          )
-                        })}
-                    </div>
-                  </div>
-                ))}
+                          )}
+
+                          <div className="text-sm text-gray-600">
+                            Terbayar: <span className="font-semibold text-green-600">{formatCurrency(group.totalPaid)}</span>
+                            {remaining > 0 && (
+                              <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(remaining)}</span></>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
 
                 {/* Grand Total */}
                 <div className="bg-primary-600 text-white rounded-lg p-6">
