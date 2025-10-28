@@ -42,6 +42,7 @@ const expenseItemSchema = new Schema({
   price: { type: Number, required: true },
   quantity: { type: Number, default: 1 },
   total: { type: Number, required: true },
+  collectorId: { type: Schema.Types.ObjectId, ref: 'Participant' }, // Who collects the money
   createdAt: { type: Date, default: Date.now },
 })
 

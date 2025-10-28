@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, DollarSign, Users, X } from 'lucide-react'
+import { Plus, Trash2, DollarSign, Users, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Participant {
@@ -26,12 +26,15 @@ interface Expense {
   quantity: number
   total: number
   categoryId?: string
+  collectorId?: string
+  collectorName?: string
 }
 
 interface ExpenseWithContributions extends Expense {
   contributors?: Array<{
     participantName: string
     amount: number
+    participantId: string
   }>
   contributorCount?: number
 }
@@ -46,6 +49,11 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   const [selectedExpenseId, setSelectedExpenseId] = useState<string>('')
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [splitAmount, setSplitAmount] = useState(0)
+  
+  // Form state untuk penambahan pengeluaran
+  const [formParticipants, setFormParticipants] = useState<string[]>([])
+  const [formSplitAmount, setFormSplitAmount] = useState(0)
+  const [formCollector, setFormCollector] = useState<string>('')
   const [formData, setFormData] = useState<Expense>({
     itemName: '',
     detail: '',
@@ -91,12 +99,15 @@ export default function ExpensesTab({ planId }: { planId: string }) {
           participantName:
             participantsData.find(p => p._id === c.participantId)?.name || 'Unknown',
           amount: c.amount,
+          participantId: c.participantId,
         }))
+        const collectorName = participantsData.find(p => p._id === expense.collectorId)?.name
 
         return {
           ...expense,
           contributors,
           contributorCount: expenseContributions.length,
+          collectorName,
         }
       })
 
@@ -112,26 +123,67 @@ export default function ExpensesTab({ planId }: { planId: string }) {
     e.preventDefault()
     const total = formData.price * formData.quantity
 
+    if (formParticipants.length === 0) {
+      toast.error('Pilih minimal 1 peserta untuk iuran')
+      return
+    }
+
+    if (formSplitAmount <= 0) {
+      toast.error('Masukkan nominal iuran per orang')
+      return
+    }
+
+    if (!formCollector) {
+      toast.error('Pilih siapa yang mengumpulkan uang')
+      return
+    }
+
     try {
-      const res = await fetch('/api/expenses', {
+      // 1. Create expense
+      const expenseRes = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           holidayPlanId: planId,
           ...formData,
           total,
+          collectorId: formCollector,
         }),
       })
 
-      if (res.ok) {
-        toast.success('Pengeluaran berhasil ditambahkan')
-        setShowForm(false)
-        setFormData({ itemName: '', detail: '', price: 0, quantity: 1, total: 0 })
-        fetchData()
-      } else {
-        const errorData = await res.json()
+      if (!expenseRes.ok) {
+        const errorData = await expenseRes.json()
         toast.error(errorData.details || 'Gagal menambahkan pengeluaran')
+        return
       }
+
+      const expense = await expenseRes.json()
+
+      // 2. Create contributions
+      const contributionPromises = formParticipants.map(participantId =>
+        fetch('/api/contributions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            holidayPlanId: planId,
+            expenseItemId: expense._id,
+            participantId,
+            amount: formSplitAmount,
+            paid: 0,
+            isPaid: false,
+          }),
+        })
+      )
+
+      await Promise.all(contributionPromises)
+
+      toast.success('Pengeluaran dan iuran berhasil ditambahkan')
+      setShowForm(false)
+      setFormData({ itemName: '', detail: '', price: 0, quantity: 1, total: 0 })
+      setFormParticipants([])
+      setFormSplitAmount(0)
+      setFormCollector('')
+      fetchData()
     } catch (error) {
       console.error('Error:', error)
       toast.error('Gagal menambahkan pengeluaran')
@@ -228,7 +280,6 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   }
 
   const grandTotal = expenses.reduce((sum, exp) => sum + exp.total, 0)
-  const selectedExpense = expenses.find(e => e._id === selectedExpenseId)
   const availableParticipants = participants.filter(
     p =>
       !contributions.some(
@@ -314,17 +365,127 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
               <div className="md:col-span-2 bg-primary-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-700">
-                  Total: <span className="font-bold text-primary-600 text-lg">
+                  Total Pengeluaran: <span className="font-bold text-primary-600 text-lg">
                     {formatCurrency(formData.price * formData.quantity)}
                   </span>
                 </p>
               </div>
+
+              {/* Collector Selection */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  👤 Siapa yang Mengumpulkan Uang? <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formCollector}
+                  onChange={(e) => setFormCollector(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                >
+                  <option value="">-- Pilih Collector --</option>
+                  {participants.map(p => (
+                    <option key={p._id} value={p._id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Participants Selection for Contribution */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  👥 Pilih Peserta yang Iuran <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto bg-white p-4 rounded border-2 border-gray-200">
+                  {participants.map(participant => (
+                    <label
+                      key={participant._id}
+                      className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-all ${
+                        formParticipants.includes(participant._id)
+                          ? 'bg-primary-100 border border-primary-500'
+                          : 'bg-gray-50 border border-gray-200 hover:border-primary-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formParticipants.includes(participant._id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormParticipants([...formParticipants, participant._id])
+                          } else {
+                            setFormParticipants(
+                              formParticipants.filter(id => id !== participant._id)
+                            )
+                          }
+                        }}
+                        className="w-4 h-4 rounded text-primary-600"
+                      />
+                      <span className="text-sm text-gray-700">{participant.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {formParticipants.length} peserta dipilih
+                </p>
+              </div>
+
+              {/* Iuran Amount */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  💰 Nominal Iuran per Orang <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3 text-gray-500 font-medium">Rp</span>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={formSplitAmount}
+                    onChange={(e) => setFormSplitAmount(Number(e.target.value))}
+                    className="w-full pl-14 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              {/* Summary */}
+              {formParticipants.length > 0 && formSplitAmount > 0 && (
+                <div className="md:col-span-2 bg-blue-50 border-2 border-blue-300 p-4 rounded-lg space-y-2">
+                  <p className="text-sm font-bold text-blue-900">Ringkasan Iuran:</p>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-blue-700">Peserta:</p>
+                      <p className="font-bold text-blue-900">{formParticipants.length} orang</p>
+                    </div>
+                    <div>
+                      <p className="text-blue-700">Per Orang:</p>
+                      <p className="font-bold text-blue-900">{formatCurrency(formSplitAmount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-blue-700">Total Iuran:</p>
+                      <p className="font-bold text-blue-900">{formatCurrency(formSplitAmount * formParticipants.length)}</p>
+                    </div>
+                    <div>
+                      <p className="text-blue-700">Collector:</p>
+                      <p className="font-bold text-blue-900">
+                        {participants.find(p => p._id === formCollector)?.name || '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end space-x-3">
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false)
+                  setFormData({ itemName: '', detail: '', price: 0, quantity: 1, total: 0 })
+                  setFormParticipants([])
+                  setFormSplitAmount(0)
+                  setFormCollector('')
+                }}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
               >
                 Batal
@@ -333,7 +494,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                 type="submit"
                 className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
               >
-                Simpan
+                Simpan Pengeluaran & Iuran
               </button>
             </div>
           </form>
@@ -363,6 +524,11 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                         {expense.detail && (
                           <p className="text-sm text-gray-600">{expense.detail}</p>
                         )}
+                        {expense.collectorName && (
+                          <p className="text-xs text-primary-600 font-medium mt-1">
+                            💰 Diumpulkan oleh: {expense.collectorName}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">{formatCurrency(expense.total)}</p>
@@ -380,6 +546,11 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                         <span>
                           {expense.contributorCount || 0} peserta
                         </span>
+                        {expandedExpense === expense._id ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                     <button
@@ -518,9 +689,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                                   onClick={() =>
                                     deleteContribution(
                                       expense._id!,
-                                      participants.find(
-                                        p => p.name === contributor.participantName
-                                      )?._id || ''
+                                      contributor.participantId
                                     )
                                   }
                                   className="p-1.5 text-red-600 hover:bg-red-50 rounded"
@@ -546,6 +715,11 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                       <h3 className="font-semibold text-gray-900">{expense.itemName}</h3>
                       {expense.detail && (
                         <p className="text-sm text-gray-600">{expense.detail}</p>
+                      )}
+                      {expense.collectorName && (
+                        <p className="text-xs text-primary-600 font-medium mt-1">
+                          💰 Diumpulkan oleh: {expense.collectorName}
+                        </p>
                       )}
                     </div>
                     <button
@@ -579,6 +753,11 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                   >
                     <Users className="w-4 h-4" />
                     <span>{expense.contributorCount || 0} peserta</span>
+                    {expandedExpense === expense._id ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
                   </button>
 
                   {expandedExpense === expense._id && (
