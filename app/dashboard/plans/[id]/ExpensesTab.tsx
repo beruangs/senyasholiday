@@ -127,6 +127,11 @@ export default function ExpensesTab({ planId }: { planId: string }) {
     if (isSubmitting) return
     setIsSubmitting(true)
 
+    console.log('=== FORM SUBMIT START ===')
+    console.log('Form Data:', formData)
+    console.log('Form Participants:', formParticipants)
+    console.log('Form Collector:', formCollector)
+    
     const total = formData.price * formData.quantity
 
     if (formParticipants.length === 0) {
@@ -246,8 +251,10 @@ export default function ExpensesTab({ planId }: { planId: string }) {
     }
   }
 
-  const addParticipantsToExpense = async () => {
-    if (!selectedExpenseId) {
+  const addParticipantsToExpense = async (expenseId?: string) => {
+    const targetExpenseId = expenseId || selectedExpenseId
+    
+    if (!targetExpenseId) {
       toast.error('Pilih pengeluaran terlebih dahulu')
       return
     }
@@ -270,7 +277,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
           credentials: 'include',
           body: JSON.stringify({
             holidayPlanId: planId,
-            expenseItemId: selectedExpenseId,
+            expenseItemId: targetExpenseId,
             participantId,
             amount: splitAmount,
             paid: 0,
@@ -707,6 +714,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
                             <div className="flex justify-end space-x-2">
                               <button
+                                type="button"
                                 onClick={() => {
                                   setSelectedExpenseId('')
                                   setSelectedParticipants([])
@@ -717,10 +725,8 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                                 Batal
                               </button>
                               <button
-                                onClick={() => {
-                                  setSelectedExpenseId(expense._id!)
-                                  addParticipantsToExpense()
-                                }}
+                                type="button"
+                                onClick={() => addParticipantsToExpense(expense._id)}
                                 className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                               >
                                 Tambah
