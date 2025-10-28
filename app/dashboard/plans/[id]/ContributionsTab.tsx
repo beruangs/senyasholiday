@@ -24,10 +24,23 @@ interface Contribution {
   isPaid: boolean
 }
 
-interface ContributionGroup {
+interface ParticipantContribution {
   participantId: string
   participantName: string
   expenseNames: string[]
+  totalAmount: number
+  totalPaid: number
+  totalRemaining: number
+}
+
+interface ContributionGroup {
+  collectorId: string
+  collectorName: string
+  expenses: Array<{
+    expenseId: string
+    expenseName: string
+  }>
+  participants: ParticipantContribution[]
   totalAmount: number
   totalPaid: number
   totalRemaining: number
@@ -242,52 +255,84 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     }).format(amount)
   }
 
-  // Group contributions by PARTICIPANT
+  // Group contributions by COLLECTOR, then by PARTICIPANT
   const groupedContributions: ContributionGroup[] = (() => {
-    const participantMap = new Map<string, ContributionGroup>()
+    const collectorMap = new Map<string, ContributionGroup>()
 
-    contributions.forEach(contribution => {
-      const participantId = typeof contribution.participantId === 'object'
-        ? (contribution.participantId as any)?._id
-        : contribution.participantId
+    expenseItems.forEach(expense => {
+      const collectorId = expense.collectorId || 'unknown'
+      const collectorName = participants.find(p => p._id === collectorId)?.name || 'Unknown'
 
-      const participantName = typeof contribution.participantId === 'object'
-        ? (contribution.participantId as any)?.name
-        : participants.find(p => p._id === participantId)?.name || 'Unknown'
-
-      const expenseItemId = typeof contribution.expenseItemId === 'object'
-        ? (contribution.expenseItemId as any)?._id
-        : contribution.expenseItemId
-
-      const expenseName = typeof contribution.expenseItemId === 'object'
-        ? (contribution.expenseItemId as any)?.itemName
-        : expenseItems.find(e => e._id === expenseItemId)?.itemName || 'Unknown'
-
-      if (!participantMap.has(participantId)) {
-        participantMap.set(participantId, {
-          participantId,
-          participantName,
-          expenseNames: [],
+      if (!collectorMap.has(collectorId)) {
+        collectorMap.set(collectorId, {
+          collectorId,
+          collectorName,
+          expenses: [],
+          participants: [],
           totalAmount: 0,
           totalPaid: 0,
           totalRemaining: 0,
         })
       }
 
-      const group = participantMap.get(participantId)!
-      
-      // Add expense name if not already added
-      if (!group.expenseNames.includes(expenseName)) {
-        group.expenseNames.push(expenseName)
-      }
+      const group = collectorMap.get(collectorId)!
 
-      // Accumulate amounts
-      group.totalAmount += contribution.amount
-      group.totalPaid += contribution.paid
+      // Add expense info
+      group.expenses.push({
+        expenseId: expense._id!,
+        expenseName: expense.itemName,
+      })
+
+      // Get contributions for this expense
+      const expenseContributions = contributions.filter(c => {
+        const contributionExpenseId = typeof c.expenseItemId === 'object'
+          ? (c.expenseItemId as any)?._id
+          : c.expenseItemId
+        return contributionExpenseId === expense._id
+      })
+
+      // Group by participant within this expense
+      expenseContributions.forEach(contribution => {
+        const participantId = typeof contribution.participantId === 'object'
+          ? (contribution.participantId as any)?._id
+          : contribution.participantId
+
+        const participantName = typeof contribution.participantId === 'object'
+          ? (contribution.participantId as any)?.name
+          : participants.find(p => p._id === participantId)?.name || 'Unknown'
+
+        // Find or create participant entry
+        let participant = group.participants.find(p => p.participantId === participantId)
+        if (!participant) {
+          participant = {
+            participantId,
+            participantName,
+            expenseNames: [],
+            totalAmount: 0,
+            totalPaid: 0,
+            totalRemaining: 0,
+          }
+          group.participants.push(participant)
+        }
+
+        // Add expense name if not already added
+        if (!participant.expenseNames.includes(expense.itemName)) {
+          participant.expenseNames.push(expense.itemName)
+        }
+
+        // Accumulate amounts
+        participant.totalAmount += contribution.amount
+        participant.totalPaid += contribution.paid
+        participant.totalRemaining = participant.totalAmount - participant.totalPaid
+
+        group.totalAmount += contribution.amount
+        group.totalPaid += contribution.paid
+      })
+
       group.totalRemaining = group.totalAmount - group.totalPaid
     })
 
-    return Array.from(participantMap.values())
+    return Array.from(collectorMap.values()).filter(group => group.participants.length > 0)
   })()
 
   const grandTotal = groupedContributions.reduce((sum, group) => sum + group.totalAmount, 0)
@@ -441,156 +486,297 @@ export default function ContributionsTab({ planId }: { planId: string }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Grouped by Participant */}
-          {groupedContributions
-            .sort((a, b) => {
-              // Sort by status: Belum -> Sebagian -> Lunas
-              const getStatus = (g: ContributionGroup) => {
-                if (g.totalPaid === 0) return 0
-                if (g.totalPaid < g.totalAmount) return 1
-                return 2
-              }
-              return getStatus(a) - getStatus(b)
-            })
-            .map(group => {
-            const status = group.totalPaid === 0 ? 'Belum' : group.totalPaid >= group.totalAmount ? 'Lunas' : 'Sebagian'
-            const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-            const percentage = Math.round((group.totalPaid / group.totalAmount) * 100)
+          {/* Total Per Participant - Always Expanded */}
+          <div className="bg-white border-2 border-primary-200 rounded-lg overflow-hidden">
+            <div className="bg-primary-50 px-6 py-3 border-b border-primary-100">
+              <h3 className="font-semibold text-primary-900 flex items-center gap-2">
+                👥 Total Iuran Per Orang
+              </h3>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {(() => {
+                // Flatten all participants from all groups
+                const allParticipants: ParticipantContribution[] = []
+                groupedContributions.forEach(group => {
+                  group.participants.forEach(p => allParticipants.push(p))
+                })
 
-            // Get all contribution IDs for this participant
-            const participantContributionIds = contributions
-              .filter(c => {
-                const participantId = typeof c.participantId === 'object'
-                  ? (c.participantId as any)?._id
-                  : c.participantId
-                return participantId === group.participantId
-              })
-              .map(c => c._id!)
+                // Merge participants with same ID
+                const participantMap = new Map<string, ParticipantContribution>()
+                allParticipants.forEach(p => {
+                  if (participantMap.has(p.participantId)) {
+                    const existing = participantMap.get(p.participantId)!
+                    existing.totalAmount += p.totalAmount
+                    existing.totalPaid += p.totalPaid
+                    existing.totalRemaining += p.totalRemaining
+                    p.expenseNames.forEach(name => {
+                      if (!existing.expenseNames.includes(name)) {
+                        existing.expenseNames.push(name)
+                      }
+                    })
+                  } else {
+                    participantMap.set(p.participantId, { ...p })
+                  }
+                })
 
-            const allSelected = participantContributionIds.every(id => selectedContributions.includes(id))
+                return Array.from(participantMap.values())
+                  .sort((a, b) => {
+                    const getStatus = (p: ParticipantContribution) => {
+                      if (p.totalPaid === 0) return 0
+                      if (p.totalPaid < p.totalAmount) return 1
+                      return 2
+                    }
+                    return getStatus(a) - getStatus(b)
+                  })
+                  .map(participant => {
+                    const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.totalAmount ? 'Lunas' : 'Sebagian'
+                    const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                    const percentage = Math.round((participant.totalPaid / participant.totalAmount) * 100)
 
-            return (
-              <div key={group.participantId} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                <div className="px-6 py-4">
-                  <div className="flex items-start gap-4">
-                    {/* Checkbox - selects all contributions for this participant */}
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={() => {
-                        if (allSelected) {
-                          setSelectedContributions(selectedContributions.filter(id => !participantContributionIds.includes(id)))
-                        } else {
-                          setSelectedContributions([...selectedContributions, ...participantContributionIds])
-                        }
-                      }}
-                      className="w-5 h-5 rounded text-primary-600 mt-1"
-                    />
+                    // Get all contribution IDs for this participant
+                    const participantContributionIds = contributions
+                      .filter(c => {
+                        const participantId = typeof c.participantId === 'object'
+                          ? (c.participantId as any)?._id
+                          : c.participantId
+                        return participantId === participant.participantId
+                      })
+                      .map(c => c._id!)
 
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 text-lg">
-                            {group.participantName}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            ({group.expenseNames.join(', ')}) • {formatCurrency(group.totalAmount)}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                            {status}
-                          </span>
-                        </div>
-                      </div>
+                    const allSelected = participantContributionIds.every(id => selectedContributions.includes(id))
 
-                      {/* Payment Progress Bar */}
-                      {group.totalPaid > 0 && group.totalPaid < group.totalAmount && (
-                        <div className="mb-3">
-                          <div className="flex justify-between text-xs text-gray-600 mb-1">
-                            <span>Progress: {percentage}%</span>
-                            <span>{formatCurrency(group.totalPaid)} / {formatCurrency(group.totalAmount)}</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Edit Payment Section */}
-                      {editingContribution === group.participantId ? (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Input Pembayaran
-                          </label>
-                          <div className="flex gap-2">
-                            <input
-                              type="number"
-                              value={editAmount}
-                              onChange={(e) => setEditAmount(Number(e.target.value))}
-                              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
-                              placeholder="Masukkan jumlah"
-                            />
-                            <button
-                              onClick={() => {
-                                // Update all contributions for this participant
-                                const updatePromises = participantContributionIds.map(id =>
-                                  fetch('/api/contributions', {
-                                    method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    credentials: 'include',
-                                    body: JSON.stringify({
-                                      _id: id,
-                                      paid: editAmount,
-                                    }),
-                                  })
-                                )
-                                Promise.all(updatePromises).then(() => {
-                                  toast.success('✅ Pembayaran berhasil diupdate')
-                                  setEditingContribution(null)
-                                  fetchData()
-                                })
-                              }}
-                              className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 text-sm flex items-center gap-1"
-                            >
-                              <Save className="w-4 h-4" />
-                              Simpan
-                            </button>
-                            <button
-                              onClick={() => setEditingContribution(null)}
-                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-                            >
-                              Batal
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-3 flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingContribution(group.participantId)
-                              setEditAmount(group.totalPaid)
+                    return (
+                      <div key={participant.participantId} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start gap-4">
+                          {/* Checkbox */}
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={() => {
+                              if (allSelected) {
+                                setSelectedContributions(selectedContributions.filter(id => !participantContributionIds.includes(id)))
+                              } else {
+                                setSelectedContributions([...selectedContributions, ...participantContributionIds])
+                              }
                             }}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-sm"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                            Input Pembayaran
-                          </button>
-                          
-                          <div className="text-sm text-gray-600">
-                            Terbayar: <span className="font-semibold text-green-600">{formatCurrency(group.totalPaid)}</span>
-                            {group.totalRemaining > 0 && (
-                              <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(group.totalRemaining)}</span></>
+                            className="w-5 h-5 rounded text-primary-600 mt-1"
+                          />
+
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900">
+                                  {participant.participantName}
+                                </h4>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  ({participant.expenseNames.join(', ')}) • {formatCurrency(participant.totalAmount)}
+                                </p>
+                              </div>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                                {status}
+                              </span>
+                            </div>
+
+                            {/* Progress Bar */}
+                            {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
+                              <div className="mb-3">
+                                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                  <span>Progress: {percentage}%</span>
+                                  <span>{formatCurrency(participant.totalPaid)} / {formatCurrency(participant.totalAmount)}</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Edit Payment Section */}
+                            {editingContribution === participant.participantId ? (
+                              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Input Pembayaran
+                                </label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="number"
+                                    value={editAmount}
+                                    onChange={(e) => setEditAmount(Number(e.target.value))}
+                                    className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
+                                    placeholder="Masukkan jumlah"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const updatePromises = participantContributionIds.map(id =>
+                                        fetch('/api/contributions', {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          credentials: 'include',
+                                          body: JSON.stringify({
+                                            _id: id,
+                                            paid: editAmount,
+                                          }),
+                                        })
+                                      )
+                                      Promise.all(updatePromises).then(() => {
+                                        toast.success('✅ Pembayaran berhasil diupdate')
+                                        setEditingContribution(null)
+                                        fetchData()
+                                      })
+                                    }}
+                                    className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 text-sm flex items-center gap-1"
+                                  >
+                                    <Save className="w-4 h-4" />
+                                    Simpan
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingContribution(null)}
+                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                                  >
+                                    Batal
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-3 flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingContribution(participant.participantId)
+                                    setEditAmount(participant.totalPaid)
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-sm"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                  Input Pembayaran
+                                </button>
+                                
+                                <div className="text-sm text-gray-600">
+                                  Terbayar: <span className="font-semibold text-green-600">{formatCurrency(participant.totalPaid)}</span>
+                                  {participant.totalRemaining > 0 && (
+                                    <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(participant.totalRemaining)}</span></>
+                                  )}
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>
-                      )}
+                      </div>
+                    )
+                  })
+              })()}
+            </div>
+          </div>
+
+          {/* Grouped by Collector - Collapsed by Default */}
+          {groupedContributions.map(group => {
+            const isExpanded = expandedExpense === group.collectorId
+
+            return (
+              <div key={group.collectorId} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                {/* Header - Collapsible */}
+                <button
+                  onClick={() => setExpandedExpense(isExpanded ? null : group.collectorId)}
+                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex-1 text-left">
+                    <h3 className="font-semibold text-gray-900 text-lg flex items-center gap-2">
+                      👤 {group.collectorName}
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {group.expenses.map(e => e.expenseName).join(', ')}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {group.participants.length} peserta
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 mr-4">
+                    <div className="text-right">
+                      <p className="text-xs text-gray-600">Total</p>
+                      <p className="font-semibold text-gray-900">
+                        {formatCurrency(group.totalAmount)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-600">Terbayar</p>
+                      <p className="font-semibold text-green-600">
+                        {formatCurrency(group.totalPaid)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-600">Sisa</p>
+                      <p className={`font-semibold ${group.totalRemaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatCurrency(group.totalRemaining)}
+                      </p>
                     </div>
                   </div>
-                </div>
+
+                  <div className="text-gray-600">
+                    {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </div>
+                </button>
+
+                {/* Details - Expanded */}
+                {isExpanded && (
+                  <div className="border-t border-gray-200 bg-gray-50 divide-y divide-gray-200">
+                    {group.participants
+                      .sort((a, b) => {
+                        const getStatus = (p: ParticipantContribution) => {
+                          if (p.totalPaid === 0) return 0
+                          if (p.totalPaid < p.totalAmount) return 1
+                          return 2
+                        }
+                        return getStatus(a) - getStatus(b)
+                      })
+                      .map(participant => {
+                        const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.totalAmount ? 'Lunas' : 'Sebagian'
+                        const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                        const percentage = Math.round((participant.totalPaid / participant.totalAmount) * 100)
+
+                        return (
+                          <div key={participant.participantId} className="px-6 py-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">
+                                  {participant.participantName}
+                                  <span className="text-gray-500 font-normal ml-2 text-sm">
+                                    ({participant.expenseNames.join(', ')})
+                                  </span>
+                                </p>
+                                {status === 'Sebagian' && (
+                                  <div className="mt-2">
+                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                      <span>{percentage}%</span>
+                                      <span>{formatCurrency(participant.totalPaid)} / {formatCurrency(participant.totalAmount)}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                      <div
+                                        className="bg-yellow-500 h-1.5 rounded-full transition-all"
+                                        style={{ width: `${percentage}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 ml-4">
+                                <div className="text-right">
+                                  <p className="text-xs text-gray-600">Nominal</p>
+                                  <p className="font-semibold text-gray-900">
+                                    {formatCurrency(participant.totalAmount)}
+                                  </p>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                                  {status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                )}
               </div>
             )
           })}
