@@ -11,17 +11,19 @@ export async function GET(
 ) {
   try {
     await dbConnect()
+    const session = await getServerSession(authOptions)
     const plan = await HolidayPlan.findById(params.id).lean() as any
     
     if (!plan) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
 
+    // If admin (has session), return password, otherwise hide it
     return NextResponse.json({
       ...plan,
       _id: plan._id.toString(),
       hasPassword: !!plan.password,
-      password: undefined,
+      password: session ? plan.password : undefined,
     })
   } catch (error) {
     console.error('Error fetching plan:', error)

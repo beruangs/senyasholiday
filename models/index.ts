@@ -58,6 +58,7 @@ const contributionSchema = new Schema({
   participantId: { type: Schema.Types.ObjectId, ref: 'Participant', required: true },
   amount: { type: Number, required: true },
   isPaid: { type: Boolean, default: false },
+  paid: { type: Number, default: 0 }, // Amount that has been paid (for partial payments)
   paidAt: Date,
   type: { type: String, enum: ['nominal', 'bakaran'], default: 'nominal' }, // nominal or bakaran (food)
 })

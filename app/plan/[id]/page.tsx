@@ -69,14 +69,27 @@ export default function PublicPlanPage() {
     }
   }
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Simple password check (in production, this should be done server-side)
-    if (password === plan?.password) {
-      setIsAuthenticated(true)
-      toast.success('Akses diberikan!')
-    } else {
-      toast.error('Password salah!')
+    
+    try {
+      const res = await fetch(`/api/plans/${planId}/verify-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      
+      const data = await res.json()
+      
+      if (data.valid) {
+        setIsAuthenticated(true)
+        toast.success('Akses diberikan!')
+      } else {
+        toast.error('Password salah!')
+        setPassword('')
+      }
+    } catch (error) {
+      toast.error('Terjadi kesalahan')
     }
   }
 
