@@ -128,13 +128,16 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       return
     }
 
-    if (formSplitAmount <= 0) {
-      toast.error('Masukkan nominal iuran per orang')
+    if (!formCollector) {
+      toast.error('Pilih siapa yang mengumpulkan uang')
       return
     }
 
-    if (!formCollector) {
-      toast.error('Pilih siapa yang mengumpulkan uang')
+    // Auto-calculate split amount if not manually set
+    const splitAmount = formParticipants.length > 0 ? Math.round(total / formParticipants.length) : 0
+
+    if (splitAmount <= 0) {
+      toast.error('Jumlah iuran per orang harus lebih dari 0')
       return
     }
 
@@ -168,7 +171,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
             holidayPlanId: planId,
             expenseItemId: expense._id,
             participantId,
-            amount: formSplitAmount,
+            amount: splitAmount,
             paid: 0,
             isPaid: false,
           }),
@@ -429,44 +432,63 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                 </p>
               </div>
 
-              {/* Iuran Amount */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  💰 Nominal Iuran per Orang <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-3 text-gray-500 font-medium">Rp</span>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    value={formSplitAmount}
-                    onChange={(e) => setFormSplitAmount(Number(e.target.value))}
-                    className="w-full pl-14 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                    placeholder="0"
-                  />
+              {/* Auto-calculated Iuran Amount */}
+              {formParticipants.length > 0 && (
+                <div className="md:col-span-2">
+                  <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      💰 Nominal Iuran per Orang <span className="text-green-600">(Otomatis)</span>
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-white p-3 rounded border border-gray-200">
+                        <p className="text-xs text-gray-600">Total Pengeluaran</p>
+                        <p className="font-bold text-lg text-gray-900">
+                          {formatCurrency(formData.price * formData.quantity)}
+                        </p>
+                      </div>
+                      <div className="bg-white p-3 rounded border border-gray-200 flex items-center justify-center">
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-gray-600">÷</p>
+                          <p className="text-sm text-gray-600">{formParticipants.length}</p>
+                        </div>
+                      </div>
+                      <div className="bg-white p-3 rounded border-2 border-primary-500">
+                        <p className="text-xs text-primary-700 font-semibold">Per Orang</p>
+                        <p className="font-bold text-lg text-primary-600">
+                          {formatCurrency(Math.round((formData.price * formData.quantity) / formParticipants.length))}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-3">
+                      📌 Nominal ini otomatis dihitung dari total pengeluaran dibagi jumlah peserta yang iuran
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Summary */}
-              {formParticipants.length > 0 && formSplitAmount > 0 && (
+              {formParticipants.length > 0 && formCollector && (
                 <div className="md:col-span-2 bg-blue-50 border-2 border-blue-300 p-4 rounded-lg space-y-2">
-                  <p className="text-sm font-bold text-blue-900">Ringkasan Iuran:</p>
+                  <p className="text-sm font-bold text-blue-900">✓ Ringkasan Siap Disimpan:</p>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-blue-700">Peserta:</p>
+                      <p className="text-blue-700">Peserta Iuran:</p>
                       <p className="font-bold text-blue-900">{formParticipants.length} orang</p>
                     </div>
                     <div>
-                      <p className="text-blue-700">Per Orang:</p>
-                      <p className="font-bold text-blue-900">{formatCurrency(formSplitAmount)}</p>
+                      <p className="text-blue-700">Nominal Per Orang:</p>
+                      <p className="font-bold text-blue-900">
+                        {formatCurrency(Math.round((formData.price * formData.quantity) / formParticipants.length))}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-blue-700">Total Iuran:</p>
-                      <p className="font-bold text-blue-900">{formatCurrency(formSplitAmount * formParticipants.length)}</p>
+                      <p className="text-blue-700">Total Iuran Terkumpul:</p>
+                      <p className="font-bold text-blue-900">
+                        {formatCurrency(formData.price * formData.quantity)}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-blue-700">Collector:</p>
+                      <p className="text-blue-700">Diumpulkan oleh:</p>
                       <p className="font-bold text-blue-900">
                         {participants.find(p => p._id === formCollector)?.name || '-'}
                       </p>
