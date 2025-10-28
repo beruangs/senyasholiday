@@ -579,7 +579,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
 
                             {/* Progress Bar */}
                             {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
-                              <div className="mb-3">
+                              <div className="mb-2">
                                 <div className="flex justify-between text-xs text-gray-600 mb-1">
                                   <span>Progress: {percentage}%</span>
                                   <span>{formatCurrency(participant.totalPaid)} / {formatCurrency(participant.totalAmount)}</span>
@@ -593,73 +593,13 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                               </div>
                             )}
 
-                            {/* Edit Payment Section */}
-                            {editingContribution === participant.participantId ? (
-                              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Input Pembayaran
-                                </label>
-                                <div className="flex gap-2">
-                                  <input
-                                    type="number"
-                                    value={editAmount}
-                                    onChange={(e) => setEditAmount(Number(e.target.value))}
-                                    className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
-                                    placeholder="Masukkan jumlah"
-                                  />
-                                  <button
-                                    onClick={() => {
-                                      const updatePromises = participantContributionIds.map(id =>
-                                        fetch('/api/contributions', {
-                                          method: 'PUT',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          credentials: 'include',
-                                          body: JSON.stringify({
-                                            _id: id,
-                                            paid: editAmount,
-                                          }),
-                                        })
-                                      )
-                                      Promise.all(updatePromises).then(() => {
-                                        toast.success('✅ Pembayaran berhasil diupdate')
-                                        setEditingContribution(null)
-                                        fetchData()
-                                      })
-                                    }}
-                                    className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 text-sm flex items-center gap-1"
-                                  >
-                                    <Save className="w-4 h-4" />
-                                    Simpan
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingContribution(null)}
-                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-                                  >
-                                    Batal
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="mt-3 flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingContribution(participant.participantId)
-                                    setEditAmount(participant.totalPaid)
-                                  }}
-                                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-sm"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                  Input Pembayaran
-                                </button>
-                                
-                                <div className="text-sm text-gray-600">
-                                  Terbayar: <span className="font-semibold text-green-600">{formatCurrency(participant.totalPaid)}</span>
-                                  {participant.totalRemaining > 0 && (
-                                    <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(participant.totalRemaining)}</span></>
-                                  )}
-                                </div>
-                              </div>
-                            )}
+                            {/* Payment Info - Read Only */}
+                            <div className="text-sm text-gray-600">
+                              Terbayar: <span className="font-semibold text-green-600">{formatCurrency(participant.totalPaid)}</span>
+                              {participant.totalRemaining > 0 && (
+                                <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(participant.totalRemaining)}</span></>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -735,9 +675,26 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                         const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                         const percentage = Math.round((participant.totalPaid / participant.totalAmount) * 100)
 
+                        // Get contribution IDs for this participant in this collector's expenses
+                        const participantContributionIds = contributions
+                          .filter(c => {
+                            const participantId = typeof c.participantId === 'object'
+                              ? (c.participantId as any)?._id
+                              : c.participantId
+                            const expenseItemId = typeof c.expenseItemId === 'object'
+                              ? (c.expenseItemId as any)?._id
+                              : c.expenseItemId
+                            // Check if this contribution belongs to this participant AND this collector's expenses
+                            return participantId === participant.participantId && 
+                                   group.expenses.some(exp => exp.expenseId === expenseItemId)
+                          })
+                          .map(c => c._id!)
+
+                        const isEditingThis = editingContribution === `${group.collectorId}-${participant.participantId}`
+
                         return (
                           <div key={participant.participantId} className="px-6 py-4">
-                            <div className="flex items-start justify-between">
+                            <div className="flex items-start justify-between mb-3">
                               <div className="flex-1">
                                 <p className="font-medium text-gray-900">
                                   {participant.participantName}
@@ -772,6 +729,65 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                 </span>
                               </div>
                             </div>
+
+                            {/* Input Pembayaran */}
+                            {isEditingThis ? (
+                              <div className="mt-3 p-3 bg-white rounded-lg border border-gray-300">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Input Pembayaran
+                                </label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="number"
+                                    value={editAmount}
+                                    onChange={(e) => setEditAmount(Number(e.target.value))}
+                                    className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
+                                    placeholder="Masukkan jumlah"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const updatePromises = participantContributionIds.map(id =>
+                                        fetch('/api/contributions', {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          credentials: 'include',
+                                          body: JSON.stringify({
+                                            _id: id,
+                                            paid: editAmount,
+                                          }),
+                                        })
+                                      )
+                                      Promise.all(updatePromises).then(() => {
+                                        toast.success('✅ Pembayaran berhasil diupdate')
+                                        setEditingContribution(null)
+                                        fetchData()
+                                      })
+                                    }}
+                                    className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 text-sm flex items-center gap-1"
+                                  >
+                                    <Save className="w-4 h-4" />
+                                    Simpan
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingContribution(null)}
+                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                                  >
+                                    Batal
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setEditingContribution(`${group.collectorId}-${participant.participantId}`)
+                                  setEditAmount(participant.totalPaid)
+                                }}
+                                className="w-full mt-2 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-sm font-medium"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                                Input Pembayaran
+                              </button>
+                            )}
                           </div>
                         )
                       })}
