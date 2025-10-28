@@ -155,6 +155,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       const expenseRes = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           holidayPlanId: planId,
           ...formData,
@@ -173,10 +174,12 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       const expense = await expenseRes.json()
 
       // 2. Create contributions
+      console.log('Creating contributions for participants:', formParticipants)
       const contributionPromises = formParticipants.map(participantId =>
         fetch('/api/contributions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             holidayPlanId: planId,
             expenseItemId: expense._id,
@@ -188,9 +191,29 @@ export default function ExpensesTab({ planId }: { planId: string }) {
         })
       )
 
-      await Promise.all(contributionPromises)
+      const contributionResults = await Promise.all(contributionPromises)
+      console.log('Contribution results:', contributionResults.map(r => r.status))
 
-      toast.success('Pengeluaran dan iuran berhasil ditambahkan')
+      // Check if all contributions were created successfully
+      let failedContributions = 0
+      for (const result of contributionResults) {
+        if (!result.ok) {
+          failedContributions++
+          const errorData = await result.json()
+          console.error('Failed to create contribution:', result.status, errorData)
+        }
+      }
+
+      console.log(`Created ${formParticipants.length - failedContributions} contributions successfully`)
+      
+      if (failedContributions > 0) {
+        toast.warning(
+          `Pengeluaran berhasil ditambahkan, tapi ${failedContributions} iuran gagal ditambahkan`
+        )
+      } else {
+        toast.success('Pengeluaran dan iuran berhasil ditambahkan')
+      }
+
       setShowForm(false)
       setFormData({ itemName: '', detail: '', price: 0, quantity: 1, total: 0 })
       setFormParticipants([])
@@ -211,6 +234,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
     try {
       const res = await fetch(`/api/expenses?id=${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       })
 
       if (res.ok) {
@@ -243,6 +267,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
         fetch('/api/contributions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             holidayPlanId: planId,
             expenseItemId: selectedExpenseId,
@@ -274,6 +299,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
         `/api/contributions?expenseItemId=${expenseId}&participantId=${participantId}`,
         {
           method: 'DELETE',
+          credentials: 'include',
         }
       )
 

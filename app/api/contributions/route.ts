@@ -30,11 +30,24 @@ export async function POST(req: NextRequest) {
 
     await dbConnect()
     const body = await req.json()
+    
+    // Validate required fields
+    if (!body.holidayPlanId || !body.expenseItemId || !body.participantId) {
+      return NextResponse.json(
+        { error: 'Missing required fields: holidayPlanId, expenseItemId, participantId' },
+        { status: 400 }
+      )
+    }
+
     const contribution = await Contribution.create(body)
 
     return NextResponse.json(contribution, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to create contribution' }, { status: 500 })
+    console.error('Contribution POST error:', error)
+    return NextResponse.json(
+      { error: 'Failed to create contribution', details: (error as Error).message },
+      { status: 500 }
+    )
   }
 }
 

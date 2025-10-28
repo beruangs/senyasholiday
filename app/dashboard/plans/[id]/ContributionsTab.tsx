@@ -89,6 +89,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       const res = await fetch('/api/contributions', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           _id: contributionId,
           paid: newPaid,
