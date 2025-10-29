@@ -43,6 +43,7 @@ const expenseItemSchema = new Schema({
   quantity: { type: Number, default: 1 },
   total: { type: Number, required: true },
   collectorId: { type: Schema.Types.ObjectId, ref: 'Participant' }, // Who collects the money
+  downPayment: { type: Number, default: 0 }, // Percentage (0-100) for down payment
   createdAt: { type: Date, default: Date.now },
 })
 

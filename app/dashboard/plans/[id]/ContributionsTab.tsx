@@ -13,6 +13,8 @@ interface ExpenseItem {
   _id: string
   itemName: string
   collectorId?: string
+  downPayment?: number // percentage (0-100)
+  total?: number
 }
 
 interface Contribution {
@@ -253,6 +255,30 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(amount)
+  }
+
+  // Calculate DP info for an expense group
+  const getExpensesDPInfo = (expenseIds: string[]) => {
+    const expensesWithDP = expenseIds
+      .map(id => expenseItems.find(e => e._id === id))
+      .filter(e => e && e.downPayment && e.downPayment > 0 && e.total)
+      .map(e => ({
+        expenseId: e!._id,
+        expenseName: e!.itemName,
+        dpPercentage: e!.downPayment!,
+        totalExpense: e!.total!,
+        dpAmount: (e!.total! * e!.downPayment!) / 100,
+      }))
+
+    if (expensesWithDP.length === 0) return null
+
+    const totalDPNeeded = expensesWithDP.reduce((sum, e) => sum + e.dpAmount, 0)
+    
+    return {
+      expenses: expensesWithDP,
+      totalDPNeeded,
+      hasDPRequirement: true,
+    }
   }
 
   // Group contributions by COLLECTOR, then by PARTICIPANT
@@ -532,6 +558,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
           {/* Grouped by Collector - Collapsed by Default */}
           {groupedContributions.map(group => {
             const isExpanded = expandedExpense === group.collectorId
+            const dpInfo = getExpensesDPInfo(group.expenses.map(e => e.expenseId))
 
             return (
               <div key={group.collectorId} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -543,6 +570,11 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                   <div className="flex-1 text-left min-w-0">
                     <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
                       👤 {group.collectorName}
+                      {dpInfo && (
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
+                          💳 Ada DP
+                        </span>
+                      )}
                     </h3>
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
                       {group.expenses.map(e => e.expenseName).join(', ')} • {group.participants.length} peserta
@@ -565,6 +597,35 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                 {/* Details - Expanded */}
                 {isExpanded && (
                   <div className="border-t border-gray-200 bg-gray-50 divide-y divide-gray-200">
+                    {/* DP Info Panel */}
+                    {dpInfo && (
+                      <div className="p-4 bg-yellow-50 border-b-2 border-yellow-200">
+                        <div className="flex items-start gap-2">
+                          <div className="text-2xl">💳</div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-yellow-900 text-sm mb-1">
+                              Prioritas: Down Payment (DP)
+                            </h4>
+                            <div className="space-y-1 text-xs text-yellow-800">
+                              {dpInfo.expenses.map(exp => (
+                                <div key={exp.expenseId} className="flex justify-between">
+                                  <span>{exp.expenseName} - DP {exp.dpPercentage}%</span>
+                                  <span className="font-semibold">{formatCurrency(exp.dpAmount)}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-yellow-300 flex justify-between items-center">
+                              <span className="font-bold text-sm text-yellow-900">Total DP yang harus dikumpulkan:</span>
+                              <span className="font-bold text-base text-yellow-900">{formatCurrency(dpInfo.totalDPNeeded)}</span>
+                            </div>
+                            <p className="text-xs text-yellow-700 mt-2 bg-yellow-100 px-2 py-1 rounded">
+                              ⚠️ Pastikan DP terkumpul terlebih dahulu sebelum pelunasan
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {group.participants
                       .sort((a, b) => {
                         const getStatus = (p: ParticipantContribution) => {

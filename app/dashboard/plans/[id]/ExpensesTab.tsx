@@ -28,6 +28,7 @@ interface Expense {
   categoryId?: string
   collectorId?: string
   collectorName?: string
+  downPayment?: number // percentage (0-100)
 }
 
 interface ExpenseWithContributions extends Expense {
@@ -57,6 +58,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   const [formParticipants, setFormParticipants] = useState<string[]>([])
   const [formSplitAmount, setFormSplitAmount] = useState(0)
   const [formCollector, setFormCollector] = useState<string>('')
+  const [formDownPayment, setFormDownPayment] = useState<number>(0)
   const [formData, setFormData] = useState<Expense>({
     itemName: '',
     detail: '',
@@ -193,6 +195,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
           ...formData,
           total,
           collectorId: formCollector,
+          downPayment: formDownPayment,
         }),
       })
 
@@ -251,6 +254,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       setFormParticipants([])
       setFormSplitAmount(0)
       setFormCollector('')
+      setFormDownPayment(0)
       setIsSubmitting(false)
       fetchData()
     } catch (error) {
@@ -504,6 +508,36 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                 </select>
               </div>
 
+              {/* Down Payment Percentage */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  💳 Down Payment (DP) - Opsional
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formDownPayment}
+                    onChange={(e) => setFormDownPayment(Number(e.target.value))}
+                    className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                    placeholder="0"
+                  />
+                  <span className="text-gray-700">%</span>
+                  {formDownPayment > 0 && (
+                    <div className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-2">
+                      <p className="text-sm text-yellow-800">
+                        DP: <span className="font-bold">{formatCurrency((formData.price * formData.quantity) * formDownPayment / 100)}</span>
+                        {' '} dari total {formatCurrency(formData.price * formData.quantity)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Jika ada DP, pembayaran iuran akan diprioritaskan untuk DP terlebih dahulu
+                </p>
+              </div>
+
               {/* Participants Selection for Contribution */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -617,6 +651,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                   setFormParticipants([])
                   setFormSplitAmount(0)
                   setFormCollector('')
+                  setFormDownPayment(0)
                 }}
                 disabled={isSubmitting}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -668,6 +703,11 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                         {expense.collectorName && (
                           <p className="text-xs text-primary-600 font-medium mt-1">
                             💰 Diumpulkan oleh: {expense.collectorName}
+                          </p>
+                        )}
+                        {expense.downPayment && expense.downPayment > 0 && (
+                          <p className="text-xs text-yellow-700 font-semibold mt-1 bg-yellow-50 inline-block px-2 py-0.5 rounded">
+                            💳 DP {expense.downPayment}% = {formatCurrency(expense.total * expense.downPayment / 100)}
                           </p>
                         )}
                       </div>
@@ -923,6 +963,11 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                       {expense.collectorName && (
                         <p className="text-xs text-primary-600 font-medium mt-1">
                           💰 Diumpulkan oleh: {expense.collectorName}
+                        </p>
+                      )}
+                      {expense.downPayment && expense.downPayment > 0 && (
+                        <p className="text-xs text-yellow-700 font-semibold mt-1 bg-yellow-50 inline-block px-2 py-0.5 rounded">
+                          💳 DP {expense.downPayment}% = {formatCurrency(expense.total * expense.downPayment / 100)}
                         </p>
                       )}
                     </div>
