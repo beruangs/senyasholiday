@@ -644,38 +644,19 @@ export default function PublicPlanPage() {
                 {/* Grouped by Collector - Collapsed (not interactive in public view, just showing data) */}
                 {groupedContributions.map((group: any) => (
                   <details key={group.collectorId} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                    <summary className="px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 text-lg flex items-center gap-2">
-                            👤 {group.collectorName}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {group.expenses.map((e: any) => e.expenseName).join(', ')}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {group.participants.length} peserta
-                          </p>
+                    <summary className="px-4 py-3 sm:px-6 sm:py-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg sm:text-lg font-semibold text-gray-900">👤 {group.collectorName}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${group.totalAmount - group.totalPaid > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{group.totalAmount - group.totalPaid > 0 ? 'Belum Lunas' : 'Lunas'}</span>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <p className="text-xs text-gray-600">Total</p>
-                            <p className="font-semibold text-gray-900">
-                              {formatCurrency(group.totalAmount)}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-600">Terbayar</p>
-                            <p className="font-semibold text-green-600">
-                              {formatCurrency(group.totalPaid)}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-600">Sisa</p>
-                            <p className={`font-semibold ${group.totalAmount - group.totalPaid > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {formatCurrency(group.totalAmount - group.totalPaid)}
-                            </p>
-                          </div>
+                        <div className="flex items-center gap-2 text-xs sm:text-base">
+                          <span className="font-semibold text-gray-900">{formatCurrency(group.totalAmount)}</span>
+                          <span className="text-green-700 font-semibold">{formatCurrency(group.totalPaid)}</span>
+                          <span className={group.totalAmount - group.totalPaid > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{formatCurrency(group.totalAmount - group.totalPaid)}</span>
+                          {group.totalAmount - group.totalPaid > 0 && (
+                            <span className="hidden sm:inline text-xs text-gray-400 ml-2">Sisa</span>
+                          )}
                         </div>
                       </div>
                     </summary>
@@ -697,62 +678,51 @@ export default function PublicPlanPage() {
                           const remaining = participant.totalAmount - participant.totalPaid
 
                           return (
-                            <div key={participant.participantId} className="px-6 py-4">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1">
-                                  <p className="font-medium text-gray-900">
-                                    {participant.participantName}
-                                    <span className="text-gray-500 font-normal ml-2 text-sm">
-                                      ({participant.expenseNames.join(', ')})
-                                    </span>
-                                  </p>
-                                  {status === 'Sebagian' && (
-                                    <div className="mt-2">
-                                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                        <span>{percentage}%</span>
-                                        <span>{formatCurrency(participant.totalPaid)} / {formatCurrency(participant.totalAmount)}</span>
-                                      </div>
-                                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                        <div
-                                          className="bg-yellow-500 h-1.5 rounded-full transition-all"
-                                          style={{ width: `${percentage}%` }}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-                                  {/* Info Terbayar & Sisa */}
-                                  <div className="text-sm text-gray-600 mt-2">
-                                    {participant.totalPaid > 0 && (
-                                      <>
-                                        Terbayar: <span className="font-semibold text-green-600">{formatCurrency(participant.totalPaid)}</span>
-                                        {remaining > 0 && (
-                                          <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(remaining)}</span></>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
+                            <div key={participant.participantId} className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 last:border-b-0">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-900 text-base sm:text-lg">{participant.participantName}</span>
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColor}`}>{status}</span>
                                 </div>
-                                <div className="flex items-center gap-3 ml-4 flex-shrink-0">
-                                  <div className="text-right">
-                                    <p className="text-xs text-gray-600">Nominal</p>
-                                    <p className="font-semibold text-gray-900">
-                                      {formatCurrency(participant.totalAmount)}
-                                    </p>
-                                  </div>
-                                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                                    {status}
-                                  </span>
+                                <div className="flex items-center gap-2 text-xs sm:text-base">
+                                  <span className="font-semibold text-gray-900">{formatCurrency(participant.totalAmount)}</span>
                                   {remaining > 0 && (
                                     <button
                                       onClick={() => handlePayment(participant.participantId, participant.participantName)}
                                       disabled={paymentLoading === participant.participantId}
-                                      className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                                      className="flex items-center space-x-1 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap"
                                     >
                                       <CreditCard className="w-4 h-4" />
                                       <span>{paymentLoading === participant.participantId ? 'Loading...' : 'Bayar'}</span>
                                     </button>
                                   )}
                                 </div>
+                              </div>
+                              {/* Progress & Info (only show if Sebagian, minimal in mobile) */}
+                              {status === 'Sebagian' && (
+                                <div className="mt-2">
+                                  <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span>Progress: {percentage}%</span>
+                                    <span>{formatCurrency(participant.totalPaid)} / {formatCurrency(participant.totalAmount)}</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div
+                                      className="bg-yellow-500 h-1.5 rounded-full transition-all"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {/* Info Terbayar & Sisa (minimal) */}
+                              <div className="text-xs text-gray-600 mt-1">
+                                {participant.totalPaid > 0 && (
+                                  <>
+                                    <span className="font-semibold text-green-600">{formatCurrency(participant.totalPaid)}</span>
+                                    {remaining > 0 && (
+                                      <> • <span className="font-semibold text-red-600">{formatCurrency(remaining)}</span></>
+                                    )}
+                                  </>
+                                )}
                               </div>
                             </div>
                           )
