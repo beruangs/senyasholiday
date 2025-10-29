@@ -468,10 +468,49 @@ export default function ContributionsTab({ planId }: { planId: string }) {
         <div className="space-y-3">
           {/* Total Per Participant - Always Expanded */}
           <div className="bg-white border-2 border-primary-200 rounded-lg overflow-hidden">
-            <div className="bg-primary-50 px-4 py-2.5 border-b border-primary-100">
+            <div className="bg-primary-50 px-4 py-2.5 border-b border-primary-100 flex items-center justify-between">
               <h3 className="font-semibold text-primary-900 text-sm flex items-center gap-1.5">
                 👥 Total Iuran Per Orang
               </h3>
+              <button
+                type="button"
+                className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium border border-blue-200"
+                onClick={() => {
+                  // Ambil semua contributionId dari seluruh peserta
+                  const allIds: string[] = [];
+                  groupedContributions.forEach(group => {
+                    group.participants.forEach(p => {
+                      contributions.filter(c => {
+                        const participantId = typeof c.participantId === 'object' ? (c.participantId as any)?._id : c.participantId;
+                        return participantId === p.participantId;
+                      }).forEach(c => allIds.push(c._id!));
+                    });
+                  });
+                  const allSelected = allIds.every(id => selectedContributions.includes(id));
+                  if (allSelected) {
+                    // Unselect all
+                    setSelectedContributions(selectedContributions.filter(id => !allIds.includes(id)));
+                  } else {
+                    // Select all
+                    setSelectedContributions(Array.from(new Set([...selectedContributions, ...allIds])));
+                  }
+                }}
+              >
+                {/* Cek apakah semua sudah terpilih */}
+                {(() => {
+                  const allIds: string[] = [];
+                  groupedContributions.forEach(group => {
+                    group.participants.forEach(p => {
+                      contributions.filter(c => {
+                        const participantId = typeof c.participantId === 'object' ? (c.participantId as any)?._id : c.participantId;
+                        return participantId === p.participantId;
+                      }).forEach(c => allIds.push(c._id!));
+                    });
+                  });
+                  const allSelected = allIds.length > 0 && allIds.every(id => selectedContributions.includes(id));
+                  return allSelected ? 'Uncheck Semua' : 'Pilih Semua';
+                })()}
+              </button>
             </div>
             <div className="divide-y divide-gray-100">{(() => {
                 // Flatten all participants from all groups
