@@ -10,6 +10,10 @@ const holidayPlanSchema = new Schema({
   endDate: { type: Date, required: true },
   description: String,
   password: String, // For public access
+  status: { type: String, enum: ['active', 'completed'], default: 'active' }, // Event status
+  completedAt: Date, // When the event was marked as completed
+  bannerImage: String, // Base64 or URL for banner image (recommended 16:9 or 21:9 aspect ratio)
+  logoImage: String, // Base64 or URL for logo image (recommended 1:1 square aspect ratio)
   createdBy: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

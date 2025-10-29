@@ -296,17 +296,32 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   const updateExpense = async (id: string) => {
     if (!id) return
     try {
+      const expense = expenses.find(e => e._id === id)
+      if (!expense) {
+        toast.error('Expense tidak ditemukan')
+        return
+      }
+
       const body: any = {
         _id: id,
         itemName: editingExpenseData.itemName,
         collectorId: editingExpenseData.collectorId,
       }
 
+      let newTotal = expense.total
+      let shouldRecalculateContributions = false
+
       // If user edited total directly, set price=total and quantity=1 to keep data consistent
       if (typeof editingExpenseData.total === 'number' && editingExpenseData.total > 0) {
         body.total = editingExpenseData.total
         body.price = editingExpenseData.total
         body.quantity = 1
+        newTotal = editingExpenseData.total
+        
+        // Check if total changed - need to recalculate contributions
+        if (newTotal !== expense.total) {
+          shouldRecalculateContributions = true
+        }
       }
 
       const res = await fetch('/api/expenses', {
@@ -316,15 +331,53 @@ export default function ExpensesTab({ planId }: { planId: string }) {
         body: JSON.stringify(body),
       })
 
-      if (res.ok) {
-        toast.success('Pengeluaran berhasil diupdate')
-        setEditingExpenseId(null)
-        setEditingExpenseData({})
-        fetchData()
-      } else {
+      if (!res.ok) {
         const errorData = await res.json()
         toast.error(errorData.details || 'Gagal mengupdate pengeluaran')
+        return
       }
+
+      // If total changed, recalculate all contributions for this expense
+      if (shouldRecalculateContributions) {
+        const expenseContributions = contributions.filter(c => {
+          const cExpenseId = typeof c.expenseItemId === 'object' 
+            ? (c.expenseItemId as any)?._id 
+            : c.expenseItemId
+          return cExpenseId === id
+        })
+
+        if (expenseContributions.length > 0) {
+          const rawNewAmount = newTotal / expenseContributions.length
+          const newAmount = Math.round(rawNewAmount / 100) * 100
+
+          const updatePromises = expenseContributions.map(c => 
+            fetch('/api/contributions', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                _id: c._id,
+                amount: newAmount,
+              }),
+            })
+          )
+
+          await Promise.all(updatePromises)
+          
+          toast.success(
+            `✅ Pengeluaran diupdate. Iuran disesuaikan menjadi ${formatCurrency(newAmount)}/orang untuk ${expenseContributions.length} peserta`,
+            { duration: 5000 }
+          )
+        } else {
+          toast.success('Pengeluaran berhasil diupdate')
+        }
+      } else {
+        toast.success('Pengeluaran berhasil diupdate')
+      }
+
+      setEditingExpenseId(null)
+      setEditingExpenseData({})
+      fetchData()
     } catch (err) {
       console.error(err)
       toast.error('Gagal mengupdate pengeluaran')

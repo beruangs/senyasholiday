@@ -270,22 +270,63 @@ export default function PublicPlanPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-primary-600 text-white py-8 md:py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center mb-4">
-            <Image src="/logo.png" alt="SEN YAS DADDY" width={60} height={60} className="rounded-lg" />
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-center mb-2">{plan.title}</h1>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-primary-100">
-            <div className="flex items-center">
-              <MapPin className="w-5 h-5 mr-2" />
-              {plan.destination}
+      {/* Header with Banner & Logo */}
+      <div className="relative">
+        {/* Banner */}
+        <div className="h-40 sm:h-48 md:h-56 lg:h-64 w-full">
+          {plan.bannerImage ? (
+            <img 
+              src={plan.bannerImage} 
+              alt="Banner" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary-500 to-primary-700" />
+          )}
+        </div>
+
+        {/* Content Container */}
+        <div className="relative">
+          {/* Logo - Overlapping banner */}
+          <div className="absolute -top-10 sm:-top-12 md:-top-14 left-1/2 transform -translate-x-1/2">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-2xl overflow-hidden bg-white shadow-xl border-4 border-white">
+              {plan.logoImage ? (
+                <img 
+                  src={plan.logoImage} 
+                  alt="Logo" 
+                  className="w-full h-full object-contain p-2"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-2xl sm:text-3xl md:text-4xl">SYD</span>
+                </div>
+              )}
             </div>
-            <div className="flex items-center">
-              <Calendar className="w-5 h-5 mr-2" />
-              {format(new Date(plan.startDate), 'd MMM', { locale: id })} -{' '}
-              {format(new Date(plan.endDate), 'd MMM yyyy', { locale: id })}
+          </div>
+
+          {/* Title & Info */}
+          <div className="bg-white pt-14 sm:pt-16 md:pt-20 pb-6 px-4">
+            <div className="max-w-7xl mx-auto text-center">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-3">{plan.title}</h1>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm sm:text-base text-gray-600">
+                <div className="flex items-center">
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary-600" />
+                  <span>{plan.destination}</span>
+                </div>
+                <div className="hidden sm:block w-1 h-1 rounded-full bg-gray-400" />
+                <div className="flex items-center">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary-600" />
+                  <span>
+                    {format(new Date(plan.startDate), 'd MMM', { locale: id })} -{' '}
+                    {format(new Date(plan.endDate), 'd MMM yyyy', { locale: id })}
+                  </span>
+                </div>
+              </div>
+              {plan.description && (
+                <p className="mt-4 text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
+                  {plan.description}
+                </p>
+              )}
             </div>
           </div>
         </div>
