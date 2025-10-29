@@ -830,18 +830,17 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                   />
                                   <button
                                     onClick={() => {
-                                      const updatePromises = participantContributionIds.map(id =>
-                                        fetch('/api/contributions', {
-                                          method: 'PUT',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          credentials: 'include',
-                                          body: JSON.stringify({
-                                            _id: id,
-                                            paid: editAmount,
-                                          }),
-                                        })
-                                      )
-                                      Promise.all(updatePromises).then(() => {
+                                      // Ambil hanya satu kontribusi (misal, kontribusi pertama milik peserta ini)
+                                      const id = participantContributionIds[0];
+                                      fetch('/api/contributions', {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        credentials: 'include',
+                                        body: JSON.stringify({
+                                          _id: id,
+                                          paid: editAmount,
+                                        }),
+                                      }).then(() => {
                                         toast.success('✅ Berhasil')
                                         setEditingContribution(null)
                                         fetchData()
