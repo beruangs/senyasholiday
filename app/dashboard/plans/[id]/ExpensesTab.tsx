@@ -772,6 +772,22 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   👥 Pilih Peserta yang Iuran <span className="text-red-500">*</span>
                 </label>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-500">{formParticipants.length} peserta dipilih</span>
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium border border-blue-200"
+                    onClick={() => {
+                      if (formParticipants.length === participants.length) {
+                        setFormParticipants([])
+                      } else {
+                        setFormParticipants(participants.map(p => p._id))
+                      }
+                    }}
+                  >
+                    {formParticipants.length === participants.length ? 'Uncheck Semua' : 'Pilih Semua'}
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto bg-white p-4 rounded border-2 border-gray-200">
                   {participants.map(participant => (
                     <label
@@ -800,9 +816,6 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                     </label>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {formParticipants.length} peserta dipilih
-                </p>
               </div>
 
               {/* Auto-calculated Iuran Amount */}
