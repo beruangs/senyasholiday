@@ -564,7 +564,17 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                               <p className="font-semibold text-gray-900 text-sm">
                                 {formatCurrency(participant.totalAmount)}
                               </p>
-                              {participant.totalPaid > 0 && (
+                              {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
+                                <div className="space-y-0.5">
+                                  <p className="text-xs text-green-600">
+                                    {formatCurrency(participant.totalPaid)}
+                                  </p>
+                                  <p className="text-xs text-red-600 font-medium">
+                                    Kurang: {formatCurrency(participant.totalAmount - participant.totalPaid)}
+                                  </p>
+                                </div>
+                              )}
+                              {participant.totalPaid > 0 && participant.totalPaid >= participant.totalAmount && (
                                 <p className="text-xs text-green-600">
                                   {formatCurrency(participant.totalPaid)}
                                 </p>
@@ -743,7 +753,17 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                   <p className="font-semibold text-gray-900 text-sm">
                                     {formatCurrency(participant.totalAmount)}
                                   </p>
-                                  {participant.totalPaid > 0 && (
+                                  {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
+                                    <div className="space-y-0.5">
+                                      <p className="text-xs text-green-600">
+                                        Bayar: {formatCurrency(participant.totalPaid)}
+                                      </p>
+                                      <p className="text-xs text-red-600 font-medium">
+                                        Kurang: {formatCurrency(participant.totalAmount - participant.totalPaid)}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {participant.totalPaid > 0 && participant.totalPaid >= participant.totalAmount && (
                                     <p className="text-xs text-green-600">
                                       Bayar: {formatCurrency(participant.totalPaid)}
                                     </p>

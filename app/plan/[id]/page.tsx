@@ -1,16 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import { Lock, Calendar, MapPin, DollarSign, Users } from 'lucide-react'
+import { Lock, Calendar, MapPin, DollarSign, Users, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
+import SuggestionButton from '@/components/SuggestionButton'
 
 export default function PublicPlanPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const planId = params.id as string
   
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -22,6 +24,7 @@ export default function PublicPlanPage() {
   const [contributions, setContributions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'rundown' | 'keuangan' | 'iuran'>('rundown')
+  const [paymentLoading, setPaymentLoading] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPlan()
@@ -32,6 +35,22 @@ export default function PublicPlanPage() {
       fetchAllData()
     }
   }, [isAuthenticated])
+
+  useEffect(() => {
+    // Handle payment result from Midtrans
+    const paymentStatus = searchParams.get('payment')
+    if (paymentStatus === 'success') {
+      toast.success('Pembayaran berhasil! Terima kasih 🎉')
+      // Refresh data
+      if (isAuthenticated) {
+        fetchAllData()
+      }
+    } else if (paymentStatus === 'error') {
+      toast.error('Pembayaran gagal. Silakan coba lagi.')
+    } else if (paymentStatus === 'pending') {
+      toast.info('Pembayaran pending. Mohon selesaikan pembayaran Anda.')
+    }
+  }, [searchParams, isAuthenticated])
 
   const fetchPlan = async () => {
     try {
@@ -101,6 +120,57 @@ export default function PublicPlanPage() {
     }).format(amount)
   }
 
+  const handlePayment = async (participantId: string, participantName: string) => {
+    setPaymentLoading(participantId)
+    
+    try {
+      // Get all contributions for this participant that are not fully paid
+      const participantContributions = contributions.filter((c: any) => {
+        const cParticipantId = typeof c.participantId === 'object'
+          ? c.participantId._id
+          : c.participantId
+        return cParticipantId === participantId && c.paid < c.amount
+      })
+
+      if (participantContributions.length === 0) {
+        toast.error('Tidak ada iuran yang perlu dibayar')
+        setPaymentLoading(null)
+        return
+      }
+
+      const contributionIds = participantContributions.map((c: any) => c._id)
+
+      // Create payment
+      const res = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contributionIds,
+          participantId,
+          planId,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to create payment')
+      }
+
+      const data = await res.json()
+
+      // Redirect to Midtrans payment page
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl
+      } else {
+        toast.error('Gagal membuat payment link')
+        setPaymentLoading(null)
+      }
+    } catch (error) {
+      console.error('Payment error:', error)
+      toast.error('Gagal membuat pembayaran. Silakan coba lagi.')
+      setPaymentLoading(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -157,6 +227,7 @@ export default function PublicPlanPage() {
             </button>
           </form>
         </div>
+        <SuggestionButton page={`Shared Link - ${plan?.title || 'Unknown'}`} />
       </div>
     )
   }
@@ -525,9 +596,21 @@ export default function PublicPlanPage() {
                                   ({participant.expenseNames.join(', ')}) • {formatCurrency(participant.totalAmount)}
                                 </p>
                               </div>
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                                {status}
-                              </span>
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                                  {status}
+                                </span>
+                                {remaining > 0 && (
+                                  <button
+                                    onClick={() => handlePayment(participant.participantId, participant.participantName)}
+                                    disabled={paymentLoading === participant.participantId}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                                  >
+                                    <CreditCard className="w-4 h-4" />
+                                    <span>{paymentLoading === participant.participantId ? 'Loading...' : 'Bayar'}</span>
+                                  </button>
+                                )}
+                              </div>
                             </div>
 
                             {/* Progress Bar */}
@@ -684,6 +767,9 @@ export default function PublicPlanPage() {
           ← Kembali ke Beranda
         </button>
       </div>
+
+      {/* Suggestion Button */}
+      <SuggestionButton page={`Shared Link - ${plan?.title || 'Unknown'}`} />
     </div>
   )
 }

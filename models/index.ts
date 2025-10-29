@@ -67,6 +67,10 @@ const contributionSchema = new Schema({
   isPaid: { type: Boolean, default: false },
   paid: { type: Number, default: 0 }, // Amount that has been paid (for partial payments)
   paidAt: Date,
+  paymentMethod: { type: String, enum: ['manual', 'midtrans'], default: 'manual' }, // Payment method
+  midtransOrderId: String, // Midtrans order ID
+  midtransTransactionId: String, // Midtrans transaction ID
+  midtransServiceFee: { type: Number, default: 0 }, // Service fee charged to customer
   createdAt: { type: Date, default: Date.now },
 })
 

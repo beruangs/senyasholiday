@@ -2,11 +2,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, Users, DollarSign, Lock } from 'lucide-react'
 import Navbar from '@/components/Navbar'
+import SuggestionButton from '@/components/SuggestionButton'
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       <Navbar />
+      <SuggestionButton page="Homepage" />
 
         {/* Hero Section */}
         <section className="py-12 md:py-20">
