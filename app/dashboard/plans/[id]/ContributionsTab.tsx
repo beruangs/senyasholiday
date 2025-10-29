@@ -865,7 +865,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                 <button
                                   onClick={() => {
                                     setEditingContribution(`${group.collectorId}-${participant.participantId}`)
-                                    setEditAmount(participant.totalPaid)
+                                    setEditAmount(0)
                                   }}
                                   className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium"
                                 >
