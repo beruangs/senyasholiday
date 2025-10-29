@@ -694,10 +694,11 @@ export default function PublicPlanPage() {
                           const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.totalAmount ? 'Lunas' : 'Sebagian'
                           const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                           const percentage = Math.round((participant.totalPaid / participant.totalAmount) * 100)
+                          const remaining = participant.totalAmount - participant.totalPaid
 
                           return (
                             <div key={participant.participantId} className="px-6 py-4">
-                              <div className="flex items-start justify-between">
+                              <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">
                                   <p className="font-medium text-gray-900">
                                     {participant.participantName}
@@ -719,8 +720,19 @@ export default function PublicPlanPage() {
                                       </div>
                                     </div>
                                   )}
+                                  {/* Info Terbayar & Sisa */}
+                                  <div className="text-sm text-gray-600 mt-2">
+                                    {participant.totalPaid > 0 && (
+                                      <>
+                                        Terbayar: <span className="font-semibold text-green-600">{formatCurrency(participant.totalPaid)}</span>
+                                        {remaining > 0 && (
+                                          <> • Sisa: <span className="font-semibold text-red-600">{formatCurrency(remaining)}</span></>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-3 ml-4">
+                                <div className="flex items-center gap-3 ml-4 flex-shrink-0">
                                   <div className="text-right">
                                     <p className="text-xs text-gray-600">Nominal</p>
                                     <p className="font-semibold text-gray-900">
@@ -730,6 +742,16 @@ export default function PublicPlanPage() {
                                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
                                     {status}
                                   </span>
+                                  {remaining > 0 && (
+                                    <button
+                                      onClick={() => handlePayment(participant.participantId, participant.participantName)}
+                                      disabled={paymentLoading === participant.participantId}
+                                      className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                                    >
+                                      <CreditCard className="w-4 h-4" />
+                                      <span>{paymentLoading === participant.participantId ? 'Loading...' : 'Bayar'}</span>
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
