@@ -76,6 +76,12 @@ export default function ExpensesTab({ planId }: { planId: string }) {
     fetchData()
   }, [planId])
 
+  // Reset selected participants when expanding/collapsing
+  useEffect(() => {
+    setSelectedParticipants([])
+    setSplitAmount(0)
+  }, [expandedExpense])
+
   const fetchData = async () => {
     try {
       const [expensesRes, participantsRes, contributionsRes] = await Promise.all([
@@ -923,57 +929,74 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                     </button>
                   </div>
 
-                  {/* Expanded Contributors Section */}
+                  {/* Expanded Contributors Section - EDIT MODE */}
                   {expandedExpense === expense._id && (
                     <div className="border-t border-gray-200 bg-gray-50 p-6 space-y-4">
-                      {/* Add Participants Form */}
+                      {/* Edit Participants Form */}
                       <div className="bg-white border-2 border-primary-200 rounded-lg p-4 space-y-4">
                         <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
                           <Users className="w-5 h-5 text-primary-600" />
-                          <span>Tambah Peserta Iuran</span>
+                          <span>Edit Peserta Iuran</span>
                         </h4>
 
-                        {availableParticipants.length > 0 ? (
-                          <>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Pilih Peserta ({selectedParticipants.length} dipilih)
-                              </label>
-                              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 max-h-40 overflow-y-auto bg-gray-50 p-3 rounded border border-gray-200">
-                                {availableParticipants.map(participant => (
-                                  <label
-                                    key={participant._id}
-                                    className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-all ${
-                                      selectedParticipants.includes(participant._id)
-                                        ? 'bg-primary-100 border border-primary-500'
-                                        : 'bg-white border border-gray-200 hover:border-primary-300'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedParticipants.includes(participant._id)}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setSelectedParticipants([
-                                            ...selectedParticipants,
-                                            participant._id,
-                                          ])
-                                        } else {
-                                          setSelectedParticipants(
-                                            selectedParticipants.filter(
-                                              id => id !== participant._id
-                                            )
-                                          )
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Pilih Peserta ({expense.contributors?.length || 0} terpilih dari {participants.length} total)
+                          </label>
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 max-h-60 overflow-y-auto bg-gray-50 p-3 rounded border border-gray-200">
+                            {participants.map(participant => {
+                              const isContributor = expense.contributors?.some(c => c.participantId === participant._id) || false
+                              const wasInitiallySelected = isContributor
+                              
+                              return (
+                                <label
+                                  key={participant._id}
+                                  className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-all ${
+                                    selectedParticipants.includes(participant._id)
+                                      ? 'bg-primary-100 border border-primary-500'
+                                      : wasInitiallySelected
+                                      ? 'bg-green-50 border border-green-300'
+                                      : 'bg-white border border-gray-200 hover:border-primary-300'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedParticipants.includes(participant._id) || isContributor}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        if (!isContributor) {
+                                          // Adding new participant
+                                          setSelectedParticipants([...selectedParticipants, participant._id])
                                         }
-                                      }}
-                                      className="w-4 h-4 rounded text-primary-600"
-                                    />
-                                    <span className="text-sm text-gray-700">{participant.name}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
+                                      } else {
+                                        if (isContributor) {
+                                          // Removing existing participant - will be handled by removal
+                                          if (confirm(`Hapus ${participant.name} dari iuran? Nominal akan disesuaikan untuk peserta lain.`)) {
+                                            deleteContribution(expense._id!, participant._id)
+                                          }
+                                        } else {
+                                          // Removing from selection
+                                          setSelectedParticipants(selectedParticipants.filter(id => id !== participant._id))
+                                        }
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded text-primary-600"
+                                  />
+                                  <span className="text-sm text-gray-700">
+                                    {participant.name}
+                                    {isContributor && <span className="ml-1 text-xs text-green-600">✓</span>}
+                                  </span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            ✓ = Sudah terdaftar dalam iuran ini
+                          </p>
+                        </div>
 
+                        {selectedParticipants.length > 0 && (
+                          <>
                             {/* Auto-distribute toggle */}
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                               <label className="flex items-center space-x-3 cursor-pointer">
@@ -1074,22 +1097,18 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                                 onClick={() => addParticipantsToExpense(expense._id)}
                                 className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                               >
-                                Tambah
+                                Tambah Peserta Baru
                               </button>
                             </div>
                           </>
-                        ) : (
-                          <p className="text-sm text-gray-600">
-                            Semua peserta sudah ditambahkan ke iuran ini.
-                          </p>
                         )}
                       </div>
 
-                      {/* Contributors List */}
+                      {/* Contributors List - Read Only Display */}
                       {expense.contributors && expense.contributors.length > 0 && (
                         <div className="bg-white rounded-lg p-4">
                           <h4 className="font-semibold text-gray-900 mb-3">
-                            Peserta Iuran ({expense.contributors.length})
+                            Detail Iuran Per Peserta ({expense.contributors.length})
                           </h4>
                           <div className="space-y-2">
                             {expense.contributors.map((contributor, idx) => {
