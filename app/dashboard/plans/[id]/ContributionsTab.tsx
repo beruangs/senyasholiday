@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, X, DollarSign, ChevronDown, ChevronUp, Edit2, Save } from 'lucide-react'
+import { Check, X, DollarSign, ChevronDown, ChevronUp, Edit2, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Participant {
@@ -246,6 +246,92 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       fetchData()
     } catch (error) {
       toast.error('Gagal mengupdate pembayaran')
+    }
+  }
+
+  const removeParticipantFromExpense = async (expenseId: string, participantId: string, participantName: string) => {
+    if (!confirm(`Hapus ${participantName} dari iuran ini?\n\nCatatan: Iuran akan dibagi ulang ke peserta yang tersisa dengan TOTAL YANG SAMA.`)) return
+
+    try {
+      // Get expense data
+      const expense = expenseItems.find(e => e._id === expenseId)
+      if (!expense || !expense.total) {
+        toast.error('Expense tidak ditemukan')
+        return
+      }
+
+      // Get all contributions for this expense
+      const expenseContributions = contributions.filter(c => {
+        const cExpenseId = typeof c.expenseItemId === 'object' 
+          ? (c.expenseItemId as any)?._id 
+          : c.expenseItemId
+        return cExpenseId === expenseId
+      })
+
+      const remainingContributors = expenseContributions.filter(c => {
+        const cParticipantId = typeof c.participantId === 'object'
+          ? (c.participantId as any)?._id
+          : c.participantId
+        return cParticipantId !== participantId
+      })
+
+      // If this is the last participant, just delete
+      if (remainingContributors.length === 0) {
+        const res = await fetch(
+          `/api/contributions?expenseItemId=${expenseId}&participantId=${participantId}`,
+          {
+            method: 'DELETE',
+            credentials: 'include',
+          }
+        )
+
+        if (res.ok) {
+          toast.success(`${participantName} dihapus dari iuran`)
+          fetchData()
+        }
+        return
+      }
+
+      // Calculate new split amount (total tetap sama, dibagi ke peserta tersisa)
+      const rawNewAmount = expense.total / remainingContributors.length
+      const newSplitAmount = Math.round(rawNewAmount / 100) * 100
+
+      // Delete the participant first
+      const deleteRes = await fetch(
+        `/api/contributions?expenseItemId=${expenseId}&participantId=${participantId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+        }
+      )
+
+      if (!deleteRes.ok) {
+        toast.error('Gagal menghapus peserta')
+        return
+      }
+
+      // Update all remaining contributions with new amount
+      const updatePromises = remainingContributors.map(c => 
+        fetch('/api/contributions', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            _id: c._id,
+            amount: newSplitAmount,
+          }),
+        })
+      )
+
+      await Promise.all(updatePromises)
+
+      toast.success(
+        `✅ ${participantName} dihapus. Iuran disesuaikan menjadi ${formatCurrency(newSplitAmount)}/orang untuk ${remainingContributors.length} peserta (Total tetap ${formatCurrency(expense.total)})`,
+        { duration: 6000 }
+      )
+      fetchData()
+    } catch (error) {
+      toast.error('Gagal menghapus peserta')
     }
   }
 
@@ -521,6 +607,25 @@ export default function ContributionsTab({ planId }: { planId: string }) {
 
                     const allSelected = participantContributionIds.every(id => selectedContributions.includes(id))
 
+                    // Calculate total DP for this participant across all expenses
+                    let participantTotalDP = 0
+                    contributions
+                      .filter(c => {
+                        const cParticipantId = typeof c.participantId === 'object'
+                          ? (c.participantId as any)?._id
+                          : c.participantId
+                        return cParticipantId === participant.participantId
+                      })
+                      .forEach(c => {
+                        const cExpenseId = typeof c.expenseItemId === 'object'
+                          ? (c.expenseItemId as any)?._id
+                          : c.expenseItemId
+                        const expense = expenseItems.find(e => e._id === cExpenseId)
+                        if (expense && expense.downPayment && expense.downPayment > 0) {
+                          participantTotalDP += (c.amount * expense.downPayment) / 100
+                        }
+                      })
+
                     return (
                       <div key={participant.participantId} className="px-4 py-3 hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between gap-3">
@@ -531,6 +636,11 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
                               {participant.expenseNames.join(', ')}
                             </p>
+                            {participantTotalDP > 0 && (
+                              <p className="text-xs text-yellow-700 font-semibold mt-1 bg-yellow-50 inline-block px-1.5 py-0.5 rounded">
+                                💳 DP: {formatCurrency(participantTotalDP)}
+                              </p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <div className="text-right">
@@ -657,6 +767,43 @@ export default function ContributionsTab({ planId }: { planId: string }) {
 
                         const isEditingThis = editingContribution === `${group.collectorId}-${participant.participantId}`
 
+                        // Calculate DP amount for this participant
+                        let participantDPAmount = 0
+                        let participantDPDetails: Array<{ expenseName: string; dpAmount: number; dpPercentage: number }> = []
+                        
+                        if (dpInfo) {
+                          // Get contributions for this participant that have DP
+                          const participantContributions = contributions.filter(c => {
+                            const cParticipantId = typeof c.participantId === 'object'
+                              ? (c.participantId as any)?._id
+                              : c.participantId
+                            const cExpenseId = typeof c.expenseItemId === 'object'
+                              ? (c.expenseItemId as any)?._id
+                              : c.expenseItemId
+                            
+                            // Check if contribution is for this participant and for an expense with DP
+                            return cParticipantId === participant.participantId &&
+                                   dpInfo.expenses.some(exp => exp.expenseId === cExpenseId)
+                          })
+
+                          // Calculate DP for each contribution
+                          participantContributions.forEach(c => {
+                            const cExpenseId = typeof c.expenseItemId === 'object'
+                              ? (c.expenseItemId as any)?._id
+                              : c.expenseItemId
+                            const expenseWithDP = dpInfo.expenses.find(exp => exp.expenseId === cExpenseId)
+                            if (expenseWithDP) {
+                              const dpAmount = (c.amount * expenseWithDP.dpPercentage) / 100
+                              participantDPAmount += dpAmount
+                              participantDPDetails.push({
+                                expenseName: expenseWithDP.expenseName,
+                                dpAmount,
+                                dpPercentage: expenseWithDP.dpPercentage,
+                              })
+                            }
+                          })
+                        }
+
                         return (
                           <div key={participant.participantId} className="px-4 py-3">
                             <div className="flex items-center justify-between gap-3 mb-2">
@@ -667,6 +814,12 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                 <p className="text-xs text-gray-500 line-clamp-1">
                                   {participant.expenseNames.join(', ')}
                                 </p>
+                                {/* Show DP amount for this participant */}
+                                {participantDPAmount > 0 && (
+                                  <p className="text-xs text-yellow-700 font-semibold mt-1 bg-yellow-50 inline-block px-1.5 py-0.5 rounded">
+                                    💳 DP: {formatCurrency(participantDPAmount)}
+                                  </p>
+                                )}
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 <div className="text-right">
@@ -732,16 +885,29 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                 </div>
                               </div>
                             ) : (
-                              <button
-                                onClick={() => {
-                                  setEditingContribution(`${group.collectorId}-${participant.participantId}`)
-                                  setEditAmount(participant.totalPaid)
-                                }}
-                                className="w-full flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                                Input Pembayaran
-                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingContribution(`${group.collectorId}-${participant.participantId}`)
+                                    setEditAmount(participant.totalPaid)
+                                  }}
+                                  className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                  Input Pembayaran
+                                </button>
+                                {group.expenses.length === 1 && (
+                                  <button
+                                    onClick={() => {
+                                      removeParticipantFromExpense(group.expenses[0].expenseId, participant.participantId, participant.participantName)
+                                    }}
+                                    className="px-3 py-1.5 bg-red-50 text-red-700 rounded hover:bg-red-100 text-xs font-medium flex items-center gap-1"
+                                    title="Hapus dari iuran"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
                             )}
                           </div>
                         )
