@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, DollarSign, Users, X, ChevronDown, ChevronUp, Edit2 } from 'lucide-react'
+import { Plus, Trash2, DollarSign, Users, X, ChevronDown, ChevronUp, Edit2, Check } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Participant {
@@ -53,6 +53,10 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   const [selectedExpenseId, setSelectedExpenseId] = useState<string>('')
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [splitAmount, setSplitAmount] = useState(0)
+  
+  // State untuk edit nominal iuran peserta
+  const [editingContributionId, setEditingContributionId] = useState<string | null>(null)
+  const [editingContributionAmount, setEditingContributionAmount] = useState<number>(0)
   
   // Form state untuk penambahan pengeluaran
   const [formParticipants, setFormParticipants] = useState<string[]>([])
@@ -385,6 +389,53 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       }
     } catch (error) {
       toast.error('Gagal menghapus iuran')
+    }
+  }
+
+  const updateContributionAmount = async (expenseId: string, participantId: string, newAmount: number) => {
+    if (newAmount <= 0) {
+      toast.error('Nominal iuran harus lebih dari 0')
+      return
+    }
+
+    try {
+      // Find the contribution ID
+      const contribution = contributions.find(c => {
+        const cExpenseId = typeof c.expenseItemId === 'object' 
+          ? (c.expenseItemId as any)?._id 
+          : c.expenseItemId
+        const cParticipantId = typeof c.participantId === 'object'
+          ? (c.participantId as any)?._id
+          : c.participantId
+        return cExpenseId === expenseId && cParticipantId === participantId
+      })
+
+      if (!contribution || !contribution._id) {
+        toast.error('Iuran tidak ditemukan')
+        return
+      }
+
+      const res = await fetch('/api/contributions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          _id: contribution._id,
+          amount: newAmount,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success('Nominal iuran berhasil diupdate')
+        setEditingContributionId(null)
+        setEditingContributionAmount(0)
+        fetchData()
+      } else {
+        const errorData = await res.json()
+        toast.error(errorData.details || 'Gagal mengupdate nominal iuran')
+      }
+    } catch (error) {
+      toast.error('Gagal mengupdate nominal iuran')
     }
   }
 
@@ -863,32 +914,81 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                             Peserta Iuran ({expense.contributors.length})
                           </h4>
                           <div className="space-y-2">
-                            {expense.contributors.map((contributor, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                              >
-                                <div>
-                                  <p className="text-sm font-medium text-gray-900">
-                                    {contributor.participantName}
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    {formatCurrency(contributor.amount)}
-                                  </p>
-                                </div>
-                                <button
-                                  onClick={() =>
-                                    deleteContribution(
-                                      expense._id!,
-                                      contributor.participantId
-                                    )
-                                  }
-                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                            {expense.contributors.map((contributor, idx) => {
+                              const contributionKey = `${expense._id}-${contributor.participantId}`
+                              const isEditing = editingContributionId === contributionKey
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
                                 >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </div>
-                            ))}
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {contributor.participantName}
+                                    </p>
+                                    {isEditing ? (
+                                      <div className="flex items-center gap-2 mt-2">
+                                        <span className="text-xs text-gray-600">Rp</span>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={editingContributionAmount}
+                                          onChange={(e) => setEditingContributionAmount(Number(e.target.value))}
+                                          className="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                                          autoFocus
+                                        />
+                                        <button
+                                          onClick={() => updateContributionAmount(expense._id!, contributor.participantId, editingContributionAmount)}
+                                          className="px-2 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700"
+                                        >
+                                          <Check className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setEditingContributionId(null)
+                                            setEditingContributionAmount(0)
+                                          }}
+                                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <p className="text-sm text-gray-600">
+                                        {formatCurrency(contributor.amount)}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {!isEditing && (
+                                      <button
+                                        onClick={() => {
+                                          setEditingContributionId(contributionKey)
+                                          setEditingContributionAmount(contributor.amount)
+                                        }}
+                                        className="p-1.5 text-primary-600 hover:bg-primary-50 rounded"
+                                        title="Edit nominal"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() =>
+                                        deleteContribution(
+                                          expense._id!,
+                                          contributor.participantId
+                                        )
+                                      }
+                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                                      title="Hapus peserta"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
                       )}
@@ -1065,17 +1165,84 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                       {expense.contributors && expense.contributors.length > 0 && (
                         <div className="bg-gray-50 rounded-lg p-3">
                           <h4 className="font-semibold text-sm text-gray-900 mb-2">
-                            Peserta Iuran
+                            Peserta Iuran ({expense.contributors.length})
                           </h4>
                           <div className="space-y-2">
-                            {expense.contributors.map((contributor, idx) => (
-                              <div key={idx} className="flex justify-between items-center text-sm">
-                                <span className="text-gray-700">{contributor.participantName}</span>
-                                <span className="font-medium text-gray-900">
-                                  {formatCurrency(contributor.amount)}
-                                </span>
-                              </div>
-                            ))}
+                            {expense.contributors.map((contributor, idx) => {
+                              const contributionKey = `${expense._id}-${contributor.participantId}`
+                              const isEditing = editingContributionId === contributionKey
+
+                              return (
+                                <div key={idx} className="bg-white rounded p-2 space-y-2">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-gray-900">{contributor.participantName}</p>
+                                      {isEditing ? (
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <span className="text-xs text-gray-600">Rp</span>
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            value={editingContributionAmount}
+                                            onChange={(e) => setEditingContributionAmount(Number(e.target.value))}
+                                            className="w-28 px-2 py-1 text-xs border border-gray-300 rounded"
+                                            autoFocus
+                                          />
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-gray-600 mt-1">
+                                          {formatCurrency(contributor.amount)}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      {isEditing ? (
+                                        <>
+                                          <button
+                                            onClick={() => updateContributionAmount(expense._id!, contributor.participantId, editingContributionAmount)}
+                                            className="p-1 text-xs bg-primary-600 text-white rounded"
+                                          >
+                                            <Check className="w-3 h-3" />
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              setEditingContributionId(null)
+                                              setEditingContributionAmount(0)
+                                            }}
+                                            className="p-1 text-xs border border-gray-300 rounded"
+                                          >
+                                            <X className="w-3 h-3" />
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <button
+                                            onClick={() => {
+                                              setEditingContributionId(contributionKey)
+                                              setEditingContributionAmount(contributor.amount)
+                                            }}
+                                            className="p-1 text-primary-600"
+                                          >
+                                            <Edit2 className="w-3 h-3" />
+                                          </button>
+                                          <button
+                                            onClick={() =>
+                                              deleteContribution(
+                                                expense._id!,
+                                                contributor.participantId
+                                              )
+                                            }
+                                            className="p-1 text-red-600"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
                       )}
