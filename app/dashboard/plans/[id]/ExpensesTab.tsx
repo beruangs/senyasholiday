@@ -53,6 +53,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   const [selectedExpenseId, setSelectedExpenseId] = useState<string>('')
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [splitAmount, setSplitAmount] = useState(0)
+  const [autoDistribute, setAutoDistribute] = useState(true) // Auto redistribute when adding participants
   
   // State untuk edit nominal iuran peserta
   const [editingContributionId, setEditingContributionId] = useState<string | null>(null)
@@ -337,12 +338,53 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       return
     }
 
-    if (splitAmount <= 0) {
-      toast.error('Masukkan nominal iuran')
-      return
-    }
-
     try {
+      const expense = expenses.find(e => e._id === targetExpenseId)
+      if (!expense) {
+        toast.error('Expense tidak ditemukan')
+        return
+      }
+
+      // Get existing contributions for this expense
+      const existingContributions = contributions.filter(c => {
+        const cExpenseId = typeof c.expenseItemId === 'object' 
+          ? (c.expenseItemId as any)?._id 
+          : c.expenseItemId
+        return cExpenseId === targetExpenseId
+      })
+
+      let amountPerPerson = splitAmount
+
+      // If auto-distribute is enabled, recalculate for all participants
+      if (autoDistribute) {
+        const totalParticipants = existingContributions.length + selectedParticipants.length
+        const rawAmount = expense.total / totalParticipants
+        amountPerPerson = Math.round(rawAmount / 100) * 100 // Round to nearest 100
+
+        // Update existing contributions with new amount
+        if (existingContributions.length > 0) {
+          const updatePromises = existingContributions.map(c => 
+            fetch('/api/contributions', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                _id: c._id,
+                amount: amountPerPerson,
+              }),
+            })
+          )
+          await Promise.all(updatePromises)
+        }
+      } else {
+        // Manual mode: require split amount
+        if (splitAmount <= 0) {
+          toast.error('Masukkan nominal iuran')
+          return
+        }
+      }
+
+      // Add new participants
       const promises = selectedParticipants.map(participantId =>
         fetch('/api/contributions', {
           method: 'POST',
@@ -352,7 +394,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
             holidayPlanId: planId,
             expenseItemId: targetExpenseId,
             participantId,
-            amount: splitAmount,
+            amount: amountPerPerson,
             paid: 0,
             isPaid: false,
           }),
@@ -360,7 +402,18 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       )
 
       await Promise.all(promises)
-      toast.success(`Berhasil menambahkan ${selectedParticipants.length} peserta ke iuran`)
+      
+      const totalParticipantsAfter = existingContributions.length + selectedParticipants.length
+      
+      if (autoDistribute) {
+        toast.success(
+          `✅ ${selectedParticipants.length} peserta ditambahkan. Iuran disesuaikan menjadi ${formatCurrency(amountPerPerson)}/orang untuk ${totalParticipantsAfter} peserta`,
+          { duration: 5000 }
+        )
+      } else {
+        toast.success(`✅ ${selectedParticipants.length} peserta ditambahkan ke iuran`)
+      }
+
       setSelectedExpenseId('')
       setSelectedParticipants([])
       setSplitAmount(0)
@@ -372,10 +425,54 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   }
 
   const deleteContribution = async (expenseId: string, participantId: string) => {
-    if (!confirm('Yakin ingin menghapus iuran ini?')) return
+    if (!confirm('Yakin ingin menghapus peserta ini dari iuran?')) return
 
     try {
-      const res = await fetch(
+      // Get expense data to recalculate
+      const expense = expenses.find(e => e._id === expenseId)
+      if (!expense) {
+        toast.error('Expense tidak ditemukan')
+        return
+      }
+
+      // Get all contributions for this expense
+      const expenseContributions = contributions.filter(c => {
+        const cExpenseId = typeof c.expenseItemId === 'object' 
+          ? (c.expenseItemId as any)?._id 
+          : c.expenseItemId
+        return cExpenseId === expenseId
+      })
+
+      const remainingContributors = expenseContributions.filter(c => {
+        const cParticipantId = typeof c.participantId === 'object'
+          ? (c.participantId as any)?._id
+          : c.participantId
+        return cParticipantId !== participantId
+      })
+
+      // If this is the last participant, just delete
+      if (remainingContributors.length === 0) {
+        const res = await fetch(
+          `/api/contributions?expenseItemId=${expenseId}&participantId=${participantId}`,
+          {
+            method: 'DELETE',
+            credentials: 'include',
+          }
+        )
+
+        if (res.ok) {
+          toast.success('Peserta berhasil dihapus dari iuran')
+          fetchData()
+        }
+        return
+      }
+
+      // Calculate new split amount (rounded to nearest 100)
+      const rawNewAmount = expense.total / (remainingContributors.length)
+      const newSplitAmount = Math.round(rawNewAmount / 100) * 100
+
+      // Delete the participant first
+      const deleteRes = await fetch(
         `/api/contributions?expenseItemId=${expenseId}&participantId=${participantId}`,
         {
           method: 'DELETE',
@@ -383,10 +480,32 @@ export default function ExpensesTab({ planId }: { planId: string }) {
         }
       )
 
-      if (res.ok) {
-        toast.success('Iuran berhasil dihapus')
-        fetchData()
+      if (!deleteRes.ok) {
+        toast.error('Gagal menghapus peserta')
+        return
       }
+
+      // Update all remaining contributions with new amount
+      const updatePromises = remainingContributors.map(c => 
+        fetch('/api/contributions', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            _id: c._id,
+            amount: newSplitAmount,
+          }),
+        })
+      )
+
+      await Promise.all(updatePromises)
+
+      const deletedParticipant = participants.find(p => p._id === participantId)
+      toast.success(
+        `✅ ${deletedParticipant?.name || 'Peserta'} dihapus. Iuran disesuaikan menjadi ${formatCurrency(newSplitAmount)}/orang untuk ${remainingContributors.length} peserta`,
+        { duration: 5000 }
+      )
+      fetchData()
     } catch (error) {
       toast.error('Gagal menghapus iuran')
     }
@@ -855,27 +974,86 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                               </div>
                             </div>
 
+                            {/* Auto-distribute toggle */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <label className="flex items-center space-x-3 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={autoDistribute}
+                                  onChange={(e) => setAutoDistribute(e.target.checked)}
+                                  className="w-4 h-4 rounded text-primary-600"
+                                />
+                                <div className="flex-1">
+                                  <span className="text-sm font-medium text-gray-900">
+                                    🔄 Distribusi Otomatis
+                                  </span>
+                                  <p className="text-xs text-gray-600 mt-0.5">
+                                    {autoDistribute 
+                                      ? `Iuran akan dibagi merata ke semua peserta (${expense.contributors?.length || 0} existing + ${selectedParticipants.length} baru = ${(expense.contributors?.length || 0) + selectedParticipants.length} total)`
+                                      : 'Gunakan nominal manual tanpa mengubah iuran peserta lain'}
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+
+                            {/* Nominal input - show calculation based on auto-distribute */}
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Nominal Iuran per Orang <span className="text-red-500">*</span>
+                                {autoDistribute ? (
+                                  <>Nominal per Orang <span className="text-green-600">(Otomatis)</span></>
+                                ) : (
+                                  <>Nominal Iuran per Orang <span className="text-red-500">*</span></>
+                                )}
                               </label>
-                              <div className="relative">
-                                <span className="absolute left-4 top-3 text-gray-500 font-medium">
-                                  Rp
-                                </span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={splitAmount}
-                                  onChange={(e) => setSplitAmount(Number(e.target.value))}
-                                  className="w-full pl-14 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                                  placeholder="0"
-                                />
-                              </div>
-                              {selectedParticipants.length > 0 && splitAmount > 0 && (
-                                <p className="text-sm text-gray-600 mt-2">
-                                  Total: {formatCurrency(splitAmount * selectedParticipants.length)}
-                                </p>
+                              {autoDistribute ? (
+                                <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-xs text-green-700">Total Expense</p>
+                                      <p className="font-bold text-lg text-green-900">{formatCurrency(expense.total)}</p>
+                                    </div>
+                                    <div className="text-2xl text-green-600">÷</div>
+                                    <div>
+                                      <p className="text-xs text-green-700">Total Peserta</p>
+                                      <p className="font-bold text-lg text-green-900">
+                                        {(expense.contributors?.length || 0) + selectedParticipants.length}
+                                      </p>
+                                    </div>
+                                    <div className="text-2xl text-green-600">=</div>
+                                    <div>
+                                      <p className="text-xs text-green-700">Per Orang</p>
+                                      <p className="font-bold text-lg text-green-900">
+                                        {formatCurrency(
+                                          Math.round((expense.total / ((expense.contributors?.length || 0) + selectedParticipants.length)) / 100) * 100
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-green-700 mt-2">
+                                    ✅ Semua peserta (lama & baru) akan diupdate dengan nominal yang sama
+                                  </p>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="relative">
+                                    <span className="absolute left-4 top-3 text-gray-500 font-medium">
+                                      Rp
+                                    </span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={splitAmount}
+                                      onChange={(e) => setSplitAmount(Number(e.target.value))}
+                                      className="w-full pl-14 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                  {selectedParticipants.length > 0 && splitAmount > 0 && (
+                                    <p className="text-sm text-gray-600 mt-2">
+                                      Total untuk {selectedParticipants.length} peserta baru: {formatCurrency(splitAmount * selectedParticipants.length)}
+                                    </p>
+                                  )}
+                                </>
                               )}
                             </div>
 
