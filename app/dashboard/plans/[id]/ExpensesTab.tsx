@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, DollarSign, Users, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, DollarSign, Users, X, ChevronDown, ChevronUp, Edit2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Participant {
@@ -47,6 +47,8 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [expandedExpense, setExpandedExpense] = useState<string | null>(null)
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
+  const [editingExpenseData, setEditingExpenseData] = useState<Partial<Expense>>({})
   const [selectedExpenseId, setSelectedExpenseId] = useState<string>('')
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [splitAmount, setSplitAmount] = useState(0)
@@ -273,6 +275,44 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       }
     } catch (error) {
       toast.error('Gagal menghapus pengeluaran')
+    }
+  }
+
+  const updateExpense = async (id: string) => {
+    if (!id) return
+    try {
+      const body: any = {
+        _id: id,
+        itemName: editingExpenseData.itemName,
+        collectorId: editingExpenseData.collectorId,
+      }
+
+      // If user edited total directly, set price=total and quantity=1 to keep data consistent
+      if (typeof editingExpenseData.total === 'number' && editingExpenseData.total > 0) {
+        body.total = editingExpenseData.total
+        body.price = editingExpenseData.total
+        body.quantity = 1
+      }
+
+      const res = await fetch('/api/expenses', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      })
+
+      if (res.ok) {
+        toast.success('Pengeluaran berhasil diupdate')
+        setEditingExpenseId(null)
+        setEditingExpenseData({})
+        fetchData()
+      } else {
+        const errorData = await res.json()
+        toast.error(errorData.details || 'Gagal mengupdate pengeluaran')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Gagal mengupdate pengeluaran')
     }
   }
 
@@ -633,26 +673,37 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">{formatCurrency(expense.total)}</p>
-                        <p className="text-xs text-gray-500">
-                          {expense.price} x {expense.quantity}
-                        </p>
+                        <div className="text-xs text-gray-500 flex items-center justify-end gap-2">
+                          <span className="pr-2 border-r border-gray-200">{formatCurrency(expense.price)}</span>
+                          <span className="pl-2">× {expense.quantity}</span>
+                        </div>
                       </div>
-                      <button
-                        onClick={() =>
-                          setExpandedExpense(expandedExpense === expense._id ? null : (expense._id || ''))
-                        }
-                        className="ml-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
-                      >
-                        <Users className="w-4 h-4" />
-                        <span>
-                          {expense.contributorCount || 0} peserta
-                        </span>
-                        {expandedExpense === expense._id ? (
-                          <ChevronUp className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        )}
-                      </button>
+                      <div className="flex items-center space-x-2 ml-4">
+                        <button
+                          onClick={() => setEditingExpenseId(editingExpenseId === expense._id ? null : (expense._id ?? null))}
+                          className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg"
+                          aria-label="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            setExpandedExpense(expandedExpense === expense._id ? null : (expense._id || ''))
+                          }
+                          className="ml-0 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
+                        >
+                          <Users className="w-4 h-4" />
+                          <span>
+                            {expense.contributorCount || 0} peserta
+                          </span>
+                          {expandedExpense === expense._id ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <button
                       onClick={() => deleteExpense(expense._id!)}
@@ -803,6 +854,59 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                       )}
                     </div>
                   )}
+
+                  {/* Inline Edit Form for Desktop */}
+                  {editingExpenseId === expense._id && (
+                    <div className="border-t border-gray-200 bg-white p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700">Nama Item</label>
+                          <input
+                            type="text"
+                            value={editingExpenseData.itemName ?? expense.itemName}
+                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, itemName: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          />
+                          <label className="block text-sm font-medium text-gray-700 mt-2">Pengumpul</label>
+                          <select
+                            value={editingExpenseData.collectorId ?? expense.collectorId ?? ''}
+                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, collectorId: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          >
+                            <option value="">-- Pilih Pengumpul --</option>
+                            {participants.map(p => (
+                              <option key={p._id} value={p._id}>{p.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Total (Rp)</label>
+                          <input
+                            type="number"
+                            value={(editingExpenseData.total ?? expense.total) as any}
+                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, total: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end space-x-2 mt-4">
+                        <button
+                          onClick={() => { setEditingExpenseId(null); setEditingExpenseData({}) }}
+                          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          onClick={() => updateExpense(expense._id!)}
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg"
+                        >
+                          Simpan
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Mobile View */}
@@ -822,28 +926,79 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                         </p>
                       )}
                     </div>
-                    <button
-                      onClick={() => deleteExpense(expense._id!)}
-                      className="p-2 text-red-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setEditingExpenseId(editingExpenseId === expense._id ? null : (expense._id ?? null))}
+                        className="p-2 text-primary-600"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => deleteExpense(expense._id!)}
+                        className="p-2 text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-sm bg-gray-50 p-3 rounded">
-                    <div>
+                  <div className="grid grid-cols-3 gap-2 text-sm bg-gray-50 p-3 rounded divide-x divide-gray-200">
+                    <div className="px-2">
                       <span className="text-gray-500 text-xs">Harga</span>
                       <p className="font-medium">{formatCurrency(expense.price)}</p>
                     </div>
-                    <div>
+                    <div className="px-2 text-center">
                       <span className="text-gray-500 text-xs">QTY</span>
                       <p className="font-medium">{expense.quantity}</p>
                     </div>
-                    <div>
+                    <div className="px-2 text-right">
                       <span className="text-gray-500 text-xs">Total</span>
                       <p className="font-bold">{formatCurrency(expense.total)}</p>
                     </div>
                   </div>
+
+                  {/* Mobile Inline Edit */}
+                  {editingExpenseId === expense._id && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-700">Nama Item</label>
+                        <input
+                          type="text"
+                          value={editingExpenseData.itemName ?? expense.itemName}
+                          onChange={(e) => setEditingExpenseData({ ...editingExpenseData, itemName: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-700">Pengumpul</label>
+                        <select
+                          value={editingExpenseData.collectorId ?? expense.collectorId ?? ''}
+                          onChange={(e) => setEditingExpenseData({ ...editingExpenseData, collectorId: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="">-- Pilih Pengumpul --</option>
+                          {participants.map(p => (
+                            <option key={p._id} value={p._id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-700">Total (Rp)</label>
+                        <input
+                          type="number"
+                          value={(editingExpenseData.total ?? expense.total) as any}
+                          onChange={(e) => setEditingExpenseData({ ...editingExpenseData, total: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+
+                      <div className="flex justify-end space-x-2">
+                        <button onClick={() => { setEditingExpenseId(null); setEditingExpenseData({}) }} className="px-3 py-2 border border-gray-300 rounded text-sm">Batal</button>
+                        <button onClick={() => updateExpense(expense._id!)} className="px-3 py-2 bg-primary-600 text-white rounded text-sm">Simpan</button>
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     onClick={() =>
