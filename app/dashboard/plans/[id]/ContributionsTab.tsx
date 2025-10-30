@@ -35,6 +35,7 @@ interface ParticipantContribution {
   totalRemaining: number
   maxPay?: number // batas maksimal bayar (jika ada)
   overpaid?: number // kelebihan bayar (jika ada)
+  share?: number // untuk perhitungan frontend
 }
 
 interface ContributionGroup {
@@ -58,6 +59,8 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   const [expandedExpense, setExpandedExpense] = useState<string | null>(null)
   const [editingContribution, setEditingContribution] = useState<string | null>(null)
   const [editAmount, setEditAmount] = useState(0)
+  const [editingMaxPay, setEditingMaxPay] = useState<string | null>(null)
+  const [editMaxPayValue, setEditMaxPayValue] = useState<number | null>(null)
   
   // Bulk actions state
   const [selectedContributions, setSelectedContributions] = useState<string[]>([])
@@ -141,13 +144,13 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     if (selectedContributions.length === contributions.length) {
       setSelectedContributions([])
     } else {
-      setSelectedContributions(contributions.map(c => c._id!))
+  setSelectedContributions(contributions.map((c: Contribution) => c._id!))
     }
   }
 
   const toggleSelectContribution = (id: string) => {
     if (selectedContributions.includes(id)) {
-      setSelectedContributions(selectedContributions.filter(cid => cid !== id))
+  setSelectedContributions(selectedContributions.filter((cid: string) => cid !== id))
     } else {
       setSelectedContributions([...selectedContributions, id])
     }
@@ -162,8 +165,8 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     if (!confirm(`Tandai ${selectedContributions.length} iuran sebagai lunas?`)) return
 
     try {
-      const promises = selectedContributions.map(id => {
-        const contribution = contributions.find(c => c._id === id)
+      const promises = selectedContributions.map((id: string) => {
+        const contribution = contributions.find((c: Contribution) => c._id === id)
         if (!contribution) return Promise.resolve()
         
         return fetch('/api/contributions', {
@@ -195,7 +198,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     if (!confirm(`Reset ${selectedContributions.length} iuran menjadi belum bayar?`)) return
 
     try {
-      const promises = selectedContributions.map(id =>
+      const promises = selectedContributions.map((id: string) =>
         fetch('/api/contributions', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -228,7 +231,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     }
 
     try {
-      const promises = selectedContributions.map(id =>
+      const promises = selectedContributions.map((id: string) =>
         fetch('/api/contributions', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -256,21 +259,21 @@ export default function ContributionsTab({ planId }: { planId: string }) {
 
     try {
       // Get expense data
-      const expense = expenseItems.find(e => e._id === expenseId)
+  const expense = expenseItems.find((e: ExpenseItem) => e._id === expenseId)
       if (!expense || !expense.total) {
         toast.error('Expense tidak ditemukan')
         return
       }
 
       // Get all contributions for this expense
-      const expenseContributions = contributions.filter(c => {
+  const expenseContributions = contributions.filter((c: Contribution) => {
         const cExpenseId = typeof c.expenseItemId === 'object' 
           ? (c.expenseItemId as any)?._id 
           : c.expenseItemId
         return cExpenseId === expenseId
       })
 
-      const remainingContributors = expenseContributions.filter(c => {
+  const remainingContributors = expenseContributions.filter((c: Contribution) => {
         const cParticipantId = typeof c.participantId === 'object'
           ? (c.participantId as any)?._id
           : c.participantId
@@ -313,7 +316,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       }
 
       // Update all remaining contributions with new amount
-      const updatePromises = remainingContributors.map(c => 
+      const updatePromises = remainingContributors.map((c: Contribution) => 
         fetch('/api/contributions', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -348,7 +351,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   // Calculate DP info for an expense group
   const getExpensesDPInfo = (expenseIds: string[]) => {
     const expensesWithDP = expenseIds
-      .map(id => expenseItems.find(e => e._id === id))
+      .map(id => expenseItems.find((e: ExpenseItem) => e._id === id))
       .filter(e => e && e.downPayment && e.downPayment > 0 && e.total)
       .map(e => ({
         expenseId: e!._id,
@@ -373,9 +376,9 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   const groupedContributions: ContributionGroup[] = (() => {
     const collectorMap = new Map<string, ContributionGroup>()
 
-    expenseItems.forEach(expense => {
+  expenseItems.forEach((expense: ExpenseItem) => {
       const collectorId = expense.collectorId || 'unknown'
-      const collectorName = participants.find(p => p._id === collectorId)?.name || 'Unknown'
+  const collectorName = participants.find((p: Participant) => p._id === collectorId)?.name || 'Unknown'
 
       if (!collectorMap.has(collectorId)) {
         collectorMap.set(collectorId, {
@@ -398,7 +401,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       })
 
       // Get contributions for this expense
-      const expenseContributions = contributions.filter(c => {
+  const expenseContributions = contributions.filter((c: Contribution) => {
         const contributionExpenseId = typeof c.expenseItemId === 'object'
           ? (c.expenseItemId as any)?._id
           : c.expenseItemId
@@ -406,17 +409,17 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       })
 
       // Group by participant within this expense
-      expenseContributions.forEach(contribution => {
+  expenseContributions.forEach((contribution: Contribution) => {
         const participantId = typeof contribution.participantId === 'object'
           ? (contribution.participantId as any)?._id
           : contribution.participantId
 
         const participantName = typeof contribution.participantId === 'object'
           ? (contribution.participantId as any)?.name
-          : participants.find(p => p._id === participantId)?.name || 'Unknown'
+          : participants.find((p: Participant) => p._id === participantId)?.name || 'Unknown'
 
         // Find or create participant entry
-        let participant = group.participants.find(p => p.participantId === participantId)
+  let participant = group.participants.find((p: ParticipantContribution) => p.participantId === participantId)
         if (!participant) {
           participant = {
             participantId,
@@ -482,16 +485,16 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                   const allIds: string[] = [];
                   groupedContributions.forEach(group => {
                     group.participants.forEach(p => {
-                      contributions.filter(c => {
+                      contributions.filter((c: Contribution) => {
                         const participantId = typeof c.participantId === 'object' ? (c.participantId as any)?._id : c.participantId;
                         return participantId === p.participantId;
-                      }).forEach(c => allIds.push(c._id!));
+                      }).forEach((c: Contribution) => allIds.push(c._id!));
                     });
                   });
                   const allSelected = allIds.every(id => selectedContributions.includes(id));
                   if (allSelected) {
                     // Unselect all
-                    setSelectedContributions(selectedContributions.filter(id => !allIds.includes(id)));
+                    setSelectedContributions(selectedContributions.filter((id: string) => !allIds.includes(id)));
                   } else {
                     // Select all
                     setSelectedContributions(Array.from(new Set([...selectedContributions, ...allIds])));
@@ -503,10 +506,10 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                   const allIds: string[] = [];
                   groupedContributions.forEach(group => {
                     group.participants.forEach(p => {
-                      contributions.filter(c => {
+                      contributions.filter((c: Contribution) => {
                         const participantId = typeof c.participantId === 'object' ? (c.participantId as any)?._id : c.participantId;
                         return participantId === p.participantId;
-                      }).forEach(c => allIds.push(c._id!));
+                      }).forEach((c: Contribution) => allIds.push(c._id!));
                     });
                   });
                   const allSelected = allIds.length > 0 && allIds.every(id => selectedContributions.includes(id));
@@ -575,9 +578,59 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
                               {participant.expenseNames.join(', ')}
                             </p>
-                            {/* Badge max bayar */}
-                            {typeof participant.maxPay === 'number' && (
-                              <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-semibold mr-1">Max Bayar: {formatCurrency(participant.maxPay)}</span>
+                            {/* Badge max bayar + tombol edit */}
+                            <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-semibold mr-1">
+                              Max Bayar: {typeof participant.maxPay === 'number' ? formatCurrency(participant.maxPay) : '-'}
+                              <button
+                                className="ml-2 text-blue-700 underline hover:text-blue-900 text-xs font-normal"
+                                onClick={() => {
+                                  setEditingMaxPay(participant.participantId)
+                                  setEditMaxPayValue(typeof participant.maxPay === 'number' ? participant.maxPay : null)
+                                }}
+                                title="Edit Max Bayar"
+                              >
+                                Edit
+                              </button>
+                            </span>
+                            {/* Input edit max bayar */}
+                            {editingMaxPay === participant.participantId && (
+                              <div className="mt-2 flex gap-2 items-center">
+                                <input
+                                  type="number"
+                                  className="border border-blue-300 rounded px-2 py-1 text-xs w-28"
+                                  value={editMaxPayValue ?? ''}
+                                  min={0}
+                                  placeholder="Max bayar (Rp)"
+                                  onChange={e => setEditMaxPayValue(e.target.value === '' ? null : Number(e.target.value))}
+                                />
+                                <button
+                                  className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
+                                  onClick={async () => {
+                                    // Cari satu contribution id milik peserta ini
+                                    const c = contributions.find(c => {
+                                      const pid = typeof c.participantId === 'object' ? (c.participantId as any)?._id : c.participantId
+                                      return pid === participant.participantId
+                                    })
+                                    if (!c) return toast.error('Data tidak ditemukan')
+                                    await fetch('/api/contributions', {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      credentials: 'include',
+                                      body: JSON.stringify({
+                                        _id: c._id,
+                                        maxPay: editMaxPayValue,
+                                      }),
+                                    })
+                                    toast.success('Max bayar diupdate')
+                                    setEditingMaxPay(null)
+                                    fetchData()
+                                  }}
+                                >Simpan</button>
+                                <button
+                                  className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs"
+                                  onClick={() => setEditingMaxPay(null)}
+                                >Batal</button>
+                              </div>
                             )}
                             {/* Badge kelebihan bayar */}
                             {participant.overpaid && participant.overpaid > 0 && (

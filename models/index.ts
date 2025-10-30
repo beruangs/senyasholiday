@@ -66,6 +66,7 @@ const contributionSchema = new Schema({
   amount: { type: Number, required: true },
   isPaid: { type: Boolean, default: false },
   paid: { type: Number, default: 0 }, // Amount that has been paid (for partial payments)
+  maxPay: { type: Number, default: null }, // Batas maksimal bayar (optional)
   paidAt: Date,
   paymentMethod: { type: String, enum: ['manual', 'midtrans'], default: 'manual' }, // Payment method
   midtransOrderId: String, // Midtrans order ID
