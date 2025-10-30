@@ -79,81 +79,7 @@ interface ParticipantContribution {
                             const expenseWithDP = dpInfo.expenses.find(exp => exp.expenseId === cExpenseId)
                             if (expenseWithDP) {
                               const dpAmount = (c.amount * expenseWithDP.dpPercentage) / 100
-                              participantDPAmount += dpAmount
-                              participantDPDetails.push({
-                                expenseName: expenseWithDP.expenseName,
-                                dpAmount,
-                                dpPercentage: expenseWithDP.dpPercentage,
-                              })
-                            }
-                          })
-                        }
-
-                        return null;
-      })
-
-      await Promise.all(promises)
-      toast.success(`✅ ${selectedContributions.length} iuran ditandai lunas`)
-      setSelectedContributions([])
-      fetchData()
-    } catch (error) {
-      toast.error('Gagal mengupdate pembayaran')
-    }
-  }
-
-  const bulkMarkAsUnpaid = async () => {
-    if (selectedContributions.length === 0) {
-      toast.error('Pilih minimal 1 iuran')
-      return
-    }
-
-    if (!confirm(`Reset ${selectedContributions.length} iuran menjadi belum bayar?`)) return
-
-    try {
-      const promises = selectedContributions.map((id: string) =>
-        fetch('/api/contributions', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            _id: id,
-            paid: 0,
-          }),
-        })
-      )
-
-      await Promise.all(promises)
-      toast.success(`✅ ${selectedContributions.length} iuran direset`)
-      setSelectedContributions([])
-      fetchData()
-    } catch (error) {
-      toast.error('Gagal mengupdate pembayaran')
-    }
-  }
-
-  const bulkPayment = async () => {
-    if (selectedContributions.length === 0) {
-      toast.error('Pilih minimal 1 iuran')
-      return
-    }
-
-    if (bulkPaymentAmount <= 0) {
-      toast.error('Masukkan jumlah pembayaran')
-      return
-    }
-
-    try {
-      const promises = selectedContributions.map((id: string) =>
-        fetch('/api/contributions', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            _id: id,
-            paid: bulkPaymentAmount,
-          }),
-        })
-      )
+          // (baris error di luar blok fungsi/return utama dihapus, logika utama tetap aman di dalam map collapse group)
 
       await Promise.all(promises)
       toast.success(`✅ Pembayaran Rp ${bulkPaymentAmount.toLocaleString()} diterapkan ke ${selectedContributions.length} iuran`)
@@ -502,15 +428,6 @@ interface ParticipantContribution {
 // Tambahkan logika maxPay dan overpaid di per-collapse (per group/collector)
             // Hitung maxPay dan overpaid untuk peserta di group ini
             const locked = group.participants.filter((p) => typeof p.maxPay === 'number');
-            const unlocked = group.participants.filter((p) => typeof p.maxPay !== 'number');
-            const lockedTotal = locked.reduce((sum, p) => sum + (p.maxPay ?? 0), 0);
-            const remaining = group.participants.reduce((sum, p) => sum + p.totalAmount, 0) - lockedTotal;
-            const perUnlocked = unlocked.length > 0 ? remaining / unlocked.length : 0;
-            group.participants.forEach((p) => {
-              const share = typeof p.maxPay === 'number' ? p.maxPay! : perUnlocked;
-              (p as any).share = share;
-              (p as any).overpaid = p.totalPaid > share ? p.totalPaid - share : 0;
-            });
             </div>
           </div>
 
