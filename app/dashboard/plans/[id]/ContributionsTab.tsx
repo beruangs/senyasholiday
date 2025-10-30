@@ -103,75 +103,81 @@ export default function ContributionsTab({ planId }: { planId: string }) {
         setExpenseItems(expensesData)
       }
 
-      if (contributionsRes.ok) {
-        contributionsData = await contributionsRes.json()
-        console.log('Contributions loaded:', contributionsData.length)
-        console.log('Sample contribution:', contributionsData[0])
-        setContributions(contributionsData)
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error)
-      toast.error('Gagal memuat data')
-    } finally {
-      setLoading(false)
-    }
-  }
+                    {group.participants
+                      .sort((a, b) => {
+                        const getStatus = (p: ParticipantContribution) => {
+                          if (p.totalPaid === 0) return 0
+                          if (p.totalPaid < p.totalAmount) return 1
+                          return 2
+                        }
+                        return getStatus(a) - getStatus(b)
+                      })
+                      .map(participant => {
+                        // Perhitungan maxPay dan overpaid untuk peserta ini (khusus per-collapse)
+                        const locked = group.participants.filter((p) => typeof p.maxPay === 'number');
+                        const unlocked = group.participants.filter((p) => typeof p.maxPay !== 'number');
+                        const lockedTotal = locked.reduce((sum, p) => sum + (p.maxPay ?? 0), 0);
+                        const remaining = group.participants.reduce((sum, p) => sum + p.totalAmount, 0) - lockedTotal;
+                        const perUnlocked = unlocked.length > 0 ? remaining / unlocked.length : 0;
+                        const share = typeof participant.maxPay === 'number' ? participant.maxPay : perUnlocked;
+                        const overpaid = participant.totalPaid > share ? participant.totalPaid - share : 0;
 
-  const updatePayment = async (contributionId: string, newPaid: number) => {
-    try {
-      const res = await fetch('/api/contributions', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          _id: contributionId,
-          paid: newPaid,
-        }),
-      })
+                        const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= share ? 'Lunas' : 'Sebagian';
+                        const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+                        const percentage = Math.round((participant.totalPaid / share) * 100);
 
-      if (res.ok) {
-        toast.success('Pembayaran berhasil diupdate')
-        setEditingContribution(null)
-        fetchData()
-      }
-    } catch (error) {
-      toast.error('Gagal mengupdate pembayaran')
-    }
-  }
+                        // Get contribution IDs for this participant in this collector's expenses
+                        const participantContributionIds = contributions
+                          .filter((c: Contribution) => {
+                            const participantId = typeof c.participantId === 'object'
+                              ? (c.participantId as any)?._id
+                              : c.participantId
+                            const expenseItemId = typeof c.expenseItemId === 'object'
+                              ? (c.expenseItemId as any)?._id
+                              : c.expenseItemId
+                            // Check if this contribution belongs to this participant AND this collector's expenses
+                            return participantId === participant.participantId && 
+                                   group.expenses.some(exp => exp.expenseId === expenseItemId)
+                          })
+                          .map((c: Contribution) => c._id!)
 
-  // Bulk actions handlers
-  const toggleSelectAll = () => {
-    if (selectedContributions.length === contributions.length) {
-      setSelectedContributions([])
-    } else {
-  setSelectedContributions(contributions.map((c: Contribution) => c._id!))
-    }
-  }
+                        const isEditingThis = editingContribution === `${group.collectorId}-${participant.participantId}`
 
-  const toggleSelectContribution = (id: string) => {
-    if (selectedContributions.includes(id)) {
-  setSelectedContributions(selectedContributions.filter((cid: string) => cid !== id))
-    } else {
-      setSelectedContributions([...selectedContributions, id])
-    }
-  }
+                        // Calculate DP amount for this participant
+                        let participantDPAmount = 0
+                        let participantDPDetails: Array<{ expenseName: string; dpAmount: number; dpPercentage: number }> = []
+                        if (dpInfo) {
+                          // Get contributions for this participant that have DP
+                          const participantContributions = contributions.filter((c: Contribution) => {
+                            const cParticipantId = typeof c.participantId === 'object'
+                              ? (c.participantId as any)?._id
+                              : c.participantId
+                            const cExpenseId = typeof c.expenseItemId === 'object'
+                              ? (c.expenseItemId as any)?._id
+                              : c.expenseItemId
+                            // Check if contribution is for this participant and for an expense with DP
+                            return cParticipantId === participant.participantId &&
+                                   dpInfo.expenses.some(exp => exp.expenseId === cExpenseId)
+                          })
+                          // Calculate DP for each contribution
+                          participantContributions.forEach((c: Contribution) => {
+                            const cExpenseId = typeof c.expenseItemId === 'object'
+                              ? (c.expenseItemId as any)?._id
+                              : c.expenseItemId
+                            const expenseWithDP = dpInfo.expenses.find(exp => exp.expenseId === cExpenseId)
+                            if (expenseWithDP) {
+                              const dpAmount = (c.amount * expenseWithDP.dpPercentage) / 100
+                              participantDPAmount += dpAmount
+                              participantDPDetails.push({
+                                expenseName: expenseWithDP.expenseName,
+                                dpAmount,
+                                dpPercentage: expenseWithDP.dpPercentage,
+                              })
+                            }
+                          })
+                        }
 
-  const bulkMarkAsPaid = async () => {
-    if (selectedContributions.length === 0) {
-      toast.error('Pilih minimal 1 iuran')
-      return
-    }
-
-    if (!confirm(`Tandai ${selectedContributions.length} iuran sebagai lunas?`)) return
-
-    try {
-      const promises = selectedContributions.map((id: string) => {
-        const contribution = contributions.find((c: Contribution) => c._id === id)
-        if (!contribution) return Promise.resolve()
-        
-        return fetch('/api/contributions', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+                        return (
           credentials: 'include',
           body: JSON.stringify({
             _id: id,
@@ -542,32 +548,10 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                   }
                 })
 
-                // Kalkulasi ulang porsi iuran jika ada maxPay
-                const all = Array.from(participantMap.values());
-                const locked = all.filter(p => typeof p.maxPay === 'number');
-                const unlocked = all.filter(p => typeof p.maxPay !== 'number');
-                const lockedTotal = locked.reduce((sum, p) => sum + (p.maxPay ?? 0), 0);
-                const remaining = all.reduce((sum, p) => sum + p.totalAmount, 0) - lockedTotal;
-                const perUnlocked = unlocked.length > 0 ? remaining / unlocked.length : 0;
-                // Set share dan overpaid
-                all.forEach(p => {
-                  const share = typeof p.maxPay === 'number' ? p.maxPay! : perUnlocked;
-                  p.share = share;
-                  p.overpaid = p.totalPaid > share ? p.totalPaid - share : 0;
-                });
-                return all
-                  .sort((a, b) => {
-                    const getStatus = (p: ParticipantContribution) => {
-                      if (p.totalPaid === 0) return 0
-                      if (p.totalPaid < p.share!) return 1
-                      return 2
-                    }
-                    return getStatus(a) - getStatus(b)
-                  })
+                // Tidak perlu logika max bayar/kelebihan di total semua peserta
+                return Array.from(participantMap.values())
+                  .sort((a, b) => a.participantName.localeCompare(b.participantName))
                   .map(participant => {
-                    const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.share! ? 'Lunas' : 'Sebagian';
-                    const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
-                    // ...existing code...
                     return (
                       <div key={participant.participantId} className="px-4 py-3 hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between gap-3">
@@ -578,88 +562,30 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
                               {participant.expenseNames.join(', ')}
                             </p>
-                            {/* Badge max bayar + tombol edit */}
-                            <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-semibold mr-1">
-                              Max Bayar: {typeof participant.maxPay === 'number' ? formatCurrency(participant.maxPay) : '-'}
-                              <button
-                                className="ml-2 text-blue-700 underline hover:text-blue-900 text-xs font-normal"
-                                onClick={() => {
-                                  setEditingMaxPay(participant.participantId)
-                                  setEditMaxPayValue(typeof participant.maxPay === 'number' ? participant.maxPay : null)
-                                }}
-                                title="Edit Max Bayar"
-                              >
-                                Edit
-                              </button>
-                            </span>
-                            {/* Input edit max bayar */}
-                            {editingMaxPay === participant.participantId && (
-                              <div className="mt-2 flex gap-2 items-center">
-                                <input
-                                  type="number"
-                                  className="border border-blue-300 rounded px-2 py-1 text-xs w-28"
-                                  value={editMaxPayValue ?? ''}
-                                  min={0}
-                                  placeholder="Max bayar (Rp)"
-                                  onChange={e => setEditMaxPayValue(e.target.value === '' ? null : Number(e.target.value))}
-                                />
-                                <button
-                                  className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
-                                  onClick={async () => {
-                                    // Cari satu contribution id milik peserta ini
-                                    const c = contributions.find(c => {
-                                      const pid = typeof c.participantId === 'object' ? (c.participantId as any)?._id : c.participantId
-                                      return pid === participant.participantId
-                                    })
-                                    if (!c) return toast.error('Data tidak ditemukan')
-                                    await fetch('/api/contributions', {
-                                      method: 'PUT',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      credentials: 'include',
-                                      body: JSON.stringify({
-                                        _id: c._id,
-                                        maxPay: editMaxPayValue,
-                                      }),
-                                    })
-                                    toast.success('Max bayar diupdate')
-                                    setEditingMaxPay(null)
-                                    fetchData()
-                                  }}
-                                >Simpan</button>
-                                <button
-                                  className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs"
-                                  onClick={() => setEditingMaxPay(null)}
-                                >Batal</button>
-                              </div>
-                            )}
-                            {/* Badge kelebihan bayar */}
-                            {participant.overpaid && participant.overpaid > 0 && (
-                              <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-semibold">Kelebihan: {formatCurrency(participant.overpaid)}</span>
-                            )}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <div className="text-right">
                               <p className="font-semibold text-gray-900 text-sm">
-                                {formatCurrency(participant.share!)}
+                                {formatCurrency(participant.totalAmount)}
                               </p>
-                              {participant.totalPaid > 0 && participant.totalPaid < participant.share! && (
+                              {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
                                 <div className="space-y-0.5">
                                   <p className="text-xs text-green-600">
                                     {formatCurrency(participant.totalPaid)}
                                   </p>
                                   <p className="text-xs text-red-600 font-medium">
-                                    Kurang: {formatCurrency(participant.share! - participant.totalPaid)}
+                                    Kurang: {formatCurrency(participant.totalAmount - participant.totalPaid)}
                                   </p>
                                 </div>
                               )}
-                              {participant.totalPaid > 0 && participant.totalPaid >= participant.share! && (
+                              {participant.totalPaid > 0 && participant.totalPaid >= participant.totalAmount && (
                                 <p className="text-xs text-green-600">
                                   {formatCurrency(participant.totalPaid)}
                                 </p>
                               )}
                             </div>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
-                              {status}
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${participant.totalPaid === 0 ? 'bg-red-100 text-red-800' : participant.totalPaid < participant.totalAmount ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                              {participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.totalAmount ? 'Lunas' : 'Sebagian'}
                             </span>
                           </div>
                         </div>
@@ -667,6 +593,18 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                     )
                   })
               })()}
+// Tambahkan logika maxPay dan overpaid di per-collapse (per group/collector)
+            // Hitung maxPay dan overpaid untuk peserta di group ini
+            const locked = group.participants.filter((p) => typeof p.maxPay === 'number');
+            const unlocked = group.participants.filter((p) => typeof p.maxPay !== 'number');
+            const lockedTotal = locked.reduce((sum, p) => sum + (p.maxPay ?? 0), 0);
+            const remaining = group.participants.reduce((sum, p) => sum + p.totalAmount, 0) - lockedTotal;
+            const perUnlocked = unlocked.length > 0 ? remaining / unlocked.length : 0;
+            group.participants.forEach((p) => {
+              const share = typeof p.maxPay === 'number' ? p.maxPay! : perUnlocked;
+              (p as any).share = share;
+              (p as any).overpaid = p.totalPaid > share ? p.totalPaid - share : 0;
+            });
             </div>
           </div>
 
@@ -751,8 +689,11 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                         return getStatus(a) - getStatus(b)
                       })
                       .map(participant => {
-                        const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.totalAmount ? 'Lunas' : 'Sebagian'
-                        const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                        // Ambil share dan overpaid dari hasil perhitungan di atas
+                        const share = (participant as any).share;
+                        const overpaid = (participant as any).overpaid;
+                        const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= share ? 'Lunas' : 'Sebagian';
+                        const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
                         const percentage = Math.round((participant.totalPaid / participant.totalAmount) * 100)
 
                         // Get contribution IDs for this participant in this collector's expenses
@@ -829,19 +770,19 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 <div className="text-right">
                                   <p className="font-semibold text-gray-900 text-sm">
-                                    {formatCurrency(participant.totalAmount)}
+                                    {formatCurrency(share)}
                                   </p>
-                                  {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
+                                  {participant.totalPaid > 0 && participant.totalPaid < share && (
                                     <div className="space-y-0.5">
                                       <p className="text-xs text-green-600">
                                         Bayar: {formatCurrency(participant.totalPaid)}
                                       </p>
                                       <p className="text-xs text-red-600 font-medium">
-                                        Kurang: {formatCurrency(participant.totalAmount - participant.totalPaid)}
+                                        Kurang: {formatCurrency(share - participant.totalPaid)}
                                       </p>
                                     </div>
                                   )}
-                                  {participant.totalPaid > 0 && participant.totalPaid >= participant.totalAmount && (
+                                  {participant.totalPaid > 0 && participant.totalPaid >= share && (
                                     <p className="text-xs text-green-600">
                                       Bayar: {formatCurrency(participant.totalPaid)}
                                     </p>
@@ -850,6 +791,64 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
                                   {status}
                                 </span>
+                                {/* Badge max bayar */}
+                                {typeof participant.maxPay === 'number' && (
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-semibold mr-1">Max Bayar: {formatCurrency(participant.maxPay)}</span>
+                                )}
+                                {/* Badge kelebihan bayar */}
+                                {overpaid > 0 && (
+                                  <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-semibold">Kelebihan: {formatCurrency(overpaid)}</span>
+                                )}
+                                {/* Input edit max bayar */}
+                                <button
+                                  className="ml-2 text-blue-700 underline hover:text-blue-900 text-xs font-normal"
+                                  onClick={() => {
+                                    setEditingMaxPay(participant.participantId)
+                                    setEditMaxPayValue(typeof participant.maxPay === 'number' ? participant.maxPay : null)
+                                  }}
+                                  title="Edit Max Bayar"
+                                >
+                                  Edit Max Bayar
+                                </button>
+                                {editingMaxPay === participant.participantId && (
+                                  <div className="mt-2 flex gap-2 items-center">
+                                    <input
+                                      type="number"
+                                      className="border border-blue-300 rounded px-2 py-1 text-xs w-28"
+                                      value={editMaxPayValue ?? ''}
+                                      min={0}
+                                      placeholder="Max bayar (Rp)"
+                                      onChange={e => setEditMaxPayValue(e.target.value === '' ? null : Number(e.target.value))}
+                                    />
+                                    <button
+                                      className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
+                                      onClick={async () => {
+                                        // Cari satu contribution id milik peserta ini
+                                        const c = contributions.find((c: Contribution) => {
+                                          const pid = typeof c.participantId === 'object' ? (c.participantId as any)?._id : c.participantId
+                                          return pid === participant.participantId
+                                        })
+                                        if (!c) return toast.error('Data tidak ditemukan')
+                                        await fetch('/api/contributions', {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          credentials: 'include',
+                                          body: JSON.stringify({
+                                            _id: c._id,
+                                            maxPay: editMaxPayValue,
+                                          }),
+                                        })
+                                        toast.success('Max bayar diupdate')
+                                        setEditingMaxPay(null)
+                                        fetchData()
+                                      }}
+                                    >Simpan</button>
+                                    <button
+                                      className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs"
+                                      onClick={() => setEditingMaxPay(null)}
+                                    >Batal</button>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
