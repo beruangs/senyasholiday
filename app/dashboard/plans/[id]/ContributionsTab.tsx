@@ -177,13 +177,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                           })
                         }
 
-                        return (
-          credentials: 'include',
-          body: JSON.stringify({
-            _id: id,
-            paid: contribution.amount, // Mark as fully paid
-          }),
-        })
+                        return null;
       })
 
       await Promise.all(promises)
@@ -750,7 +744,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                           })
                         }
 
-                        return (
+                        // ...
                           <div key={participant.participantId} className="px-4 py-3">
                             <div className="flex items-center justify-between gap-3 mb-2">
                               <div className="flex-1 min-w-0">
@@ -923,7 +917,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                               </div>
                             )}
                           </div>
-                        )
+                        // ...existing code...
                       })}
                   </div>
                 )}
