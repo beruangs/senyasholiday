@@ -33,6 +33,8 @@ interface ParticipantContribution {
   totalAmount: number
   totalPaid: number
   totalRemaining: number
+  maxPay?: number // batas maksimal bayar (jika ada)
+  overpaid?: number // kelebihan bayar (jika ada)
 }
 
 interface ContributionGroup {
@@ -537,51 +539,32 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                   }
                 })
 
-                return Array.from(participantMap.values())
+                // Kalkulasi ulang porsi iuran jika ada maxPay
+                const all = Array.from(participantMap.values());
+                const locked = all.filter(p => typeof p.maxPay === 'number');
+                const unlocked = all.filter(p => typeof p.maxPay !== 'number');
+                const lockedTotal = locked.reduce((sum, p) => sum + (p.maxPay ?? 0), 0);
+                const remaining = all.reduce((sum, p) => sum + p.totalAmount, 0) - lockedTotal;
+                const perUnlocked = unlocked.length > 0 ? remaining / unlocked.length : 0;
+                // Set share dan overpaid
+                all.forEach(p => {
+                  const share = typeof p.maxPay === 'number' ? p.maxPay! : perUnlocked;
+                  p.share = share;
+                  p.overpaid = p.totalPaid > share ? p.totalPaid - share : 0;
+                });
+                return all
                   .sort((a, b) => {
                     const getStatus = (p: ParticipantContribution) => {
                       if (p.totalPaid === 0) return 0
-                      if (p.totalPaid < p.totalAmount) return 1
+                      if (p.totalPaid < p.share!) return 1
                       return 2
                     }
                     return getStatus(a) - getStatus(b)
                   })
                   .map(participant => {
-                    const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.totalAmount ? 'Lunas' : 'Sebagian'
-                    const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                    const percentage = Math.round((participant.totalPaid / participant.totalAmount) * 100)
-
-                    // Get all contribution IDs for this participant
-                    const participantContributionIds = contributions
-                      .filter(c => {
-                        const participantId = typeof c.participantId === 'object'
-                          ? (c.participantId as any)?._id
-                          : c.participantId
-                        return participantId === participant.participantId
-                      })
-                      .map(c => c._id!)
-
-                    const allSelected = participantContributionIds.every(id => selectedContributions.includes(id))
-
-                    // Calculate total DP for this participant across all expenses
-                    let participantTotalDP = 0
-                    contributions
-                      .filter(c => {
-                        const cParticipantId = typeof c.participantId === 'object'
-                          ? (c.participantId as any)?._id
-                          : c.participantId
-                        return cParticipantId === participant.participantId
-                      })
-                      .forEach(c => {
-                        const cExpenseId = typeof c.expenseItemId === 'object'
-                          ? (c.expenseItemId as any)?._id
-                          : c.expenseItemId
-                        const expense = expenseItems.find(e => e._id === cExpenseId)
-                        if (expense && expense.downPayment && expense.downPayment > 0) {
-                          participantTotalDP += (c.amount * expense.downPayment) / 100
-                        }
-                      })
-
+                    const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.share! ? 'Lunas' : 'Sebagian';
+                    const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+                    // ...existing code...
                     return (
                       <div key={participant.participantId} className="px-4 py-3 hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between gap-3">
@@ -592,28 +575,31 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
                               {participant.expenseNames.join(', ')}
                             </p>
-                            {participantTotalDP > 0 && (
-                              <p className="text-xs text-yellow-700 font-semibold mt-1 bg-yellow-50 inline-block px-1.5 py-0.5 rounded">
-                                💳 DP: {formatCurrency(participantTotalDP)}
-                              </p>
+                            {/* Badge max bayar */}
+                            {typeof participant.maxPay === 'number' && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-semibold mr-1">Max Bayar: {formatCurrency(participant.maxPay)}</span>
+                            )}
+                            {/* Badge kelebihan bayar */}
+                            {participant.overpaid && participant.overpaid > 0 && (
+                              <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-semibold">Kelebihan: {formatCurrency(participant.overpaid)}</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <div className="text-right">
                               <p className="font-semibold text-gray-900 text-sm">
-                                {formatCurrency(participant.totalAmount)}
+                                {formatCurrency(participant.share!)}
                               </p>
-                              {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
+                              {participant.totalPaid > 0 && participant.totalPaid < participant.share! && (
                                 <div className="space-y-0.5">
                                   <p className="text-xs text-green-600">
                                     {formatCurrency(participant.totalPaid)}
                                   </p>
                                   <p className="text-xs text-red-600 font-medium">
-                                    Kurang: {formatCurrency(participant.totalAmount - participant.totalPaid)}
+                                    Kurang: {formatCurrency(participant.share! - participant.totalPaid)}
                                   </p>
                                 </div>
                               )}
-                              {participant.totalPaid > 0 && participant.totalPaid >= participant.totalAmount && (
+                              {participant.totalPaid > 0 && participant.totalPaid >= participant.share! && (
                                 <p className="text-xs text-green-600">
                                   {formatCurrency(participant.totalPaid)}
                                 </p>
