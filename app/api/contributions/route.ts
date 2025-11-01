@@ -12,7 +12,13 @@ export async function GET(req: NextRequest) {
     await dbConnect()
     const contributions = await Contribution.find({ holidayPlanId: planId })
       .populate('participantId')
-      .populate('expenseItemId')
+      .populate({
+        path: 'expenseItemId',
+        populate: {
+          path: 'collectorId',
+          model: 'Participant'
+        }
+      })
       .lean()
 
     return NextResponse.json(contributions)

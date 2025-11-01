@@ -9,16 +9,20 @@ interface Participant {
   name: string
 }
 
+interface ExpenseItem {
+  _id: string
+  itemName: string
+  collectorId?: Participant | string // Bisa object Participant (populated) atau string ID
+}
+
 interface Contribution {
   _id?: string
   participantId: string
+  expenseItemId?: ExpenseItem | string // Bisa object ExpenseItem (populated) atau string ID
   amount: number
   isPaid: boolean
   paid?: number // jumlah yang sudah dibayar
   maxPay?: number // batas maksimal bayar per peserta
-  collectorId?: string // ID pengumpul
-  collectorName?: string // Nama pengumpul (misal: Abim, Wafi)
-  itemName?: string // Nama barang/pengeluaran (misal: Sewa Villa, Baileys, Bensin)
 }
 
 export default function ContributionsTab({ planId }: { planId: string }) {
@@ -164,6 +168,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     const groups = new Map<string, {
       collectorId: string
       collectorName: string
+      itemName: string
       contributions: Contribution[]
       stats: {
         totalShare: number
@@ -174,13 +179,29 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     }>()
 
     contribs.forEach(c => {
-      const collectorId = c.collectorId || 'no-collector'
-      const collectorName = c.collectorName || 'Tanpa Pengumpul'
+      // Extract collector info from populated expenseItemId
+      let collectorId = 'no-collector'
+      let collectorName = 'Tanpa Pengumpul'
+      let itemName = 'Item Tidak Diketahui'
+      
+      if (c.expenseItemId && typeof c.expenseItemId === 'object') {
+        const expenseItem = c.expenseItemId as ExpenseItem
+        itemName = expenseItem.itemName || 'Item Tidak Diketahui'
+        
+        if (expenseItem.collectorId && typeof expenseItem.collectorId === 'object') {
+          const collector = expenseItem.collectorId as Participant
+          collectorId = collector._id
+          collectorName = collector.name
+        } else if (expenseItem.collectorId) {
+          collectorId = expenseItem.collectorId as string
+        }
+      }
       
       if (!groups.has(collectorId)) {
         groups.set(collectorId, {
           collectorId,
           collectorName,
+          itemName,
           contributions: [],
           stats: {
             totalShare: 0,
@@ -244,6 +265,9 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                   <span className="text-2xl">👤</span>
                   <div>
                     <h3 className="font-bold text-primary-900 text-lg">{collectorGroup.collectorName}</h3>
+                    <p className="text-sm text-primary-700 font-medium">
+                      📦 {collectorGroup.itemName}
+                    </p>
                     <p className="text-xs text-primary-600">
                       {collectorGroup.contributions.length} peserta
                     </p>
