@@ -60,7 +60,12 @@ export async function PUT(req: NextRequest) {
 
     await dbConnect()
     const body = await req.json()
-    const { _id, ...updateData } = body
+    const { _id, maxPay, ...updateData } = body
+
+    // Jika maxPay dikirim, update juga field maxPay
+    if (typeof maxPay !== 'undefined') {
+      updateData.maxPay = maxPay
+    }
 
     const contribution = await Contribution.findByIdAndUpdate(_id, updateData, { new: true })
     return NextResponse.json(contribution)
