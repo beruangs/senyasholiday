@@ -169,6 +169,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       collectorId: string
       collectorName: string
       itemName: string
+      expenseItemId: string
       contributions: Contribution[]
       stats: {
         totalShare: number
@@ -183,10 +184,12 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       let collectorId = 'no-collector'
       let collectorName = 'Tanpa Pengumpul'
       let itemName = 'Item Tidak Diketahui'
+      let expenseItemId = ''
       
       if (c.expenseItemId && typeof c.expenseItemId === 'object') {
         const expenseItem = c.expenseItemId as ExpenseItem
         itemName = expenseItem.itemName || 'Item Tidak Diketahui'
+        expenseItemId = expenseItem._id
         
         if (expenseItem.collectorId && typeof expenseItem.collectorId === 'object') {
           const collector = expenseItem.collectorId as Participant
@@ -197,11 +200,15 @@ export default function ContributionsTab({ planId }: { planId: string }) {
         }
       }
       
-      if (!groups.has(collectorId)) {
-        groups.set(collectorId, {
+      // Gunakan expenseItemId sebagai key utama untuk grouping yang lebih akurat
+      const groupKey = expenseItemId || collectorId
+      
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
           collectorId,
           collectorName,
           itemName,
+          expenseItemId,
           contributions: [],
           stats: {
             totalShare: 0,
@@ -212,7 +219,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
         })
       }
 
-      const group = groups.get(collectorId)!
+      const group = groups.get(groupKey)!
       group.contributions.push(c)
       
       // Calculate stats for this contribution
@@ -227,6 +234,15 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   }
 
   const contributionsByCollector = groupByCollector(contributions)
+
+  console.log('=== DEBUG ContributionsTab ===')
+  console.log('Total contributions:', contributions.length)
+  console.log('Total participants:', participants.length)
+  console.log('Groups by collector:', contributionsByCollector.length)
+  console.log('Contributions data sample:', contributions[0])
+  contributionsByCollector.forEach(group => {
+    console.log(`Collector: ${group.collectorName}, Item: ${group.itemName}, Contributions: ${group.contributions.length}`)
+  })
 
   // Hitung total keseluruhan
   const grandTotal = contributions.reduce((sum: number, c: Contribution) => sum + c.amount, 0)
@@ -324,7 +340,15 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {collectorGroup.contributions.map((contribution, index) => {
+                    {collectorGroup.contributions.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                          <p>Tidak ada data kontribusi untuk pengumpul ini.</p>
+                          <p className="text-sm mt-1">Silakan tambahkan dari tab Keuangan.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      collectorGroup.contributions.map((contribution, index) => {
                         const participant = participants.find(p => p._id === contribution.participantId)
                         if (!participant) return null
                         
@@ -460,7 +484,8 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                             </td>
                           </tr>
                         )
-                      })}
+                      })
+                    )}
                       {/* Total per collector */}
                       <tr className="bg-gray-50 font-semibold border-t-2 border-gray-300">
                         <td colSpan={2} className="px-6 py-3 text-gray-900">
@@ -502,7 +527,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                 <p className="text-primary-100 text-sm mb-1">Total Iuran Keseluruhan</p>
                 <p className="text-3xl font-bold">{formatCurrency(grandTotal)}</p>
                 <p className="text-xs text-primary-200 mt-1">
-                  {contributionsByCollector.length} pengumpul
+                  {contributionsByCollector.length} pengumpul • {contributions.length} iuran
                 </p>
               </div>
               <div className="text-right">
@@ -510,15 +535,20 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                 <p className="text-2xl font-semibold">
                   {formatCurrency(participants.length > 0 ? grandTotal / participants.length : 0)}
                 </p>
-                <div className="flex gap-2 mt-2 justify-end">
+                <div className="flex gap-2 mt-2 justify-end flex-wrap">
                   {totalStats.totalKurang > 0 && (
-                    <span className="text-xs px-2 py-1 bg-red-500 rounded-full">
+                    <span className="text-xs px-3 py-1 bg-red-500 rounded-full font-medium">
                       Kurang: {formatCurrency(totalStats.totalKurang)}
                     </span>
                   )}
                   {totalStats.totalLebih > 0 && (
-                    <span className="text-xs px-2 py-1 bg-green-500 rounded-full">
+                    <span className="text-xs px-3 py-1 bg-green-500 rounded-full font-medium">
                       Lebih: {formatCurrency(totalStats.totalLebih)}
+                    </span>
+                  )}
+                  {totalStats.totalPaid > 0 && (
+                    <span className="text-xs px-3 py-1 bg-white bg-opacity-20 rounded-full font-medium">
+                      Terbayar: {formatCurrency(totalStats.totalPaid)}
                     </span>
                   )}
                 </div>
