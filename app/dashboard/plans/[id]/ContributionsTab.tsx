@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, X, DollarSign, ChevronDown, ChevronUp, Edit2, Save, Trash2 } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Participant {
@@ -9,329 +9,110 @@ interface Participant {
   name: string
 }
 
-interface ExpenseItem {
-  _id: string
-  itemName: string
-  collectorId?: string
-  downPayment?: number // percentage (0-100)
-  total?: number
-}
-
 interface Contribution {
   _id?: string
-  expenseItemId: string
   participantId: string
   amount: number
-  paid: number
   isPaid: boolean
-}
-
-interface ParticipantContribution {
-  participantId: string
-  participantName: string
-  expenseNames: string[]
-  totalAmount: number
-  totalPaid: number
-  totalRemaining: number
-}
-
-interface ContributionGroup {
-  collectorId: string
-  collectorName: string
-  expenses: Array<{
-    expenseId: string
-    expenseName: string
-  }>
-  participants: ParticipantContribution[]
-  totalAmount: number
-  totalPaid: number
-  totalRemaining: number
+  type: 'nominal' | 'bakaran'
 }
 
 export default function ContributionsTab({ planId }: { planId: string }) {
   const [participants, setParticipants] = useState<Participant[]>([])
-  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedExpense, setExpandedExpense] = useState<string | null>(null)
-  const [editingContribution, setEditingContribution] = useState<string | null>(null)
-  const [editAmount, setEditAmount] = useState(0)
-  
-  // Bulk actions state
-  const [selectedContributions, setSelectedContributions] = useState<string[]>([])
-  const [showBulkPaymentModal, setShowBulkPaymentModal] = useState(false)
-  const [bulkPaymentAmount, setBulkPaymentAmount] = useState(0)
+  const [nominalAmount, setNominalAmount] = useState(0)
+  const [bakaranAmount, setBalkaranAmount] = useState(0)
+  const [maxPay, setMaxPay] = useState<Record<string, number>>({})
+  const [nominalDistribusi, setNominalDistribusi] = useState<Record<string, number>>({})
 
   useEffect(() => {
     fetchData()
-    
-    // Auto-refresh every 10 seconds for real-time sync
-    const refreshInterval = setInterval(() => {
-      fetchData()
-    }, 10000) // 10 seconds
-
-    // Cleanup on unmount
-    return () => clearInterval(refreshInterval)
   }, [planId])
 
   const fetchData = async () => {
     try {
-      const [participantsRes, expensesRes, contributionsRes] = await Promise.all([
+      const [participantsRes, contributionsRes] = await Promise.all([
         fetch(`/api/participants?planId=${planId}`),
-        fetch(`/api/expenses?planId=${planId}`),
         fetch(`/api/contributions?planId=${planId}`),
       ])
 
-      let participantsData: Participant[] = []
-      let expensesData: ExpenseItem[] = []
-      let contributionsData: Contribution[] = []
-
       if (participantsRes.ok) {
-        participantsData = await participantsRes.json()
-        console.log('Participants loaded:', participantsData.length)
+        const participantsData = await participantsRes.json()
         setParticipants(participantsData)
       }
 
-      if (expensesRes.ok) {
-        expensesData = await expensesRes.json()
-        console.log('Expenses loaded:', expensesData.length)
-        setExpenseItems(expensesData)
-      }
-
       if (contributionsRes.ok) {
-        contributionsData = await contributionsRes.json()
-        console.log('Contributions loaded:', contributionsData.length)
-        console.log('Sample contribution:', contributionsData[0])
+        const contributionsData = await contributionsRes.json()
         setContributions(contributionsData)
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
       toast.error('Gagal memuat data')
     } finally {
       setLoading(false)
     }
   }
 
-  const updatePayment = async (contributionId: string, newPaid: number) => {
+  const initializeContributions = async () => {
+    if (participants.length === 0) {
+      toast.error('Tambahkan peserta terlebih dahulu')
+      return
+    }
+
+    try {
+      const promises = participants.map((participant) => {
+        return Promise.all([
+          fetch('/api/contributions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              holidayPlanId: planId,
+              participantId: participant._id,
+              amount: nominalAmount,
+              isPaid: false,
+              type: 'nominal',
+            }),
+          }),
+          fetch('/api/contributions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              holidayPlanId: planId,
+              participantId: participant._id,
+              amount: bakaranAmount,
+              isPaid: false,
+              type: 'bakaran',
+            }),
+          }),
+        ])
+      })
+
+      await Promise.all(promises)
+      toast.success('Iuran berhasil diinisialisasi')
+      fetchData()
+    } catch (error) {
+      toast.error('Gagal menginisialisasi iuran')
+    }
+  }
+
+  const togglePaid = async (contributionId: string, currentStatus: boolean) => {
     try {
       const res = await fetch('/api/contributions', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           _id: contributionId,
-          paid: newPaid,
+          isPaid: !currentStatus,
+          paidAt: !currentStatus ? new Date() : null,
         }),
       })
 
       if (res.ok) {
-        toast.success('Pembayaran berhasil diupdate')
-        setEditingContribution(null)
+        toast.success('Status pembayaran diupdate')
         fetchData()
       }
     } catch (error) {
-      toast.error('Gagal mengupdate pembayaran')
-    }
-  }
-
-  // Bulk actions handlers
-  const toggleSelectAll = () => {
-    if (selectedContributions.length === contributions.length) {
-      setSelectedContributions([])
-    } else {
-      setSelectedContributions(contributions.map(c => c._id!))
-    }
-  }
-
-  const toggleSelectContribution = (id: string) => {
-    if (selectedContributions.includes(id)) {
-      setSelectedContributions(selectedContributions.filter(cid => cid !== id))
-    } else {
-      setSelectedContributions([...selectedContributions, id])
-    }
-  }
-
-  const bulkMarkAsPaid = async () => {
-    if (selectedContributions.length === 0) {
-      toast.error('Pilih minimal 1 iuran')
-      return
-    }
-
-    if (!confirm(`Tandai ${selectedContributions.length} iuran sebagai lunas?`)) return
-
-    try {
-      const promises = selectedContributions.map(id => {
-        const contribution = contributions.find(c => c._id === id)
-        if (!contribution) return Promise.resolve()
-        
-        return fetch('/api/contributions', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            _id: id,
-            paid: contribution.amount, // Mark as fully paid
-          }),
-        })
-      })
-
-      await Promise.all(promises)
-      toast.success(`✅ ${selectedContributions.length} iuran ditandai lunas`)
-      setSelectedContributions([])
-      fetchData()
-    } catch (error) {
-      toast.error('Gagal mengupdate pembayaran')
-    }
-  }
-
-  const bulkMarkAsUnpaid = async () => {
-    if (selectedContributions.length === 0) {
-      toast.error('Pilih minimal 1 iuran')
-      return
-    }
-
-    if (!confirm(`Reset ${selectedContributions.length} iuran menjadi belum bayar?`)) return
-
-    try {
-      const promises = selectedContributions.map(id =>
-        fetch('/api/contributions', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            _id: id,
-            paid: 0,
-          }),
-        })
-      )
-
-      await Promise.all(promises)
-      toast.success(`✅ ${selectedContributions.length} iuran direset`)
-      setSelectedContributions([])
-      fetchData()
-    } catch (error) {
-      toast.error('Gagal mengupdate pembayaran')
-    }
-  }
-
-  const bulkPayment = async () => {
-    if (selectedContributions.length === 0) {
-      toast.error('Pilih minimal 1 iuran')
-      return
-    }
-
-    if (bulkPaymentAmount <= 0) {
-      toast.error('Masukkan jumlah pembayaran')
-      return
-    }
-
-    try {
-      const promises = selectedContributions.map(id =>
-        fetch('/api/contributions', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            _id: id,
-            paid: bulkPaymentAmount,
-          }),
-        })
-      )
-
-      await Promise.all(promises)
-      toast.success(`✅ Pembayaran Rp ${bulkPaymentAmount.toLocaleString()} diterapkan ke ${selectedContributions.length} iuran`)
-      setSelectedContributions([])
-      setBulkPaymentAmount(0)
-      setShowBulkPaymentModal(false)
-      fetchData()
-    } catch (error) {
-      toast.error('Gagal mengupdate pembayaran')
-    }
-  }
-
-  const removeParticipantFromExpense = async (expenseId: string, participantId: string, participantName: string) => {
-    if (!confirm(`Hapus ${participantName} dari iuran ini?\n\nCatatan: Iuran akan dibagi ulang ke peserta yang tersisa dengan TOTAL YANG SAMA.`)) return
-
-    try {
-      // Get expense data
-      const expense = expenseItems.find(e => e._id === expenseId)
-      if (!expense || !expense.total) {
-        toast.error('Expense tidak ditemukan')
-        return
-      }
-
-      // Get all contributions for this expense
-      const expenseContributions = contributions.filter(c => {
-        const cExpenseId = typeof c.expenseItemId === 'object' 
-          ? (c.expenseItemId as any)?._id 
-          : c.expenseItemId
-        return cExpenseId === expenseId
-      })
-
-      const remainingContributors = expenseContributions.filter(c => {
-        const cParticipantId = typeof c.participantId === 'object'
-          ? (c.participantId as any)?._id
-          : c.participantId
-        return cParticipantId !== participantId
-      })
-
-      // If this is the last participant, just delete
-      if (remainingContributors.length === 0) {
-        const res = await fetch(
-          `/api/contributions?expenseItemId=${expenseId}&participantId=${participantId}`,
-          {
-            method: 'DELETE',
-            credentials: 'include',
-          }
-        )
-
-        if (res.ok) {
-          toast.success(`${participantName} dihapus dari iuran`)
-          fetchData()
-        }
-        return
-      }
-
-      // Calculate new split amount (total tetap sama, dibagi ke peserta tersisa)
-      const rawNewAmount = expense.total / remainingContributors.length
-      const newSplitAmount = Math.round(rawNewAmount / 100) * 100
-
-      // Delete the participant first
-      const deleteRes = await fetch(
-        `/api/contributions?expenseItemId=${expenseId}&participantId=${participantId}`,
-        {
-          method: 'DELETE',
-          credentials: 'include',
-        }
-      )
-
-      if (!deleteRes.ok) {
-        toast.error('Gagal menghapus peserta')
-        return
-      }
-
-      // Update all remaining contributions with new amount
-      const updatePromises = remainingContributors.map(c => 
-        fetch('/api/contributions', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            _id: c._id,
-            amount: newSplitAmount,
-          }),
-        })
-      )
-
-      await Promise.all(updatePromises)
-
-      toast.success(
-        `✅ ${participantName} dihapus. Iuran disesuaikan menjadi ${formatCurrency(newSplitAmount)}/orang untuk ${remainingContributors.length} peserta (Total tetap ${formatCurrency(expense.total)})`,
-        { duration: 6000 }
-      )
-      fetchData()
-    } catch (error) {
-      toast.error('Gagal menghapus peserta')
+      toast.error('Gagal mengupdate status')
     }
   }
 
@@ -343,113 +124,36 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     }).format(amount)
   }
 
-  // Calculate DP info for an expense group
-  const getExpensesDPInfo = (expenseIds: string[]) => {
-    const expensesWithDP = expenseIds
-      .map(id => expenseItems.find(e => e._id === id))
-      .filter(e => e && e.downPayment && e.downPayment > 0 && e.total)
-      .map(e => ({
-        expenseId: e!._id,
-        expenseName: e!.itemName,
-        dpPercentage: e!.downPayment!,
-        totalExpense: e!.total!,
-        dpAmount: (e!.total! * e!.downPayment!) / 100,
-      }))
+  const nominalContributions = contributions.filter((c) => c.type === 'nominal')
+  const bakaranContributions = contributions.filter((c) => c.type === 'bakaran')
 
-    if (expensesWithDP.length === 0) return null
+  const nominalTotal = nominalContributions.reduce((sum: number, c: Contribution) => sum + c.amount, 0)
+  const bakaranTotal = bakaranContributions.reduce((sum: number, c: Contribution) => sum + c.amount, 0)
+  const grandTotal = nominalTotal + bakaranTotal
 
-    const totalDPNeeded = expensesWithDP.reduce((sum, e) => sum + e.dpAmount, 0)
-    
-    return {
-      expenses: expensesWithDP,
-      totalDPNeeded,
-      hasDPRequirement: true,
-    }
-  }
-
-  // Group contributions by COLLECTOR, then by PARTICIPANT
-  const groupedContributions: ContributionGroup[] = (() => {
-    const collectorMap = new Map<string, ContributionGroup>()
-
-    expenseItems.forEach(expense => {
-      const collectorId = expense.collectorId || 'unknown'
-      const collectorName = participants.find(p => p._id === collectorId)?.name || 'Unknown'
-
-      if (!collectorMap.has(collectorId)) {
-        collectorMap.set(collectorId, {
-          collectorId,
-          collectorName,
-          expenses: [],
-          participants: [],
-          totalAmount: 0,
-          totalPaid: 0,
-          totalRemaining: 0,
-        })
+  // Kalkulasi ulang distribusi jika ada max bayar
+  const recalcDistribusi = () => {
+    // Ambil total iuran
+    let total = nominalTotal
+    // Ambil peserta yang set max
+    const fixed: { id: string, max: number }[] = []
+    const others: string[] = []
+    participants.forEach(p => {
+      const val = maxPay[p._id]
+      if (val && val > 0) {
+        fixed.push({ id: p._id, max: val })
+        total -= val
+      } else {
+        others.push(p._id)
       }
-
-      const group = collectorMap.get(collectorId)!
-
-      // Add expense info
-      group.expenses.push({
-        expenseId: expense._id!,
-        expenseName: expense.itemName,
-      })
-
-      // Get contributions for this expense
-      const expenseContributions = contributions.filter(c => {
-        const contributionExpenseId = typeof c.expenseItemId === 'object'
-          ? (c.expenseItemId as any)?._id
-          : c.expenseItemId
-        return contributionExpenseId === expense._id
-      })
-
-      // Group by participant within this expense
-      expenseContributions.forEach(contribution => {
-        const participantId = typeof contribution.participantId === 'object'
-          ? (contribution.participantId as any)?._id
-          : contribution.participantId
-
-        const participantName = typeof contribution.participantId === 'object'
-          ? (contribution.participantId as any)?.name
-          : participants.find(p => p._id === participantId)?.name || 'Unknown'
-
-        // Find or create participant entry
-        let participant = group.participants.find(p => p.participantId === participantId)
-        if (!participant) {
-          participant = {
-            participantId,
-            participantName,
-            expenseNames: [],
-            totalAmount: 0,
-            totalPaid: 0,
-            totalRemaining: 0,
-          }
-          group.participants.push(participant)
-        }
-
-        // Add expense name if not already added
-        if (!participant.expenseNames.includes(expense.itemName)) {
-          participant.expenseNames.push(expense.itemName)
-        }
-
-        // Accumulate amounts
-        participant.totalAmount += contribution.amount
-        participant.totalPaid += contribution.paid
-        participant.totalRemaining = participant.totalAmount - participant.totalPaid
-
-        group.totalAmount += contribution.amount
-        group.totalPaid += contribution.paid
-      })
-
-      group.totalRemaining = group.totalAmount - group.totalPaid
     })
-
-    return Array.from(collectorMap.values()).filter(group => group.participants.length > 0)
-  })()
-
-  const grandTotal = groupedContributions.reduce((sum, group) => sum + group.totalAmount, 0)
-  const grandPaid = groupedContributions.reduce((sum, group) => sum + group.totalPaid, 0)
-  const grandRemaining = grandTotal - grandPaid
+    // Sisa dibagi rata ke peserta lain
+    const perOrang = others.length > 0 ? Math.floor(total / others.length / 100) * 100 : 0
+    const distribusi: Record<string, number> = {}
+    fixed.forEach(f => { distribusi[f.id] = f.max })
+    others.forEach(id => { distribusi[id] = perOrang })
+    setNominalDistribusi(distribusi)
+  }
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>
@@ -457,509 +161,223 @@ export default function ContributionsTab({ planId }: { planId: string }) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900">Tabel Iuran</h2>
+      <h2 className="text-xl font-semibold text-gray-900">Manajemen Iuran</h2>
 
-      {groupedContributions.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Belum ada iuran. Tambahkan iuran di tab Keuangan.</p>
+      {contributions.length === 0 ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h3 className="font-semibold text-blue-900 mb-4">Inisialisasi Iuran</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Iuran Nominal per Orang
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={nominalAmount}
+                onChange={(e) => setNominalAmount(Number(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                placeholder="Contoh: 60000"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Iuran Bakaran per Orang
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={bakaranAmount}
+                onChange={(e) => setBalkaranAmount(Number(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                placeholder="Contoh: 58283"
+              />
+            </div>
+          </div>
+          <button
+            onClick={initializeContributions}
+            className="w-full md:w-auto px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            Inisialisasi Iuran untuk Semua Peserta
+          </button>
+          <p className="text-sm text-gray-600 mt-3">
+            Total Peserta: <strong>{participants.length} orang</strong>
+          </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {/* Total Per Participant - Always Expanded */}
-          <div className="bg-white border-2 border-primary-200 rounded-lg overflow-hidden">
-            <div className="bg-primary-50 px-4 py-2.5 border-b border-primary-100 flex items-center justify-between">
-              <h3 className="font-semibold text-primary-900 text-sm flex items-center gap-1.5">
-                👥 Total Iuran Per Orang
-              </h3>
-              <button
-                type="button"
-                className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium border border-blue-200"
-                onClick={() => {
-                  // Ambil semua contributionId dari seluruh peserta
-                  const allIds: string[] = [];
-                  groupedContributions.forEach(group => {
-                    group.participants.forEach(p => {
-                      contributions.filter(c => {
-                        const participantId = typeof c.participantId === 'object' ? (c.participantId as any)?._id : c.participantId;
-                        return participantId === p.participantId;
-                      }).forEach(c => allIds.push(c._id!));
-                    });
-                  });
-                  const allSelected = allIds.every(id => selectedContributions.includes(id));
-                  if (allSelected) {
-                    // Unselect all
-                    setSelectedContributions(selectedContributions.filter(id => !allIds.includes(id)));
-                  } else {
-                    // Select all
-                    setSelectedContributions(Array.from(new Set([...selectedContributions, ...allIds])));
-                  }
-                }}
-              >
-                {/* Cek apakah semua sudah terpilih */}
-                {(() => {
-                  const allIds: string[] = [];
-                  groupedContributions.forEach(group => {
-                    group.participants.forEach(p => {
-                      contributions.filter(c => {
-                        const participantId = typeof c.participantId === 'object' ? (c.participantId as any)?._id : c.participantId;
-                        return participantId === p.participantId;
-                      }).forEach(c => allIds.push(c._id!));
-                    });
-                  });
-                  const allSelected = allIds.length > 0 && allIds.every(id => selectedContributions.includes(id));
-                  return allSelected ? 'Uncheck Semua' : 'Pilih Semua';
-                })()}
-              </button>
+        <div className="space-y-6">
+          {/* Iuran Nominal */}
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-primary-50 px-6 py-3 border-b border-primary-100">
+              <h3 className="font-semibold text-primary-900">Iuran Nominal</h3>
             </div>
-            <div className="divide-y divide-gray-100">{(() => {
-                // Flatten all participants from all groups
-                const allParticipants: ParticipantContribution[] = []
-                groupedContributions.forEach(group => {
-                  group.participants.forEach(p => allParticipants.push(p))
-                })
-
-                // Merge participants with same ID
-                const participantMap = new Map<string, ParticipantContribution>()
-                allParticipants.forEach(p => {
-                  if (participantMap.has(p.participantId)) {
-                    const existing = participantMap.get(p.participantId)!
-                    existing.totalAmount += p.totalAmount
-                    existing.totalPaid += p.totalPaid
-                    existing.totalRemaining += p.totalRemaining
-                    p.expenseNames.forEach(name => {
-                      if (!existing.expenseNames.includes(name)) {
-                        existing.expenseNames.push(name)
-                      }
-                    })
-                  } else {
-                    participantMap.set(p.participantId, { ...p })
-                  }
-                })
-
-                return Array.from(participantMap.values())
-                  .sort((a, b) => {
-                    const getStatus = (p: ParticipantContribution) => {
-                      if (p.totalPaid === 0) return 0
-                      if (p.totalPaid < p.totalAmount) return 1
-                      return 2
-                    }
-                    return getStatus(a) - getStatus(b)
-                  })
-                  .map(participant => {
-                    const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.totalAmount ? 'Lunas' : 'Sebagian'
-                    const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                    const percentage = Math.round((participant.totalPaid / participant.totalAmount) * 100)
-
-                    // Get all contribution IDs for this participant
-                    const participantContributionIds = contributions
-                      .filter(c => {
-                        const participantId = typeof c.participantId === 'object'
-                          ? (c.participantId as any)?._id
-                          : c.participantId
-                        return participantId === participant.participantId
-                      })
-                      .map(c => c._id!)
-
-                    const allSelected = participantContributionIds.every(id => selectedContributions.includes(id))
-
-                    // Calculate total DP for this participant across all expenses
-                    let participantTotalDP = 0
-                    contributions
-                      .filter(c => {
-                        const cParticipantId = typeof c.participantId === 'object'
-                          ? (c.participantId as any)?._id
-                          : c.participantId
-                        return cParticipantId === participant.participantId
-                      })
-                      .forEach(c => {
-                        const cExpenseId = typeof c.expenseItemId === 'object'
-                          ? (c.expenseItemId as any)?._id
-                          : c.expenseItemId
-                        const expense = expenseItems.find(e => e._id === cExpenseId)
-                        if (expense && expense.downPayment && expense.downPayment > 0) {
-                          participantTotalDP += (c.amount * expense.downPayment) / 100
-                        }
-                      })
-
+            <div className="overflow-x-auto">
+              <button
+                onClick={recalcDistribusi}
+                className="mb-2 px-4 py-2 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium border border-blue-200"
+              >
+                Kalkulasi Ulang Distribusi
+              </button>
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Nominal</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Max Bayar</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Distribusi</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {participants.map((participant, index) => {
+                    const contribution = nominalContributions.find((c) => c.participantId === participant._id)
                     return (
-                      <div key={participant.participantId} className="px-4 py-3 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900 text-sm truncate">
-                              {participant.participantName}
-                            </h4>
-                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                              {participant.expenseNames.join(', ')}
-                            </p>
-                            {participantTotalDP > 0 && (
-                              <p className="text-xs text-yellow-700 font-semibold mt-1 bg-yellow-50 inline-block px-1.5 py-0.5 rounded">
-                                💳 DP: {formatCurrency(participantTotalDP)}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <div className="text-right">
-                              <p className="font-semibold text-gray-900 text-sm">
-                                {formatCurrency(participant.totalAmount)}
-                              </p>
-                              {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
-                                <div className="space-y-0.5">
-                                  <p className="text-xs text-green-600">
-                                    {formatCurrency(participant.totalPaid)}
-                                  </p>
-                                  <p className="text-xs text-red-600 font-medium">
-                                    Kurang: {formatCurrency(participant.totalAmount - participant.totalPaid)}
-                                  </p>
-                                </div>
-                              )}
-                              {participant.totalPaid > 0 && participant.totalPaid >= participant.totalAmount && (
-                                <p className="text-xs text-green-600">
-                                  {formatCurrency(participant.totalPaid)}
-                                </p>
-                              )}
-                            </div>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
-                              {status}
+                      <tr key={participant._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{participant.name}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">{contribution ? formatCurrency(contribution.amount) : '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-24 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-primary-500"
+                            value={maxPay[participant._id] ?? ''}
+                            onChange={e => {
+                              setMaxPay({ ...maxPay, [participant._id]: Number(e.target.value) })
+                            }}
+                          />
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                          {nominalDistribusi[participant._id] ? formatCurrency(nominalDistribusi[participant._id]) : '-'}
+                          {contribution && nominalDistribusi[participant._id] !== undefined && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              {nominalDistribusi[participant._id] > contribution.amount ? `(+${formatCurrency(nominalDistribusi[participant._id] - contribution.amount)})` : nominalDistribusi[participant._id] < contribution.amount ? `(-${formatCurrency(contribution.amount - nominalDistribusi[participant._id])})` : ''}
                             </span>
-                          </div>
-                        </div>
-                      </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {contribution && (
+                            <button
+                              onClick={() => togglePaid(contribution._id!, contribution.isPaid)}
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                contribution.isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {contribution.isPaid ? (
+                                <>
+                                  <Check className="w-3 h-3 mr-1" /> SUDAH
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-3 h-3 mr-1" /> BELUM
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
                     )
-                  })
-              })()}
+                  })}
+                  <tr className="bg-primary-50 font-bold">
+                    <td colSpan={2} className="px-6 py-4 text-gray-900">TOTAL</td>
+                    <td className="px-6 py-4 text-primary-600 text-right">{formatCurrency(nominalTotal)}</td>
+                    <td colSpan={3}></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Grouped by Collector - Collapsed by Default */}
-          {groupedContributions.map(group => {
-            const isExpanded = expandedExpense === group.collectorId
-            const dpInfo = getExpensesDPInfo(group.expenses.map(e => e.expenseId))
-
-            return (
-              <div key={group.collectorId} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                {/* Header - Collapsible */}
-                <button
-                  onClick={() => setExpandedExpense(isExpanded ? null : group.collectorId)}
-                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex-1 text-left min-w-0">
-                    <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
-                      👤 {group.collectorName}
-                      {dpInfo && (
-                        <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
-                          💳 Ada DP
-                        </span>
-                      )}
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                      {group.expenses.map(e => e.expenseName).join(', ')} • {group.participants.length} peserta
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3 ml-3 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">Total</p>
-                      <p className="font-semibold text-gray-900 text-sm">
-                        {formatCurrency(group.totalAmount)}
-                      </p>
-                    </div>
-                    <div className="text-gray-600">
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </div>
-                  </div>
-                </button>
-
-                {/* Details - Expanded */}
-                {isExpanded && (
-                  <div className="border-t border-gray-200 bg-gray-50 divide-y divide-gray-200">
-                    {/* DP Info Panel */}
-                    {dpInfo && (
-                      <div className="p-4 bg-yellow-50 border-b-2 border-yellow-200">
-                        <div className="flex items-start gap-2">
-                          <div className="text-2xl">💳</div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-yellow-900 text-sm mb-1">
-                              Prioritas: Down Payment (DP)
-                            </h4>
-                            <div className="space-y-1 text-xs text-yellow-800">
-                              {dpInfo.expenses.map(exp => (
-                                <div key={exp.expenseId} className="flex justify-between">
-                                  <span>{exp.expenseName} - DP {exp.dpPercentage}%</span>
-                                  <span className="font-semibold">{formatCurrency(exp.dpAmount)}</span>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="mt-2 pt-2 border-t border-yellow-300 flex justify-between items-center">
-                              <span className="font-bold text-sm text-yellow-900">Total DP yang harus dikumpulkan:</span>
-                              <span className="font-bold text-base text-yellow-900">{formatCurrency(dpInfo.totalDPNeeded)}</span>
-                            </div>
-                            <p className="text-xs text-yellow-700 mt-2 bg-yellow-100 px-2 py-1 rounded">
-                              ⚠️ Pastikan DP terkumpul terlebih dahulu sebelum pelunasan
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {group.participants
-                      .sort((a, b) => {
-                        const getStatus = (p: ParticipantContribution) => {
-                          if (p.totalPaid === 0) return 0
-                          if (p.totalPaid < p.totalAmount) return 1
-                          return 2
-                        }
-                        return getStatus(a) - getStatus(b)
-                      })
-                      .map(participant => {
-                        const status = participant.totalPaid === 0 ? 'Belum' : participant.totalPaid >= participant.totalAmount ? 'Lunas' : 'Sebagian'
-                        const statusColor = status === 'Lunas' ? 'bg-green-100 text-green-800' : status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                        const percentage = Math.round((participant.totalPaid / participant.totalAmount) * 100)
-
-                        // Get contribution IDs for this participant in this collector's expenses
-                        const participantContributionIds = contributions
-                          .filter(c => {
-                            const participantId = typeof c.participantId === 'object'
-                              ? (c.participantId as any)?._id
-                              : c.participantId
-                            const expenseItemId = typeof c.expenseItemId === 'object'
-                              ? (c.expenseItemId as any)?._id
-                              : c.expenseItemId
-                            // Check if this contribution belongs to this participant AND this collector's expenses
-                            return participantId === participant.participantId && 
-                                   group.expenses.some(exp => exp.expenseId === expenseItemId)
-                          })
-                          .map(c => c._id!)
-
-                        const isEditingThis = editingContribution === `${group.collectorId}-${participant.participantId}`
-
-                        // Calculate DP amount for this participant
-                        let participantDPAmount = 0
-                        let participantDPDetails: Array<{ expenseName: string; dpAmount: number; dpPercentage: number }> = []
-                        
-                        if (dpInfo) {
-                          // Get contributions for this participant that have DP
-                          const participantContributions = contributions.filter(c => {
-                            const cParticipantId = typeof c.participantId === 'object'
-                              ? (c.participantId as any)?._id
-                              : c.participantId
-                            const cExpenseId = typeof c.expenseItemId === 'object'
-                              ? (c.expenseItemId as any)?._id
-                              : c.expenseItemId
-                            
-                            // Check if contribution is for this participant and for an expense with DP
-                            return cParticipantId === participant.participantId &&
-                                   dpInfo.expenses.some(exp => exp.expenseId === cExpenseId)
-                          })
-
-                          // Calculate DP for each contribution
-                          participantContributions.forEach(c => {
-                            const cExpenseId = typeof c.expenseItemId === 'object'
-                              ? (c.expenseItemId as any)?._id
-                              : c.expenseItemId
-                            const expenseWithDP = dpInfo.expenses.find(exp => exp.expenseId === cExpenseId)
-                            if (expenseWithDP) {
-                              const dpAmount = (c.amount * expenseWithDP.dpPercentage) / 100
-                              participantDPAmount += dpAmount
-                              participantDPDetails.push({
-                                expenseName: expenseWithDP.expenseName,
-                                dpAmount,
-                                dpPercentage: expenseWithDP.dpPercentage,
-                              })
-                            }
-                          })
-                        }
-
-                        return (
-                          <div key={participant.participantId} className="px-4 py-3">
-                            <div className="flex items-center justify-between gap-3 mb-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 text-sm truncate">
-                                  {participant.participantName}
-                                </p>
-                                <p className="text-xs text-gray-500 line-clamp-1">
-                                  {participant.expenseNames.join(', ')}
-                                </p>
-                                {/* Show DP amount for this participant */}
-                                {participantDPAmount > 0 && (
-                                  <p className="text-xs text-yellow-700 font-semibold mt-1 bg-yellow-50 inline-block px-1.5 py-0.5 rounded">
-                                    💳 DP: {formatCurrency(participantDPAmount)}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <div className="text-right">
-                                  <p className="font-semibold text-gray-900 text-sm">
-                                    {formatCurrency(participant.totalAmount)}
-                                  </p>
-                                  {participant.totalPaid > 0 && participant.totalPaid < participant.totalAmount && (
-                                    <div className="space-y-0.5">
-                                      <p className="text-xs text-green-600">
-                                        Bayar: {formatCurrency(participant.totalPaid)}
-                                      </p>
-                                      <p className="text-xs text-red-600 font-medium">
-                                        Kurang: {formatCurrency(participant.totalAmount - participant.totalPaid)}
-                                      </p>
-                                    </div>
-                                  )}
-                                  {participant.totalPaid > 0 && participant.totalPaid >= participant.totalAmount && (
-                                    <p className="text-xs text-green-600">
-                                      Bayar: {formatCurrency(participant.totalPaid)}
-                                    </p>
-                                  )}
-                                </div>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
-                                  {status}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Input Pembayaran */}
-                            {isEditingThis ? (
-                              <div className="mt-2 p-2.5 bg-white rounded border border-gray-300">
-                                <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                                  Input Pembayaran
-                                </label>
-                                <div className="flex gap-1.5">
-                                  <input
-                                    type="number"
-                                    value={editAmount}
-                                    onChange={(e) => setEditAmount(Number(e.target.value))}
-                                    className="flex-1 border border-gray-300 rounded px-2.5 py-1.5 text-sm"
-                                    placeholder="Jumlah"
-                                  />
-                                  <button
-                                    onClick={() => {
-                                      const updatePromises = participantContributionIds.map(id =>
-                                        fetch('/api/contributions', {
-                                          method: 'PUT',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          credentials: 'include',
-                                          body: JSON.stringify({
-                                            _id: id,
-                                            paid: editAmount,
-                                          }),
-                                        })
-                                      )
-                                      Promise.all(updatePromises).then(() => {
-                                        toast.success('✅ Berhasil')
-                                        setEditingContribution(null)
-                                        fetchData()
-                                      })
-                                    }}
-                                    className="px-3 py-1.5 bg-primary-600 text-white rounded hover:bg-primary-700 text-xs flex items-center gap-1"
-                                  >
-                                    <Save className="w-3 h-3" />
-                                    OK
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingContribution(null)}
-                                    className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingContribution(`${group.collectorId}-${participant.participantId}`)
-                                    setEditAmount(participant.totalPaid)
-                                  }}
-                                  className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                  Input Pembayaran
-                                </button>
-                                {group.expenses.length === 1 && (
-                                  <button
-                                    onClick={() => {
-                                      removeParticipantFromExpense(group.expenses[0].expenseId, participant.participantId, participant.participantName)
-                                    }}
-                                    className="px-3 py-1.5 bg-red-50 text-red-700 rounded hover:bg-red-100 text-xs font-medium flex items-center gap-1"
-                                    title="Hapus dari iuran"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {/* Iuran Bakaran */}
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-primary-50 px-6 py-3 border-b border-primary-100">
+              <h3 className="font-semibold text-primary-900">Iuran Bakaran</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      No
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Nama
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                      Nominal
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {participants.map((participant, index) => {
+                    const contribution = bakaranContributions.find(
+                      (c) => c.participantId === participant._id
+                    )
+                    return (
+                      <tr key={participant._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          {participant.name}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                          {contribution ? formatCurrency(contribution.amount) : '-'}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {contribution && (
+                            <button
+                              onClick={() => togglePaid(contribution._id!, contribution.isPaid)}
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                contribution.isPaid
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {contribution.isPaid ? (
+                                <>
+                                  <Check className="w-3 h-3 mr-1" /> SUDAH
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-3 h-3 mr-1" /> BELUM
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  <tr className="bg-primary-50 font-bold">
+                    <td colSpan={2} className="px-6 py-4 text-gray-900">
+                      TOTAL
+                    </td>
+                    <td className="px-6 py-4 text-primary-600 text-right">
+                      {formatCurrency(bakaranTotal)}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           {/* Grand Total */}
-          <div className="bg-gradient-to-r from-primary-50 to-blue-50 border-2 border-primary-200 rounded-lg p-4">
-            <h3 className="font-bold text-gray-900 mb-3">📊 TOTAL KESELURUHAN</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white rounded-lg p-3">
-                <p className="text-xs text-gray-600">Total Iuran</p>
-                <p className="font-bold text-lg text-gray-900">{formatCurrency(grandTotal)}</p>
+          <div className="bg-primary-600 text-white rounded-lg p-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-primary-100 text-sm mb-1">Total Iuran</p>
+                <p className="text-2xl font-bold">{formatCurrency(grandTotal)}</p>
               </div>
-              <div className="bg-white rounded-lg p-3">
-                <p className="text-xs text-green-600 font-medium">Terbayar</p>
-                <p className="font-bold text-lg text-green-600">{formatCurrency(grandPaid)}</p>
+              <div className="text-right">
+                <p className="text-primary-100 text-sm mb-1">Urungan @ {participants.length} Orang</p>
+                <p className="text-xl font-semibold">
+                  {formatCurrency(grandTotal / participants.length)}
+                </p>
               </div>
-              <div className="bg-white rounded-lg p-3">
-                <p className="text-xs text-red-600 font-medium">Sisa</p>
-                <p className="font-bold text-lg text-red-600">{formatCurrency(grandRemaining)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Payment Modal */}
-      {showBulkPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
-              Input Pembayaran Massal
-            </h3>
-            <p className="text-sm text-gray-600 mb-6">
-              Akan diterapkan ke <span className="font-bold text-primary-600">{selectedContributions.length} iuran</span> yang dipilih
-            </p>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Jumlah Pembayaran
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-3 text-gray-500 font-medium">Rp</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={bulkPaymentAmount}
-                  onChange={(e) => setBulkPaymentAmount(Number(e.target.value))}
-                  className="w-full pl-14 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-lg font-medium"
-                  placeholder="0"
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowBulkPaymentModal(false)
-                  setBulkPaymentAmount(0)
-                }}
-                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
-              >
-                Batal
-              </button>
-              <button
-                onClick={bulkPayment}
-                className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
-              >
-                Terapkan
-              </button>
             </div>
           </div>
         </div>
