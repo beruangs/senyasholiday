@@ -358,8 +358,21 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                       </tr>
                     ) : (
                       collectorGroup.contributions.map((contribution, index) => {
-                        const participant = participants.find(p => p._id === contribution.participantId)
-                        if (!participant) return null
+                        // Handle participantId yang bisa berupa string atau object (populated)
+                        let participantId = contribution.participantId
+                        let participantName = 'Unknown'
+                        
+                        if (typeof contribution.participantId === 'object' && contribution.participantId !== null) {
+                          participantId = (contribution.participantId as any)._id
+                          participantName = (contribution.participantId as any).name
+                        } else {
+                          const participant = participants.find(p => p._id === contribution.participantId)
+                          if (!participant) {
+                            console.warn('Participant not found for:', contribution.participantId)
+                            return null
+                          }
+                          participantName = participant.name
+                        }
                         
                         const { share, paid, remaining, overpaid, status } = calculateShare(contribution)
                         const isEditingMax = editingMaxPay === contribution._id
@@ -369,7 +382,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                           <tr key={contribution._id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
                             <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                              {participant.name}
+                              {participantName}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-900 text-right">
                               {formatCurrency(contribution.amount)}
@@ -473,7 +486,11 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                         Input Pembayaran
                                       </h3>
                                       <p className="text-sm text-gray-600 mb-4">
-                                        Peserta: <span className="font-semibold">{participants.find(p => p._id === contribution.participantId)?.name}</span>
+                                        Peserta: <span className="font-semibold">{
+                                          typeof contribution.participantId === 'object' && contribution.participantId !== null
+                                            ? (contribution.participantId as any).name
+                                            : participants.find(p => p._id === contribution.participantId)?.name || 'Unknown'
+                                        }</span>
                                       </p>
                                     </div>
 
