@@ -1262,20 +1262,69 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                   {/* Inline Edit Form for Desktop */}
                   {editingExpenseId === expense._id && (
                     <div className="border-t border-gray-200 bg-white p-6">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                      <h4 className="font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                        <Edit2 className="w-5 h-5 text-primary-600" />
+                        <span>Edit Pengeluaran</span>
+                      </h4>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Nama Item</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Nama Item</label>
                           <input
                             type="text"
                             value={editingExpenseData.itemName ?? expense.itemName}
                             onChange={(e) => setEditingExpenseData({ ...editingExpenseData, itemName: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                           />
-                          <label className="block text-sm font-medium text-gray-700 mt-2">Pengumpul</label>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Detail</label>
+                          <input
+                            type="text"
+                            value={editingExpenseData.detail ?? expense.detail ?? ''}
+                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, detail: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                            placeholder="Contoh: Villa Patria Padma, +1 orang"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Harga</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editingExpenseData.price ?? expense.price}
+                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, price: Number(e.target.value) })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={editingExpenseData.quantity ?? expense.quantity}
+                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, quantity: Number(e.target.value) })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 bg-primary-50 border border-primary-200 rounded-lg p-4">
+                          <p className="text-sm text-gray-700">
+                            Total Pengeluaran: <span className="font-bold text-primary-600 text-lg">
+                              {formatCurrency((editingExpenseData.price ?? expense.price) * (editingExpenseData.quantity ?? expense.quantity))}
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Pengumpul</label>
                           <select
                             value={editingExpenseData.collectorId ?? expense.collectorId ?? ''}
                             onChange={(e) => setEditingExpenseData({ ...editingExpenseData, collectorId: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                           >
                             <option value="">-- Pilih Pengumpul --</option>
                             {participants.map(p => (
@@ -1284,27 +1333,44 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                           </select>
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Total (Rp)</label>
-                          <input
-                            type="number"
-                            value={(editingExpenseData.total ?? expense.total) as any}
-                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, total: Number(e.target.value) })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                          />
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            💳 Down Payment (DP) - Opsional
+                          </label>
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={editingExpenseData.downPayment ?? expense.downPayment ?? 0}
+                              onChange={(e) => setEditingExpenseData({ ...editingExpenseData, downPayment: Number(e.target.value) })}
+                              className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                              placeholder="0"
+                            />
+                            <span className="text-gray-700">%</span>
+                            {(editingExpenseData.downPayment ?? expense.downPayment ?? 0) > 0 && (
+                              <div className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-2">
+                                <p className="text-sm text-yellow-800">
+                                  DP: <span className="font-bold">{formatCurrency(((editingExpenseData.price ?? expense.price) * (editingExpenseData.quantity ?? expense.quantity)) * (editingExpenseData.downPayment ?? expense.downPayment ?? 0) / 100)}</span>
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex justify-end space-x-2 mt-4">
+                      <div className="flex justify-end space-x-3 mt-6">
                         <button
+                          type="button"
                           onClick={() => { setEditingExpenseId(null); setEditingExpenseData({}) }}
-                          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700"
+                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                         >
                           Batal
                         </button>
                         <button
+                          type="button"
                           onClick={() => updateExpense(expense._id!)}
-                          className="px-4 py-2 bg-primary-600 text-white rounded-lg"
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                         >
                           Simpan
                         </button>
