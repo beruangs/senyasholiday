@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, X, MoreVertical, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Participant {
@@ -41,6 +41,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   const [editPaymentValue, setEditPaymentValue] = useState<number>(0)
   const [editPaymentMethod, setEditPaymentMethod] = useState<string>('manual')
   const [showPaymentForm, setShowPaymentForm] = useState<string | null>(null)
+  const [showMobileMenu, setShowMobileMenu] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -464,16 +465,44 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                     Manual
                                   </span>
                                 )}
+                                {/* Desktop Button */}
                                 <button
                                   onClick={() => {
                                     setEditingPayment(contribution._id!)
                                     setEditPaymentValue(paid)
                                     setShowPaymentForm(contribution._id!)
                                   }}
-                                  className="text-xs text-green-600 hover:text-green-800 underline"
+                                  className="hidden md:flex items-center gap-1 px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-sm font-medium transition-colors border border-green-200"
                                 >
+                                  <DollarSign className="w-4 h-4" />
                                   Input
                                 </button>
+                                
+                                {/* Mobile Menu Button */}
+                                <div className="md:hidden relative">
+                                  <button
+                                    onClick={() => setShowMobileMenu(showMobileMenu === contribution._id ? null : contribution._id!)}
+                                    className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900"
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+                                  {showMobileMenu === contribution._id && (
+                                    <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                      <button
+                                        onClick={() => {
+                                          setEditingPayment(contribution._id!)
+                                          setEditPaymentValue(paid)
+                                          setShowPaymentForm(contribution._id!)
+                                          setShowMobileMenu(null)
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 hover:bg-green-50 text-green-700 font-medium flex items-center gap-2 border-b border-gray-100"
+                                      >
+                                        <DollarSign className="w-4 h-4" />
+                                        Input Pembayaran
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                                 </div>
                               )}
 
