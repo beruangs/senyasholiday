@@ -10,8 +10,9 @@ import ExpensesTab from './ExpensesTab'
 import ParticipantsTab from './ParticipantsTab'
 import ContributionsTab from './ContributionsTab'
 import RincianTab from './RincianTab'
+import NoteTab from './NoteTab'
 
-type Tab = 'info' | 'rundown' | 'expenses' | 'participants' | 'contributions' | 'rincian'
+type Tab = 'info' | 'rundown' | 'expenses' | 'participants' | 'contributions' | 'rincian' | 'note'
 
 export default function PlanDetailPage() {
   const params = useParams()
@@ -479,6 +480,18 @@ export default function PlanDetailPage() {
                 <span>Iuran</span>
               </button>
 
+              <button
+                onClick={() => setActiveTab('note')}
+                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
+                  activeTab === 'note'
+                    ? 'border-primary-600 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <FileText className="w-5 h-5" />
+                <span>Note</span>
+              </button>
+
               {plan?.status === 'completed' && (
                 <button
                   onClick={() => setActiveTab('rincian')}
@@ -837,6 +850,7 @@ export default function PlanDetailPage() {
             {activeTab === 'participants' && <ParticipantsTab planId={planId} />}
             {activeTab === 'expenses' && <ExpensesTab planId={planId} />}
             {activeTab === 'contributions' && <ContributionsTab planId={planId} />}
+            {activeTab === 'note' && <NoteTab planId={planId} />}
             {activeTab === 'rincian' && plan?.status === 'completed' && <RincianTab planId={planId} plan={plan} />}
           </div>
         </div>

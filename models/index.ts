@@ -83,6 +83,14 @@ const splitPaymentSchema = new Schema({
   amount: { type: Number, required: true },
 })
 
+// Note Schema (for plan notes with rich text)
+const noteSchema = new Schema({
+  holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
+  content: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+})
+
 // Export models
 export const HolidayPlan = mongoose.models.HolidayPlan || mongoose.model('HolidayPlan', holidayPlanSchema)
 export const Rundown = mongoose.models.Rundown || mongoose.model('Rundown', rundownSchema)
@@ -91,3 +99,4 @@ export const ExpenseItem = mongoose.models.ExpenseItem || mongoose.model('Expens
 export const Participant = mongoose.models.Participant || mongoose.model('Participant', participantSchema)
 export const Contribution = mongoose.models.Contribution || mongoose.model('Contribution', contributionSchema)
 export const SplitPayment = mongoose.models.SplitPayment || mongoose.model('SplitPayment', splitPaymentSchema)
+export const Note = mongoose.models.Note || mongoose.model('Note', noteSchema)
