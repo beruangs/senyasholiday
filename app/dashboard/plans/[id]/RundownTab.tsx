@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Calendar as CalendarIcon } from 'lucide-react'
+import { Plus, Trash2, Calendar as CalendarIcon, Edit2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
@@ -19,6 +19,7 @@ export default function RundownTab({ planId }: { planId: string }) {
   const [rundowns, setRundowns] = useState<Rundown[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Rundown>({
     date: '',
     time: '',
@@ -49,24 +50,58 @@ export default function RundownTab({ planId }: { planId: string }) {
     e.preventDefault()
 
     try {
-      const res = await fetch('/api/rundowns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          holidayPlanId: planId,
-          ...formData,
-        }),
-      })
+      if (editingId) {
+        // Update existing rundown
+        const res = await fetch('/api/rundowns', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            _id: editingId,
+            holidayPlanId: planId,
+            ...formData,
+          }),
+        })
 
-      if (res.ok) {
-        toast.success('Rundown berhasil ditambahkan')
-        setShowForm(false)
-        setFormData({ date: '', time: '', activity: '', location: '', notes: '' })
-        fetchRundowns()
+        if (res.ok) {
+          toast.success('Rundown berhasil diperbarui')
+          setShowForm(false)
+          setEditingId(null)
+          setFormData({ date: '', time: '', activity: '', location: '', notes: '' })
+          fetchRundowns()
+        }
+      } else {
+        // Create new rundown
+        const res = await fetch('/api/rundowns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            holidayPlanId: planId,
+            ...formData,
+          }),
+        })
+
+        if (res.ok) {
+          toast.success('Rundown berhasil ditambahkan')
+          setShowForm(false)
+          setFormData({ date: '', time: '', activity: '', location: '', notes: '' })
+          fetchRundowns()
+        }
       }
     } catch (error) {
-      toast.error('Gagal menambahkan rundown')
+      toast.error(editingId ? 'Gagal memperbarui rundown' : 'Gagal menambahkan rundown')
     }
+  }
+
+  const startEdit = (rundown: Rundown) => {
+    setEditingId(rundown._id || null)
+    setFormData(rundown)
+    setShowForm(true)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setShowForm(false)
+    setFormData({ date: '', time: '', activity: '', location: '', notes: '' })
   }
 
   const deleteRundown = async (id: string) => {
@@ -98,6 +133,21 @@ export default function RundownTab({ planId }: { planId: string }) {
     return acc
   }, {})
 
+  // Sort rundowns within each date by time
+  const sortedGroupedRundowns = Object.keys(groupedRundowns).reduce((acc: any, date) => {
+    acc[date] = groupedRundowns[date].sort((a: Rundown, b: Rundown) => {
+      // If both have time, sort by time
+      if (a.time && b.time) {
+        return a.time.localeCompare(b.time)
+      }
+      // If only one has time, put it first
+      if (a.time) return -1
+      if (b.time) return 1
+      return 0
+    })
+    return acc
+  }, {})
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -113,6 +163,18 @@ export default function RundownTab({ planId }: { planId: string }) {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-6 space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">
+              {editingId ? 'Edit Rundown' : 'Tambah Rundown Baru'}
+            </h3>
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="p-2 text-gray-600 hover:bg-gray-200 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -177,7 +239,7 @@ export default function RundownTab({ planId }: { planId: string }) {
           <div className="flex justify-end space-x-3">
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={cancelEdit}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
             >
               Batal
@@ -186,7 +248,7 @@ export default function RundownTab({ planId }: { planId: string }) {
               type="submit"
               className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
             >
-              Simpan
+              {editingId ? 'Perbarui' : 'Simpan'}
             </button>
           </div>
         </form>
@@ -199,7 +261,7 @@ export default function RundownTab({ planId }: { planId: string }) {
         </div>
       ) : (
         <div className="space-y-6">
-          {Object.keys(groupedRundowns)
+          {Object.keys(sortedGroupedRundowns)
             .sort()
             .map((date) => (
               <div key={date} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -209,7 +271,7 @@ export default function RundownTab({ planId }: { planId: string }) {
                   </h3>
                 </div>
                 <div className="divide-y divide-gray-200">
-                  {groupedRundowns[date].map((rundown: Rundown) => (
+                  {sortedGroupedRundowns[date].map((rundown: Rundown) => (
                     <div key={rundown._id} className="p-6 hover:bg-gray-50">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -226,12 +288,22 @@ export default function RundownTab({ planId }: { planId: string }) {
                             <p className="text-sm text-gray-600 mt-2">{rundown.notes}</p>
                           )}
                         </div>
-                        <button
-                          onClick={() => deleteRundown(rundown._id!)}
-                          className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                        <div className="ml-4 flex gap-2">
+                          <button
+                            onClick={() => startEdit(rundown)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => deleteRundown(rundown._id!)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}

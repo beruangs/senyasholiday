@@ -11,8 +11,21 @@ export async function GET(req: NextRequest) {
 
     await dbConnect()
     const rundowns = await Rundown.find({ holidayPlanId: planId })
-      .sort({ date: 1, order: 1 })
       .lean()
+
+    // Sort by date first, then by time
+    rundowns.sort((a, b) => {
+      const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime()
+      if (dateCompare !== 0) return dateCompare
+      
+      // If dates are the same, sort by time (HH:MM format)
+      if (a.time && b.time) {
+        return a.time.localeCompare(b.time)
+      }
+      if (a.time) return -1
+      if (b.time) return 1
+      return 0
+    })
 
     return NextResponse.json(rundowns)
   } catch (error) {
