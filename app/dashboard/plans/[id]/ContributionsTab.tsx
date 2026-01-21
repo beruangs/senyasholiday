@@ -318,8 +318,8 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                 </div>
               </div>
 
-              {/* Table for this collector */}
-              <div className="overflow-x-auto">
+              {/* Table for this collector - Desktop View */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
@@ -657,6 +657,157 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                       </tr>
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Card View - Simplified */}
+                <div className="md:hidden space-y-3 p-4">
+                  {collectorGroup.contributions.length === 0 ? (
+                    <div className="text-center text-gray-500 py-6">
+                      <p>Tidak ada data kontribusi</p>
+                    </div>
+                  ) : (
+                    collectorGroup.contributions.map((contribution) => {
+                      // Handle participantId yang bisa berupa string atau object
+                      let participantName = 'Unknown'
+                      if (typeof contribution.participantId === 'object' && contribution.participantId !== null) {
+                        participantName = (contribution.participantId as any).name
+                      } else {
+                        const participant = participants.find(p => p._id === contribution.participantId)
+                        participantName = participant?.name || 'Unknown'
+                      }
+
+                      const { share, paid, remaining, overpaid, status } = calculateShare(contribution)
+
+                      return (
+                        <div key={contribution._id} className="bg-white border border-gray-200 rounded-lg p-4">
+                          {/* Header dengan nama dan menu */}
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-900">{participantName}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{formatCurrency(contribution.amount)}</p>
+                            </div>
+                            
+                            {/* 3-Dot Menu */}
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowMobileMenu(showMobileMenu === contribution._id ? null : contribution._id!)}
+                                className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900"
+                              >
+                                <MoreVertical className="w-5 h-5" />
+                              </button>
+                              {showMobileMenu === contribution._id && (
+                                <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                  <button
+                                    onClick={() => {
+                                      setEditingMaxPay(contribution._id!)
+                                      setEditMaxPayValue(contribution.maxPay ?? null)
+                                      setShowMobileMenu(null)
+                                    }}
+                                    className="w-full text-left px-4 py-3 hover:bg-blue-50 text-blue-700 font-medium border-b border-gray-100"
+                                  >
+                                    Edit Max Bayar
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingPayment(contribution._id!)
+                                      setEditPaymentValue(paid)
+                                      setShowPaymentForm(contribution._id!)
+                                      setShowMobileMenu(null)
+                                    }}
+                                    className="w-full text-left px-4 py-3 hover:bg-green-50 text-green-700 font-medium"
+                                  >
+                                    Input Pembayaran
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Status Grid */}
+                          <div className="grid grid-cols-3 gap-2 text-sm">
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-gray-600 text-xs mb-1">Max Bayar</p>
+                              <p className="font-semibold text-gray-900">
+                                {contribution.maxPay ? formatCurrency(contribution.maxPay) : '-'}
+                              </p>
+                            </div>
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-gray-600 text-xs mb-1">Terbayar</p>
+                              <p className="font-semibold text-green-600">{formatCurrency(paid)}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-gray-600 text-xs mb-1">Status</p>
+                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                status === 'Lunas' ? 'bg-green-100 text-green-800' :
+                                status === 'Sebagian' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Kurang/Lebih Info */}
+                          {remaining > 0 && (
+                            <div className="mt-2 p-2 bg-red-50 rounded border border-red-200">
+                              <p className="text-sm text-red-700 font-medium">
+                                Kurang: {formatCurrency(remaining)}
+                              </p>
+                            </div>
+                          )}
+                          {overpaid > 0 && (
+                            <div className="mt-2 p-2 bg-orange-50 rounded border border-orange-200">
+                              <p className="text-sm text-orange-700 font-medium">
+                                Lebih: {formatCurrency(overpaid)}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Edit Max Bayar Inline - Mobile */}
+                          {editingMaxPay === contribution._id && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                              <input
+                                type="number"
+                                value={editMaxPayValue ?? ''}
+                                onChange={(e) => setEditMaxPayValue(e.target.value ? Number(e.target.value) : null)}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded"
+                                placeholder="Max bayar"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => updateMaxPay(contribution._id!, editMaxPayValue)}
+                                  className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                                >
+                                  Simpan
+                                </button>
+                                <button
+                                  onClick={() => setEditingMaxPay(null)}
+                                  className="flex-1 px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300"
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  )}
+
+                  {/* Mobile Total */}
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mt-4">
+                    <p className="text-sm text-gray-600 mb-2">Total - {collectorGroup.collectorName}</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-gray-600 text-xs">Nominal</p>
+                        <p className="font-bold text-primary-600">{formatCurrency(collectorGroup.contributions.reduce((sum, c) => sum + c.amount, 0))}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600 text-xs">Terbayar</p>
+                        <p className="font-bold text-green-600">{formatCurrency(collectorGroup.stats.totalPaid)}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
