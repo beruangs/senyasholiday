@@ -302,26 +302,27 @@ export default function ExpensesTab({ planId }: { planId: string }) {
         return
       }
 
+      // Calculate new total from price and quantity
+      const newPrice = editingExpenseData.price ?? expense.price
+      const newQuantity = editingExpenseData.quantity ?? expense.quantity
+      const newTotal = newPrice * newQuantity
+
       const body: any = {
         _id: id,
-        itemName: editingExpenseData.itemName,
-        collectorId: editingExpenseData.collectorId,
+        itemName: editingExpenseData.itemName ?? expense.itemName,
+        detail: editingExpenseData.detail ?? expense.detail,
+        price: newPrice,
+        quantity: newQuantity,
+        total: newTotal,
+        collectorId: editingExpenseData.collectorId ?? expense.collectorId,
+        downPayment: editingExpenseData.downPayment ?? expense.downPayment,
       }
 
-      let newTotal = expense.total
       let shouldRecalculateContributions = false
-
-      // If user edited total directly, set price=total and quantity=1 to keep data consistent
-      if (typeof editingExpenseData.total === 'number' && editingExpenseData.total > 0) {
-        body.total = editingExpenseData.total
-        body.price = editingExpenseData.total
-        body.quantity = 1
-        newTotal = editingExpenseData.total
-        
-        // Check if total changed - need to recalculate contributions
-        if (newTotal !== expense.total) {
-          shouldRecalculateContributions = true
-        }
+      
+      // Check if total changed - need to recalculate contributions
+      if (newTotal !== expense.total) {
+        shouldRecalculateContributions = true
       }
 
       const res = await fetch('/api/expenses', {
@@ -1351,7 +1352,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-sm bg-gray-50 p-3 rounded divide-x divide-gray-200">
+                  <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 p-3 rounded">
                     <div className="px-2">
                       <span className="text-gray-500 text-xs">Harga</span>
                       <p className="font-medium">{formatCurrency(expense.price)}</p>
@@ -1360,30 +1361,74 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                       <span className="text-gray-500 text-xs">QTY</span>
                       <p className="font-medium">{expense.quantity}</p>
                     </div>
-                    <div className="px-2 text-right">
-                      <span className="text-gray-500 text-xs">Total</span>
-                      <p className="font-bold">{formatCurrency(expense.total)}</p>
-                    </div>
                   </div>
 
                   {/* Mobile Inline Edit */}
                   {editingExpenseId === expense._id && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-3">
+                    <div className="bg-white border-2 border-primary-300 rounded-lg p-4 space-y-4 mt-4">
+                      <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
+                        <Edit2 className="w-5 h-5 text-primary-600" />
+                        <span>Edit Pengeluaran</span>
+                      </h4>
+
                       <div>
-                        <label className="block text-xs text-gray-700">Nama Item</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Nama Item</label>
                         <input
                           type="text"
                           value={editingExpenseData.itemName ?? expense.itemName}
                           onChange={(e) => setEditingExpenseData({ ...editingExpenseData, itemName: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                         />
                       </div>
+
                       <div>
-                        <label className="block text-xs text-gray-700">Pengumpul</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Detail</label>
+                        <input
+                          type="text"
+                          value={editingExpenseData.detail ?? expense.detail ?? ''}
+                          onChange={(e) => setEditingExpenseData({ ...editingExpenseData, detail: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                          placeholder="Contoh: Villa Patria Padma, +1 orang"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Harga</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editingExpenseData.price ?? expense.price}
+                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, price: Number(e.target.value) })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={editingExpenseData.quantity ?? expense.quantity}
+                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, quantity: Number(e.target.value) })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                        <p className="text-sm text-gray-700">
+                          Total Pengeluaran: <span className="font-bold text-primary-600 text-lg">
+                            {formatCurrency((editingExpenseData.price ?? expense.price) * (editingExpenseData.quantity ?? expense.quantity))}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Pengumpul</label>
                         <select
                           value={editingExpenseData.collectorId ?? expense.collectorId ?? ''}
                           onChange={(e) => setEditingExpenseData({ ...editingExpenseData, collectorId: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                         >
                           <option value="">-- Pilih Pengumpul --</option>
                           {participants.map(p => (
@@ -1391,19 +1436,47 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                           ))}
                         </select>
                       </div>
+
                       <div>
-                        <label className="block text-xs text-gray-700">Total (Rp)</label>
-                        <input
-                          type="number"
-                          value={(editingExpenseData.total ?? expense.total) as any}
-                          onChange={(e) => setEditingExpenseData({ ...editingExpenseData, total: Number(e.target.value) })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          💳 Down Payment (DP) - Opsional
+                        </label>
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={editingExpenseData.downPayment ?? expense.downPayment ?? 0}
+                            onChange={(e) => setEditingExpenseData({ ...editingExpenseData, downPayment: Number(e.target.value) })}
+                            className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                            placeholder="0"
+                          />
+                          <span className="text-gray-700">%</span>
+                          {(editingExpenseData.downPayment ?? expense.downPayment ?? 0) > 0 && (
+                            <div className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-2">
+                              <p className="text-sm text-yellow-800">
+                                DP: <span className="font-bold">{formatCurrency(((editingExpenseData.price ?? expense.price) * (editingExpenseData.quantity ?? expense.quantity)) * (editingExpenseData.downPayment ?? expense.downPayment ?? 0) / 100)}</span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex justify-end space-x-2">
-                        <button onClick={() => { setEditingExpenseId(null); setEditingExpenseData({}) }} className="px-3 py-2 border border-gray-300 rounded text-sm">Batal</button>
-                        <button onClick={() => updateExpense(expense._id!)} className="px-3 py-2 bg-primary-600 text-white rounded text-sm">Simpan</button>
+                      <div className="flex justify-end space-x-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => { setEditingExpenseId(null); setEditingExpenseData({}) }}
+                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateExpense(expense._id!)}
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                        >
+                          Simpan
+                        </button>
                       </div>
                     </div>
                   )}
