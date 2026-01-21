@@ -23,6 +23,8 @@ interface Contribution {
   isPaid: boolean
   paid?: number // jumlah yang sudah dibayar
   maxPay?: number // batas maksimal bayar per peserta
+  paymentMethod?: string // 'manual' | 'midtrans'
+  paidAt?: string | Date
 }
 
 export default function ContributionsTab({ planId }: { planId: string }) {
@@ -37,6 +39,8 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   // State untuk manage pembayaran
   const [editingPayment, setEditingPayment] = useState<string | null>(null)
   const [editPaymentValue, setEditPaymentValue] = useState<number>(0)
+  const [editPaymentMethod, setEditPaymentMethod] = useState<string>('manual')
+  const [showPaymentForm, setShowPaymentForm] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -116,12 +120,17 @@ export default function ContributionsTab({ planId }: { planId: string }) {
           _id: contributionId,
           paid: paidAmount,
           isPaid: paidAmount > 0,
+          paymentMethod: editPaymentMethod,
+          paidAt: paidAmount > 0 ? new Date() : null,
         }),
       })
 
       if (res.ok) {
-        toast.success('Pembayaran berhasil diupdate')
+        toast.success('Pembayaran berhasil diinput')
         setEditingPayment(null)
+        setShowPaymentForm(null)
+        setEditPaymentValue(0)
+        setEditPaymentMethod('manual')
         fetchData()
       }
     } catch (error) {
@@ -437,15 +446,101 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                                 <span className="text-sm font-medium text-green-600">
                                   {formatCurrency(paid)}
                                 </span>
+                                {contribution.paymentMethod === 'manual' && paid > 0 && (
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                    Manual
+                                  </span>
+                                )}
                                 <button
                                   onClick={() => {
                                     setEditingPayment(contribution._id!)
                                     setEditPaymentValue(paid)
+                                    setShowPaymentForm(contribution._id!)
                                   }}
                                   className="text-xs text-green-600 hover:text-green-800 underline"
                                 >
                                   Input
                                 </button>
+                                </div>
+                              )}
+
+                              {/* Payment Form Modal */}
+                              {showPaymentForm === contribution._id && (
+                                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                  <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 space-y-4">
+                                    <div>
+                                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                        Input Pembayaran
+                                      </h3>
+                                      <p className="text-sm text-gray-600 mb-4">
+                                        Peserta: <span className="font-semibold">{participants.find(p => p._id === contribution.participantId)?.name}</span>
+                                      </p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                      <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                          Nominal Pembayaran
+                                        </label>
+                                        <div className="flex items-center">
+                                          <span className="text-gray-500 mr-2">Rp</span>
+                                          <input
+                                            type="number"
+                                            value={editPaymentValue}
+                                            onChange={(e) => setEditPaymentValue(Number(e.target.value))}
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+                                            placeholder="0"
+                                          />
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                          Metode Pembayaran
+                                        </label>
+                                        <select
+                                          value={editPaymentMethod}
+                                          onChange={(e) => setEditPaymentMethod(e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                        >
+                                          <option value="manual">Transfer Langsung</option>
+                                          <option value="cash">Cash</option>
+                                        </select>
+                                      </div>
+
+                                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                        <p className="text-sm text-blue-900">
+                                          <span className="font-semibold">Nominal Iuran:</span> {formatCurrency(share)}
+                                        </p>
+                                        {editPaymentValue > 0 && (
+                                          <p className="text-sm text-blue-900 mt-2">
+                                            <span className="font-semibold">Terisi:</span> {formatCurrency(editPaymentValue)} ({Math.round((editPaymentValue / share) * 100)}%)
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-3 pt-4">
+                                      <button
+                                        onClick={() => {
+                                          setShowPaymentForm(null)
+                                          setEditingPayment(null)
+                                        }}
+                                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                                      >
+                                        Batal
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          updatePayment(contribution._id!, editPaymentValue)
+                                          setShowPaymentForm(null)
+                                        }}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                      >
+                                        Simpan Pembayaran
+                                      </button>
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                             </td>
