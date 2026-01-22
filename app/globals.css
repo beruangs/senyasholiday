@@ -24,3 +24,38 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Print Styles */
+@media print {
+  /* Hide navigation, sidebar, and other non-printable elements */
+  nav,
+  aside,
+  header:not(.print-header),
+  footer:not(.print-footer),
+  .sidebar,
+  .navigation,
+  [data-sidebar],
+  [role="navigation"] {
+    display: none !important;
+  }
+  
+  /* Ensure print modal is visible and positioned correctly */
+  .print-modal {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: 100% !important;
+  }
+  
+  /* Reset page margins */
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+  
+  /* Prevent color issues */
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
