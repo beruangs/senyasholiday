@@ -91,6 +91,25 @@ const noteSchema = new Schema({
   updatedAt: { type: Date, default: Date.now },
 })
 
+// Payment History Schema (for tracking all payment changes)
+const paymentHistorySchema = new Schema({
+  holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
+  contributionId: { type: Schema.Types.ObjectId, ref: 'Contribution', required: true },
+  participantId: { type: Schema.Types.ObjectId, ref: 'Participant', required: true },
+  expenseItemId: { type: Schema.Types.ObjectId, ref: 'ExpenseItem' },
+  action: {
+    type: String,
+    enum: ['payment', 'refund', 'adjustment', 'max_pay_set', 'max_pay_removed'],
+    required: true
+  },
+  previousAmount: { type: Number, default: 0 }, // Amount before change
+  newAmount: { type: Number, default: 0 }, // Amount after change
+  changeAmount: { type: Number, default: 0 }, // Difference (positive = payment, negative = refund)
+  paymentMethod: { type: String, enum: ['manual', 'cash', 'transfer', 'midtrans'], default: 'manual' },
+  note: String, // Optional note for this change
+  createdAt: { type: Date, default: Date.now },
+})
+
 // Export models
 export const HolidayPlan = mongoose.models.HolidayPlan || mongoose.model('HolidayPlan', holidayPlanSchema)
 export const Rundown = mongoose.models.Rundown || mongoose.model('Rundown', rundownSchema)
@@ -100,3 +119,4 @@ export const Participant = mongoose.models.Participant || mongoose.model('Partic
 export const Contribution = mongoose.models.Contribution || mongoose.model('Contribution', contributionSchema)
 export const SplitPayment = mongoose.models.SplitPayment || mongoose.model('SplitPayment', splitPaymentSchema)
 export const Note = mongoose.models.Note || mongoose.model('Note', noteSchema)
+export const PaymentHistory = mongoose.models.PaymentHistory || mongoose.model('PaymentHistory', paymentHistorySchema)
