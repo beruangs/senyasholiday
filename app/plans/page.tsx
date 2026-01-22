@@ -3,8 +3,13 @@ import Image from 'next/image'
 import { Calendar, MapPin } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
+import { Metadata } from 'next'
 import dbConnect from '@/lib/mongodb'
 import { HolidayPlan } from '@/models'
+
+export const metadata: Metadata = {
+  title: 'Plans | SEN YAS DADDY',
+}
 
 export const dynamic = 'force-dynamic'
 

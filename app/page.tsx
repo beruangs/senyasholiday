@@ -3,6 +3,11 @@ import Image from 'next/image'
 import { Calendar, Users, DollarSign, Lock } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import SuggestionButton from '@/components/SuggestionButton'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'SEN YAS DADDY - Holiday Planner',
+}
 
 export default function HomePage() {
   return (

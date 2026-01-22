@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ArrowLeft, Calendar, DollarSign, Users, Share2, Settings, Eye, EyeOff, Edit2, Save, X, CheckCircle, FileText, Upload, Image as ImageIcon } from 'lucide-react'
+import { usePageTitle, pageTitle } from '@/lib/usePageTitle'
 import RundownTab from './RundownTab'
 import ExpensesTab from './ExpensesTab'
 import ParticipantsTab from './ParticipantsTab'
@@ -24,6 +25,9 @@ export default function PlanDetailPage() {
   const [editingPassword, setEditingPassword] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [completingEvent, setCompletingEvent] = useState(false)
+  
+  // Set page title when plan loads
+  usePageTitle(plan ? pageTitle.dashboardPlan(plan.title) : 'Dashboard | Loading...')
   
   // Edit Info states
   const [editingInfo, setEditingInfo] = useState(false)

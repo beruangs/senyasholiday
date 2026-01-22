@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ArrowLeft, Save } from 'lucide-react'
+import { usePageTitle, pageTitle } from '@/lib/usePageTitle'
 
 export default function CreatePlanPage() {
+  usePageTitle(pageTitle.dashboard())
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({

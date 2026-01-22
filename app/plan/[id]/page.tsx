@@ -7,6 +7,7 @@ import { Lock, Calendar, MapPin, DollarSign, Users, CreditCard, FileText, Settin
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
+import { usePageTitle, pageTitle } from '@/lib/usePageTitle'
 import SuggestionButton from '@/components/SuggestionButton'
 
 export default function PublicPlanPage() {
@@ -25,6 +26,9 @@ export default function PublicPlanPage() {
   const [note, setNote] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'info' | 'rundown' | 'keuangan' | 'iuran' | 'peserta' | 'note'>('rundown')
+
+  // Set page title when plan loads
+  usePageTitle(plan ? pageTitle.publicPlan(plan.title) : 'Loading...')
   const [paymentLoading, setPaymentLoading] = useState<string | null>(null)
 
   useEffect(() => {

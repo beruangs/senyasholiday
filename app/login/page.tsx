@@ -7,8 +7,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { LogIn } from 'lucide-react'
+import { usePageTitle, pageTitle } from '@/lib/usePageTitle'
 
 export default function LoginPage() {
+  usePageTitle(pageTitle.login())
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
