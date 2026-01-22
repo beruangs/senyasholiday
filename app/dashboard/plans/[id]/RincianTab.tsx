@@ -459,124 +459,83 @@ export default function RincianTab({ planId, plan }: RincianTabProps) {
       {/* Print Modal */}
       {showPrintView && (
         <div className="fixed inset-0 z-50 bg-white overflow-auto print-modal">
-          {/* Print Header */}
-          <div className="max-w-5xl mx-auto p-8">
-            {/* Header */}
-            <div className="border-b-4 border-primary-600 pb-6 mb-6">
+          <div className="max-w-4xl mx-auto p-6">
+            {/* Header - Compact */}
+            <div className="border-b-2 border-gray-800 pb-3 mb-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{plan.title}</h1>
-                  <p className="text-xl text-gray-700">{plan.destination}</p>
-                  <p className="text-sm text-gray-600 mt-2">
+                  <h1 className="text-2xl font-bold text-gray-900">{plan.title}</h1>
+                  <p className="text-lg text-gray-700">{plan.destination}</p>
+                  <p className="text-xs text-gray-500 mt-1">
                     {formatDate(plan.startDate)} - {formatDate(plan.endDate)}
                   </p>
                 </div>
                 <button
                   onClick={handleClosePrint}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg print:hidden"
+                  className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm print:hidden"
                 >
                   Tutup
                 </button>
               </div>
             </div>
 
-            {/* Info Acara */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b-2 border-gray-300 pb-2">
-                📋 Informasi Acara
-              </h2>
-              {plan.description && (
-                <p className="text-gray-700 mb-4">{plan.description}</p>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <p className="font-semibold text-green-600">✓ Selesai</p>
+            {/* Info & Peserta - Side by Side */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <h2 className="text-sm font-bold text-gray-800 mb-2 border-b border-gray-300 pb-1">📋 Informasi</h2>
+                {plan.description && (
+                  <p className="text-xs text-gray-600 mb-2">{plan.description}</p>
+                )}
+                <div className="text-xs space-y-1">
+                  <p><span className="text-gray-500">Status:</span> <span className="text-green-600 font-medium">✓ Selesai</span></p>
+                  <p><span className="text-gray-500">Diselesaikan:</span> {plan.completedAt ? formatDate(plan.completedAt) : '-'}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Diselesaikan Pada</p>
-                  <p className="font-semibold">{plan.completedAt ? formatDate(plan.completedAt) : '-'}</p>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-gray-800 mb-2 border-b border-gray-300 pb-1">👥 Peserta ({participants.length})</h2>
+                <div className="grid grid-cols-2 gap-x-2 text-xs">
+                  {participants.map((p: any, idx: number) => (
+                    <div key={p._id}>{idx + 1}. {p.name}</div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Daftar Peserta */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b-2 border-gray-300 pb-2">
-                👥 Daftar Peserta
-              </h2>
-              <div className="grid grid-cols-3 gap-3">
-                {participants.map((p: any, idx: number) => (
-                  <div key={p._id} className="flex items-center space-x-2 text-gray-700">
-                    <span className="font-semibold">{idx + 1}.</span>
-                    <span>{p.name}</span>
-                  </div>
-                ))}
+            {/* Ringkasan Keuangan - Compact */}
+            <div className="mb-4">
+              <h2 className="text-sm font-bold text-gray-800 mb-2 border-b border-gray-300 pb-1">💰 Ringkasan Keuangan</h2>
+              <div className="grid grid-cols-4 gap-2 text-xs mb-3">
+                <div className="border border-gray-300 rounded p-2 text-center">
+                  <p className="text-gray-500">Total</p>
+                  <p className="font-bold text-gray-900">{formatCurrency(totalExpenses)}</p>
+                </div>
+                <div className="border border-green-300 rounded p-2 text-center bg-green-50">
+                  <p className="text-gray-500">Terkumpul</p>
+                  <p className="font-bold text-green-700">{formatCurrency(totalCollected)}</p>
+                </div>
+                <div className="border border-red-300 rounded p-2 text-center bg-red-50">
+                  <p className="text-gray-500">Sisa</p>
+                  <p className="font-bold text-red-700">{formatCurrency(totalRemaining)}</p>
+                </div>
+                <div className="border border-yellow-300 rounded p-2 text-center bg-yellow-50">
+                  <p className="text-gray-500">Total DP</p>
+                  <p className="font-bold text-yellow-700">{formatCurrency(totalDP)}</p>
+                </div>
               </div>
-              <p className="mt-4 text-sm text-gray-600">Total: <strong>{participants.length} orang</strong></p>
             </div>
 
-            {/* Rundown */}
-            {rundowns.length > 0 && (
-              <div className="mb-8 page-break">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b-2 border-gray-300 pb-2">
-                  📅 Rundown Acara
-                </h2>
-                {Object.keys(groupedRundowns).sort().map((date) => (
-                  <div key={date} className="mb-4">
-                    <h3 className="font-bold text-lg text-gray-800 mb-2">{formatDate(date)}</h3>
-                    <div className="space-y-2">
-                      {groupedRundowns[date].map((r: any) => (
-                        <div key={r._id} className="flex gap-3 text-gray-700">
-                          {r.time && <span className="font-semibold min-w-[80px]">{r.time}</span>}
-                          <div className="flex-1">
-                            <p className="font-medium">{r.activity}</p>
-                            {r.location && <p className="text-sm text-gray-600">📍 {r.location}</p>}
-                            {r.notes && <p className="text-sm text-gray-600 italic">{r.notes}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Keuangan - Summary */}
-            <div className="mb-8 page-break">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b-2 border-gray-300 pb-2">
-                💰 Ringkasan Keuangan
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="border border-gray-300 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-1">Total Pengeluaran</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalExpenses)}</p>
-                </div>
-                <div className="border border-green-300 rounded-lg p-4 bg-green-50">
-                  <p className="text-sm text-gray-600 mb-1">Terkumpul</p>
-                  <p className="text-2xl font-bold text-green-700">{formatCurrency(totalCollected)}</p>
-                </div>
-                <div className="border border-red-300 rounded-lg p-4 bg-red-50">
-                  <p className="text-sm text-gray-600 mb-1">Sisa</p>
-                  <p className="text-2xl font-bold text-red-700">{formatCurrency(totalRemaining)}</p>
-                </div>
-                <div className="border border-yellow-300 rounded-lg p-4 bg-yellow-50">
-                  <p className="text-sm text-gray-600 mb-1">Total DP</p>
-                  <p className="text-2xl font-bold text-yellow-700">{formatCurrency(totalDP)}</p>
-                </div>
-              </div>
-
-              {/* Detail Pengeluaran */}
-              <h3 className="font-bold text-lg text-gray-800 mb-3">Detail Pengeluaran</h3>
-              <table className="w-full border-collapse border border-gray-300 mb-6">
+            {/* Detail Pengeluaran */}
+            <div className="mb-4">
+              <h2 className="text-sm font-bold text-gray-800 mb-2 border-b border-gray-300 pb-1">📝 Detail Pengeluaran</h2>
+              <table className="w-full border-collapse border border-gray-300 text-xs">
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="border border-gray-300 px-3 py-2 text-left text-sm">No</th>
-                    <th className="border border-gray-300 px-3 py-2 text-left text-sm">Item</th>
-                    <th className="border border-gray-300 px-3 py-2 text-left text-sm">Kolektor</th>
-                    <th className="border border-gray-300 px-3 py-2 text-right text-sm">Total</th>
-                    <th className="border border-gray-300 px-3 py-2 text-right text-sm">DP</th>
-                    <th className="border border-gray-300 px-3 py-2 text-center text-sm">Peserta</th>
+                    <th className="border border-gray-300 px-2 py-1 text-left">No</th>
+                    <th className="border border-gray-300 px-2 py-1 text-left">Item</th>
+                    <th className="border border-gray-300 px-2 py-1 text-left">Kolektor</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right">Total</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right">DP</th>
+                    <th className="border border-gray-300 px-2 py-1 text-center">Peserta</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -585,90 +544,81 @@ export default function RincianTab({ planId, plan }: RincianTabProps) {
                     const participantCount = contributions.filter(
                       (c: any) => (c.expenseItemId?._id || c.expenseItemId) === exp._id
                     ).length
-
                     return (
                       <tr key={exp._id}>
-                        <td className="border border-gray-300 px-3 py-2 text-sm">{idx + 1}</td>
-                        <td className="border border-gray-300 px-3 py-2 text-sm">
-                          <div className="font-medium">{exp.itemName}</div>
-                          {exp.detail && <div className="text-xs text-gray-600">{exp.detail}</div>}
+                        <td className="border border-gray-300 px-2 py-1">{idx + 1}</td>
+                        <td className="border border-gray-300 px-2 py-1">
+                          <span className="font-medium">{exp.itemName}</span>
+                          {exp.detail && <span className="text-gray-500 ml-1">({exp.detail})</span>}
                         </td>
-                        <td className="border border-gray-300 px-3 py-2 text-sm">{exp.collectorId?.name || '-'}</td>
-                        <td className="border border-gray-300 px-3 py-2 text-sm text-right font-medium">{formatCurrency(exp.total)}</td>
-                        <td className="border border-gray-300 px-3 py-2 text-sm text-right text-yellow-700">{formatCurrency(dpAmount)}</td>
-                        <td className="border border-gray-300 px-3 py-2 text-sm text-center">{participantCount}</td>
+                        <td className="border border-gray-300 px-2 py-1">{exp.collectorId?.name || '-'}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-right font-medium">{formatCurrency(exp.total)}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-right text-yellow-700">{formatCurrency(dpAmount)}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-center">{participantCount}</td>
                       </tr>
                     )
                   })}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-200 font-bold">
-                    <td colSpan={3} className="border border-gray-300 px-3 py-2 text-sm text-right">TOTAL</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-right">{formatCurrency(totalExpenses)}</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-right text-yellow-700">{formatCurrency(totalDP)}</td>
-                    <td className="border border-gray-300 px-3 py-2"></td>
+                    <td colSpan={3} className="border border-gray-300 px-2 py-1 text-right">TOTAL</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right">{formatCurrency(totalExpenses)}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right text-yellow-700">{formatCurrency(totalDP)}</td>
+                    <td className="border border-gray-300 px-2 py-1"></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
 
             {/* Iuran Per Peserta */}
-            <div className="mb-8 page-break">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b-2 border-gray-300 pb-2">
-                💳 Iuran Per Peserta
-              </h2>
-              <table className="w-full border-collapse border border-gray-300">
+            <div className="mb-4">
+              <h2 className="text-sm font-bold text-gray-800 mb-2 border-b border-gray-300 pb-1">💳 Iuran Per Peserta</h2>
+              <table className="w-full border-collapse border border-gray-300 text-xs">
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="border border-gray-300 px-3 py-2 text-left text-sm">No</th>
-                    <th className="border border-gray-300 px-3 py-2 text-left text-sm">Nama</th>
-                    <th className="border border-gray-300 px-3 py-2 text-right text-sm">Total Iuran</th>
-                    <th className="border border-gray-300 px-3 py-2 text-right text-sm">DP</th>
-                    <th className="border border-gray-300 px-3 py-2 text-right text-sm">Pelunasan</th>
-                    <th className="border border-gray-300 px-3 py-2 text-right text-sm">Terbayar</th>
-                    <th className="border border-gray-300 px-3 py-2 text-right text-sm">Sisa</th>
-                    <th className="border border-gray-300 px-3 py-2 text-center text-sm">Status</th>
+                    <th className="border border-gray-300 px-2 py-1 text-left">No</th>
+                    <th className="border border-gray-300 px-2 py-1 text-left">Nama</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right">Total Iuran</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right">DP</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right">Pelunasan</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right">Terbayar</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right">Sisa</th>
+                    <th className="border border-gray-300 px-2 py-1 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {participantSummary.map((item: any, idx: number) => (
                     <tr key={item.participant._id}>
-                      <td className="border border-gray-300 px-3 py-2 text-sm">{idx + 1}</td>
-                      <td className="border border-gray-300 px-3 py-2 text-sm font-medium">{item.participant.name}</td>
-                      <td className="border border-gray-300 px-3 py-2 text-sm text-right font-medium">{formatCurrency(item.totalAmount)}</td>
-                      <td className="border border-gray-300 px-3 py-2 text-sm text-right text-yellow-700">{formatCurrency(item.dpAmount)}</td>
-                      <td className="border border-gray-300 px-3 py-2 text-sm text-right text-blue-700">{formatCurrency(item.regularAmount)}</td>
-                      <td className="border border-gray-300 px-3 py-2 text-sm text-right text-green-700 font-medium">{formatCurrency(item.totalPaid)}</td>
-                      <td className="border border-gray-300 px-3 py-2 text-sm text-right text-red-700 font-medium">{formatCurrency(item.remaining)}</td>
-                      <td className="border border-gray-300 px-3 py-2 text-sm text-center">
-                        <span className={`px-2 py-1 rounded text-xs ${item.status === 'lunas' ? 'bg-green-100 text-green-800' :
-                          item.status === 'sebagian' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                          {item.status === 'lunas' ? '✓ Lunas' : item.status === 'sebagian' ? '⏳ Sebagian' : '✗ Belum'}
-                        </span>
+                      <td className="border border-gray-300 px-2 py-1">{idx + 1}</td>
+                      <td className="border border-gray-300 px-2 py-1 font-medium">{item.participant.name}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right font-medium">{formatCurrency(item.totalAmount)}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right text-yellow-700">{formatCurrency(item.dpAmount)}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right text-blue-700">{formatCurrency(item.regularAmount)}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right text-green-700 font-medium">{formatCurrency(item.totalPaid)}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right text-red-700 font-medium">{formatCurrency(item.remaining)}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-center">
+                        {item.status === 'lunas' ? '✓' : item.status === 'sebagian' ? '⏳' : '✗'}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-200 font-bold">
-                    <td colSpan={2} className="border border-gray-300 px-3 py-2 text-sm text-right">TOTAL</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-right">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.totalAmount, 0))}</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-right text-yellow-700">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.dpAmount, 0))}</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-right text-blue-700">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.regularAmount, 0))}</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-right text-green-700">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.totalPaid, 0))}</td>
-                    <td className="border border-gray-300 px-3 py-2 text-sm text-right text-red-700">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.remaining, 0))}</td>
-                    <td className="border border-gray-300 px-3 py-2"></td>
+                    <td colSpan={2} className="border border-gray-300 px-2 py-1 text-right">TOTAL</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.totalAmount, 0))}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right text-yellow-700">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.dpAmount, 0))}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right text-blue-700">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.regularAmount, 0))}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right text-green-700">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.totalPaid, 0))}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right text-red-700">{formatCurrency(participantSummary.reduce((sum: number, p: any) => sum + p.remaining, 0))}</td>
+                    <td className="border border-gray-300 px-2 py-1"></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
 
-            {/* Footer */}
-            <div className="border-t-2 border-gray-300 pt-4 mt-8 text-center text-sm text-gray-600">
-              <p>Dokumen dicetak pada: {formatDate(new Date())}</p>
-              <p className="mt-1">© {new Date().getFullYear()} - Sistem Manajemen Liburan</p>
+            {/* Footer - Compact */}
+            <div className="border-t border-gray-300 pt-2 mt-4 text-center text-xs text-gray-500">
+              <p>Dokumen dicetak pada: {formatDate(new Date())} • © {new Date().getFullYear()} - Sistem Manajemen Liburan</p>
             </div>
           </div>
 
