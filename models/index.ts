@@ -46,8 +46,8 @@ const holidayPlanSchema = new Schema({
   completedAt: Date,
   bannerImage: String,
   logoImage: String,
-  // Owner - user yang membuat plan
-  ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  // Owner - user yang membuat plan (optional for SEN plans and env-admin)
+  ownerId: { type: Schema.Types.ObjectId, ref: 'User' },
   // Admins - user lain yang bisa mengedit plan
   adminIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   // Legacy field - untuk backward compatibility
