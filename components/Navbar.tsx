@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import Image from 'next/image'
-import { Menu, X, LogOut, LayoutDashboard, Home, UserPlus, LogIn, AtSign } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, Home, UserPlus, LogIn, AtSign, Shield } from 'lucide-react'
 import { useState } from 'react'
 
 export default function Navbar() {
@@ -37,8 +37,8 @@ export default function Navbar() {
             <Link
               href="/"
               className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname === '/'
-                  ? 'text-primary-600 bg-primary-50'
-                  : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
+                ? 'text-primary-600 bg-primary-50'
+                : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
                 }`}
             >
               <Home className="w-4 h-4" />
@@ -49,12 +49,25 @@ export default function Navbar() {
               <Link
                 href="/dashboard"
                 className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname.startsWith('/dashboard')
-                    ? 'text-primary-600 bg-primary-50'
-                    : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
+                  ? 'text-primary-600 bg-primary-50'
+                  : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
                   }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
                 <span>Dashboard</span>
+              </Link>
+            )}
+
+            {session && (session.user as any)?.role === 'superadmin' && (
+              <Link
+                href="/superadmin"
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname.startsWith('/superadmin')
+                  ? 'text-amber-600 bg-amber-50'
+                  : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                  }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>Admin</span>
               </Link>
             )}
 
@@ -113,8 +126,8 @@ export default function Navbar() {
               href="/"
               onClick={() => setMobileMenuOpen(false)}
               className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname === '/'
-                  ? 'text-primary-600 bg-primary-50'
-                  : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
+                ? 'text-primary-600 bg-primary-50'
+                : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
                 }`}
             >
               <Home className="w-4 h-4" />
@@ -126,12 +139,26 @@ export default function Navbar() {
                 href="/dashboard"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname.startsWith('/dashboard')
-                    ? 'text-primary-600 bg-primary-50'
-                    : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
+                  ? 'text-primary-600 bg-primary-50'
+                  : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
                   }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
                 <span>Dashboard</span>
+              </Link>
+            )}
+
+            {session && (session.user as any)?.role === 'superadmin' && (
+              <Link
+                href="/superadmin"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname.startsWith('/superadmin')
+                  ? 'text-amber-600 bg-amber-50'
+                  : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                  }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>Superadmin</span>
               </Link>
             )}
 

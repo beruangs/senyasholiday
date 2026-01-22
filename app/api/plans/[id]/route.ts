@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import dbConnect from '@/lib/mongodb'
-import { HolidayPlan, Rundown, ExpenseCategory, ExpenseItem, Participant, Contribution, SplitPayment, PaymentHistory } from '@/models'
+import { HolidayPlan, Rundown, ExpenseCategory, ExpenseItem, Participant, Contribution, SplitPayment, PaymentHistory, User } from '@/models'
+import mongoose from 'mongoose'
+
+// Helper to check if ID is a valid MongoDB ObjectId
+const isValidObjectId = (id: string) => {
+  return mongoose.Types.ObjectId.isValid(id) && !id.startsWith('env-')
+}
 
 // GET single plan
 export async function GET(
@@ -23,18 +29,39 @@ export async function GET(
 
     // Determine user's access level
     const userId = session?.user?.id
+    const userRole = (session?.user as any)?.role || 'user'
+    const isEnvAdmin = userId?.startsWith('env-')
+
+    let dbUserRole = userRole
+
+    // Get role from database if valid ObjectId
+    if (userId && !isEnvAdmin && isValidObjectId(userId)) {
+      const user = await User.findById(userId)
+      dbUserRole = user?.role || userRole
+    }
+
+    // Plan tanpa ownerId adalah plan SEN Yas Daddy (legacy)
+    const isSenPlan = !plan.ownerId
     const isOwner = plan.ownerId?._id?.toString() === userId
     const isAdmin = plan.adminIds?.some((admin: any) => admin._id?.toString() === userId) || false
-    const hasAccess = isOwner || isAdmin
+    const isSuperadmin = dbUserRole === 'superadmin' || isEnvAdmin
+    const isSenUser = dbUserRole === 'sen_user'
 
-    // If logged in user, return with access info
+    // Can edit if: owner, admin, superadmin/env-admin, or sen_user for SEN plans
+    const canEdit = isOwner || isAdmin || isSuperadmin || (isSenPlan && isSenUser)
+    const hasAccess = canEdit || session !== null // Logged in users can view
+
     return NextResponse.json({
       ...plan,
       _id: plan._id.toString(),
       hasPassword: !!plan.password,
       password: session ? plan.password : undefined,
-      isOwner,
+      isOwner: isOwner || (isSenPlan && isEnvAdmin),
       isAdmin,
+      isSenPlan,
+      isSuperadmin,
+      isSenUser,
+      canEdit,
       hasAccess,
     })
   } catch (error) {
@@ -62,10 +89,25 @@ export async function PUT(
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
 
-    const isOwner = existingPlan.ownerId?.toString() === session.user.id
-    const isAdmin = existingPlan.adminIds?.some((id: any) => id.toString() === session.user.id)
+    const userId = session.user.id
+    const userRole = (session.user as any)?.role || 'user'
+    const isEnvAdmin = userId.startsWith('env-')
 
-    if (!isOwner && !isAdmin) {
+    let dbUserRole = userRole
+    if (!isEnvAdmin && isValidObjectId(userId)) {
+      const user = await User.findById(userId)
+      dbUserRole = user?.role || userRole
+    }
+
+    const isSenPlan = !existingPlan.ownerId
+    const isOwner = existingPlan.ownerId?.toString() === userId
+    const isAdmin = existingPlan.adminIds?.some((id: any) => id.toString() === userId)
+    const isSuperadmin = dbUserRole === 'superadmin' || isEnvAdmin
+    const isSenUser = dbUserRole === 'sen_user'
+
+    const canEdit = isOwner || isAdmin || isSuperadmin || (isSenPlan && isSenUser)
+
+    if (!canEdit) {
       return NextResponse.json({ error: 'Not authorized to edit this plan' }, { status: 403 })
     }
 
@@ -97,14 +139,28 @@ export async function DELETE(
 
     await dbConnect()
 
-    // Only owner can delete
     const plan = await HolidayPlan.findById(params.id)
     if (!plan) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
 
-    if (plan.ownerId?.toString() !== session.user.id) {
-      return NextResponse.json({ error: 'Only owner can delete this plan' }, { status: 403 })
+    const userId = session.user.id
+    const userRole = (session.user as any)?.role || 'user'
+    const isEnvAdmin = userId.startsWith('env-')
+
+    let dbUserRole = userRole
+    if (!isEnvAdmin && isValidObjectId(userId)) {
+      const user = await User.findById(userId)
+      dbUserRole = user?.role || userRole
+    }
+
+    // Only owner, superadmin, or env-admin can delete
+    const isOwner = plan.ownerId?.toString() === userId
+    const isSuperadmin = dbUserRole === 'superadmin' || isEnvAdmin
+    const isSenPlan = !plan.ownerId
+
+    if (!isOwner && !isSuperadmin) {
+      return NextResponse.json({ error: 'Only owner or superadmin can delete this plan' }, { status: 403 })
     }
 
     // Delete all related data

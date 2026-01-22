@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
     Calendar, Users, DollarSign, FileText,
     ChevronDown, ChevronRight, Check,
@@ -117,7 +118,13 @@ export default function DemoPage() {
             <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
                     <Link href="/" className="flex items-center gap-2">
-                        <span className="text-2xl">🏖️</span>
+                        <Image
+                            src="/logo.png"
+                            alt="SEN YAS DADDY"
+                            width={36}
+                            height={36}
+                            className="rounded-lg"
+                        />
                         <span className="font-bold text-gray-900">SEN YAS DADDY</span>
                     </Link>
                     <div className="flex items-center gap-3">
@@ -225,8 +232,8 @@ export default function DemoPage() {
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id as any)}
                                         className={`flex-1 min-w-0 px-4 py-3 flex items-center justify-center gap-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                                                ? 'text-primary-600 border-b-2 border-primary-600 bg-primary-50'
-                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                            ? 'text-primary-600 border-b-2 border-primary-600 bg-primary-50'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                             }`}
                                     >
                                         <tab.icon className="w-4 h-4 flex-shrink-0" />
@@ -329,8 +336,8 @@ export default function DemoPage() {
                                                         Rp {contrib.paid.toLocaleString('id-ID')}
                                                     </p>
                                                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${contrib.status === 'Lunas' ? 'bg-green-100 text-green-700' :
-                                                            contrib.status === 'Sebagian' ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-red-100 text-red-700'
+                                                        contrib.status === 'Sebagian' ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-red-100 text-red-700'
                                                         }`}>
                                                         {contrib.status}
                                                     </span>

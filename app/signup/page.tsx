@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { User, Lock, AtSign, Check, X, Loader2 } from 'lucide-react'
 
 export default function SignupPage() {
@@ -125,8 +126,15 @@ export default function SignupPage() {
             <div className="w-full max-w-md">
                 {/* Logo/Header */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl shadow-lg mb-4">
-                        <span className="text-3xl">🏖️</span>
+                    <div className="relative inline-block mb-4">
+                        <div className="absolute inset-0 bg-primary-200 rounded-2xl blur-xl opacity-50"></div>
+                        <Image
+                            src="/logo.png"
+                            alt="SEN YAS DADDY"
+                            width={80}
+                            height={80}
+                            className="rounded-2xl relative shadow-lg"
+                        />
                     </div>
                     <h1 className="text-2xl font-bold text-gray-900">Buat Akun Baru</h1>
                     <p className="text-gray-600 mt-1">Daftar untuk mulai merencanakan liburan</p>
@@ -165,8 +173,8 @@ export default function SignupPage() {
                                     value={formData.username}
                                     onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase() })}
                                     className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-colors ${usernameStatus === 'available' ? 'border-green-500 focus:border-green-500' :
-                                            usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-red-500 focus:border-red-500' :
-                                                'border-gray-300 focus:border-primary-500'
+                                        usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-red-500 focus:border-red-500' :
+                                            'border-gray-300 focus:border-primary-500'
                                         }`}
                                     placeholder="username_kamu"
                                     required
@@ -228,8 +236,8 @@ export default function SignupPage() {
                                     value={formData.confirmPassword}
                                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                                     className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-colors ${formData.confirmPassword && formData.password !== formData.confirmPassword
-                                            ? 'border-red-500'
-                                            : 'border-gray-300 focus:border-primary-500'
+                                        ? 'border-red-500'
+                                        : 'border-gray-300 focus:border-primary-500'
                                         }`}
                                     placeholder="Ulangi password"
                                     required

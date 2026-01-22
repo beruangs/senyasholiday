@@ -3,6 +3,11 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import dbConnect from './mongodb'
 import { User } from '@/models'
 
+// Parse admin credentials from environment variables (legacy/fallback)
+const adminUsernames = process.env.ADMIN_USERNAMES?.split(',') || []
+const adminPasswords = process.env.ADMIN_PASSWORDS?.split(',') || []
+const adminNames = process.env.ADMIN_NAMES?.split(',') || []
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -16,42 +21,62 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // Clean username (remove @ if present)
+        const username = credentials.username.trim().toLowerCase().replace(/^@/, '')
+
         try {
           await dbConnect()
 
-          // Clean username (remove @ if present)
-          const username = credentials.username.trim().toLowerCase().replace(/^@/, '')
-
-          // Find user by username
+          // Try to find user in database first
           const user = await User.findOne({ username })
 
-          if (!user) {
-            return null
-          }
+          if (user) {
+            // Verify password with database user
+            const isValidPassword = await user.comparePassword(credentials.password)
 
-          // Verify password
-          const isValidPassword = await user.comparePassword(credentials.password)
+            if (!isValidPassword) {
+              return null
+            }
 
-          if (!isValidPassword) {
-            return null
-          }
+            // Update last login
+            user.lastLoginAt = new Date()
+            await user.save()
 
-          // Update last login
-          user.lastLoginAt = new Date()
-          await user.save()
-
-          // Return user object
-          return {
-            id: user._id.toString(),
-            email: `${user.username}@senyasdaddy.app`,
-            name: user.name,
-            username: user.username,
-            role: user.role,
+            // Return user object
+            return {
+              id: user._id.toString(),
+              email: `${user.username}@senyasdaddy.app`,
+              name: user.name,
+              username: user.username,
+              role: user.role,
+            }
           }
         } catch (error) {
-          console.error('Auth error:', error)
-          return null
+          console.error('Database auth error:', error)
+          // Continue to fallback auth
         }
+
+        // Fallback: Check environment variable admins
+        const adminIndex = adminUsernames.findIndex(
+          (u) => u.trim().toLowerCase() === username
+        )
+
+        if (adminIndex !== -1) {
+          // Verify password
+          const validPassword = credentials.password === adminPasswords[adminIndex]?.trim()
+
+          if (validPassword) {
+            return {
+              id: `env-admin-${adminIndex}`,
+              email: `${username}@senyasdaddy.app`,
+              name: adminNames[adminIndex]?.trim() || username,
+              username: username,
+              role: 'superadmin',
+            }
+          }
+        }
+
+        return null
       },
     }),
   ],
