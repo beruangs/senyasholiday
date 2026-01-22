@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Calendar, MapPin, Users, Trash2, Edit } from 'lucide-react'
+import { Plus, Calendar, MapPin, Trash2, Edit, Crown, User, AtSign } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
@@ -16,6 +16,9 @@ interface HolidayPlan {
   description?: string
   hasPassword: boolean
   createdAt: string
+  isOwner: boolean
+  isAdmin: boolean
+  ownerId?: { username: string; name: string }
 }
 
 export default function DashboardClient({ session }: any) {
@@ -52,23 +55,33 @@ export default function DashboardClient({ session }: any) {
         toast.success('Rencana liburan berhasil dihapus')
         fetchPlans()
       } else {
-        toast.error('Gagal menghapus rencana')
+        const data = await res.json()
+        toast.error(data.error || 'Gagal menghapus rencana')
       }
     } catch (error) {
       toast.error('Terjadi kesalahan')
     }
   }
 
+  const username = (session.user as any)?.username || session.user?.email?.split('@')[0]
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-          Dashboard Admin
+          Dashboard
         </h1>
-        <p className="text-gray-600">
-          Selamat datang, <span className="font-semibold">{session.user.name}</span>
-        </p>
+        <div className="flex items-center gap-3 text-gray-600">
+          <span>Selamat datang,</span>
+          <span className="font-semibold">{session.user.name}</span>
+          {username && (
+            <span className="flex items-center gap-1 text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+              <AtSign className="w-3 h-3" />
+              {username}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Create Button */}
@@ -117,11 +130,24 @@ export default function DashboardClient({ session }: any) {
                   <h3 className="text-xl font-semibold text-gray-900 flex-1">
                     {plan.title}
                   </h3>
-                  {plan.hasPassword && (
-                    <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                      Protected
-                    </span>
-                  )}
+                  <div className="flex gap-2 ml-2">
+                    {plan.isOwner ? (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">
+                        <Crown className="w-3 h-3" />
+                        Owner
+                      </span>
+                    ) : plan.isAdmin ? (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-full font-medium">
+                        <User className="w-3 h-3" />
+                        Admin
+                      </span>
+                    ) : null}
+                    {plan.hasPassword && (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                        🔒
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2 mb-4">
@@ -134,6 +160,12 @@ export default function DashboardClient({ session }: any) {
                     {format(new Date(plan.startDate), 'd MMM yyyy', { locale: id })} -{' '}
                     {format(new Date(plan.endDate), 'd MMM yyyy', { locale: id })}
                   </div>
+                  {!plan.isOwner && plan.ownerId && (
+                    <div className="flex items-center text-sm text-gray-500">
+                      <AtSign className="w-4 h-4 mr-2 text-gray-400" />
+                      by {plan.ownerId.username}
+                    </div>
+                  )}
                 </div>
 
                 {plan.description && (
@@ -150,12 +182,15 @@ export default function DashboardClient({ session }: any) {
                     <Edit className="w-4 h-4" />
                     <span>Kelola</span>
                   </Link>
-                  <button
-                    onClick={() => deletePlan(plan._id)}
-                    className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {plan.isOwner && (
+                    <button
+                      onClick={() => deletePlan(plan._id)}
+                      className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                      title="Hapus (hanya owner)"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

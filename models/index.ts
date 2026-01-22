@@ -1,6 +1,38 @@
 import mongoose from 'mongoose'
+import bcrypt from 'bcryptjs'
 
 const { Schema } = mongoose
+
+// User Schema - untuk user registration dan authentication
+const userSchema = new Schema({
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+    minlength: 3,
+    maxlength: 20,
+    match: /^[a-z0-9_]+$/ // only lowercase letters, numbers, underscore
+  },
+  password: { type: String, required: true },
+  name: { type: String, required: true },
+  role: { type: String, enum: ['user', 'superadmin'], default: 'user' },
+  createdAt: { type: Date, default: Date.now },
+  lastLoginAt: Date,
+})
+
+// Hash password before saving
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next()
+  this.password = await bcrypt.hash(this.password, 12)
+  next()
+})
+
+// Method to compare password
+userSchema.methods.comparePassword = async function (candidatePassword: string) {
+  return bcrypt.compare(candidatePassword, this.password)
+}
 
 // Holiday Plan Schema
 const holidayPlanSchema = new Schema({
@@ -10,11 +42,16 @@ const holidayPlanSchema = new Schema({
   endDate: { type: Date, required: true },
   description: String,
   password: String, // For public access
-  status: { type: String, enum: ['active', 'completed'], default: 'active' }, // Event status
-  completedAt: Date, // When the event was marked as completed
-  bannerImage: String, // Base64 or URL for banner image (recommended 16:9 or 21:9 aspect ratio)
-  logoImage: String, // Base64 or URL for logo image (recommended 1:1 square aspect ratio)
-  createdBy: { type: String, required: true },
+  status: { type: String, enum: ['active', 'completed'], default: 'active' },
+  completedAt: Date,
+  bannerImage: String,
+  logoImage: String,
+  // Owner - user yang membuat plan
+  ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  // Admins - user lain yang bisa mengedit plan
+  adminIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  // Legacy field - untuk backward compatibility
+  createdBy: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 })
@@ -33,7 +70,7 @@ const rundownSchema = new Schema({
 // Expense Category Schema
 const expenseCategorySchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
-  name: { type: String, required: true }, // e.g., "Villa/Penginapan", "Makanan & Minuman", "Transportasi"
+  name: { type: String, required: true },
   order: { type: Number, default: 0 },
 })
 
@@ -46,8 +83,8 @@ const expenseItemSchema = new Schema({
   price: { type: Number, required: true },
   quantity: { type: Number, default: 1 },
   total: { type: Number, required: true },
-  collectorId: { type: Schema.Types.ObjectId, ref: 'Participant' }, // Who collects the money
-  downPayment: { type: Number, default: 0 }, // Percentage (0-100) for down payment
+  collectorId: { type: Schema.Types.ObjectId, ref: 'Participant' },
+  downPayment: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
 })
 
@@ -55,6 +92,8 @@ const expenseItemSchema = new Schema({
 const participantSchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
   name: { type: String, required: true },
+  // Link ke user jika participant adalah user terdaftar
+  userId: { type: Schema.Types.ObjectId, ref: 'User' },
   order: { type: Number, default: 0 },
 })
 
@@ -65,17 +104,17 @@ const contributionSchema = new Schema({
   participantId: { type: Schema.Types.ObjectId, ref: 'Participant', required: true },
   amount: { type: Number, required: true },
   isPaid: { type: Boolean, default: false },
-  paid: { type: Number, default: 0 }, // Amount that has been paid (for partial payments)
-  maxPay: { type: Number, default: null }, // Batas maksimal bayar (optional)
+  paid: { type: Number, default: 0 },
+  maxPay: { type: Number, default: null },
   paidAt: Date,
-  paymentMethod: { type: String, enum: ['manual', 'midtrans'], default: 'manual' }, // Payment method
-  midtransOrderId: String, // Midtrans order ID
-  midtransTransactionId: String, // Midtrans transaction ID
-  midtransServiceFee: { type: Number, default: 0 }, // Service fee charged to customer
+  paymentMethod: { type: String, enum: ['manual', 'cash', 'transfer', 'midtrans'], default: 'manual' },
+  midtransOrderId: String,
+  midtransTransactionId: String,
+  midtransServiceFee: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
 })
 
-// Split Payment Schema (for splitting specific expenses)
+// Split Payment Schema
 const splitPaymentSchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
   expenseItemId: { type: Schema.Types.ObjectId, ref: 'ExpenseItem', required: true },
@@ -83,7 +122,7 @@ const splitPaymentSchema = new Schema({
   amount: { type: Number, required: true },
 })
 
-// Note Schema (for plan notes with rich text)
+// Note Schema
 const noteSchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
   content: { type: String, default: '' },
@@ -91,7 +130,7 @@ const noteSchema = new Schema({
   updatedAt: { type: Date, default: Date.now },
 })
 
-// Payment History Schema (for tracking all payment changes)
+// Payment History Schema
 const paymentHistorySchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
   contributionId: { type: Schema.Types.ObjectId, ref: 'Contribution', required: true },
@@ -102,15 +141,16 @@ const paymentHistorySchema = new Schema({
     enum: ['payment', 'refund', 'adjustment', 'max_pay_set', 'max_pay_removed'],
     required: true
   },
-  previousAmount: { type: Number, default: 0 }, // Amount before change
-  newAmount: { type: Number, default: 0 }, // Amount after change
-  changeAmount: { type: Number, default: 0 }, // Difference (positive = payment, negative = refund)
+  previousAmount: { type: Number, default: 0 },
+  newAmount: { type: Number, default: 0 },
+  changeAmount: { type: Number, default: 0 },
   paymentMethod: { type: String, enum: ['manual', 'cash', 'transfer', 'midtrans'], default: 'manual' },
-  note: String, // Optional note for this change
+  note: String,
   createdAt: { type: Date, default: Date.now },
 })
 
 // Export models
+export const User = mongoose.models.User || mongoose.model('User', userSchema)
 export const HolidayPlan = mongoose.models.HolidayPlan || mongoose.model('HolidayPlan', holidayPlanSchema)
 export const Rundown = mongoose.models.Rundown || mongoose.model('Rundown', rundownSchema)
 export const ExpenseCategory = mongoose.models.ExpenseCategory || mongoose.model('ExpenseCategory', expenseCategorySchema)

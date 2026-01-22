@@ -4,13 +4,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import Image from 'next/image'
-import { Menu, X, LogOut, LayoutDashboard, Home } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, Home, UserPlus, LogIn, AtSign } from 'lucide-react'
 import { useState } from 'react'
 
 export default function Navbar() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const username = (session?.user as any)?.username
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -31,14 +33,13 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-4">
             <Link
               href="/"
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
-                pathname === '/'
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname === '/'
                   ? 'text-primary-600 bg-primary-50'
                   : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
-              }`}
+                }`}
             >
               <Home className="w-4 h-4" />
               <span>Beranda</span>
@@ -47,11 +48,10 @@ export default function Navbar() {
             {session && (
               <Link
                 href="/dashboard"
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
-                  pathname.startsWith('/dashboard')
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname.startsWith('/dashboard')
                     ? 'text-primary-600 bg-primary-50'
                     : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
-                }`}
+                  }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
                 <span>Dashboard</span>
@@ -59,23 +59,41 @@ export default function Navbar() {
             )}
 
             {session ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-700">{session.user.name}</span>
+              <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{session.user?.name}</p>
+                  {username && (
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <AtSign className="w-3 h-3" />
+                      {username}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={() => signOut({ callbackUrl: '/' })}
-                  className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                  className="flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Logout</span>
                 </button>
               </div>
             ) : (
-              <Link
-                href="/login"
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-              >
-                Login
-              </Link>
+              <div className="flex items-center space-x-2 ml-4">
+                <Link
+                  href="/login"
+                  className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-primary-600 rounded-lg transition-colors"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Masuk</span>
+                </Link>
+                <Link
+                  href="/signup"
+                  className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Daftar</span>
+                </Link>
+              </div>
             )}
           </div>
 
@@ -90,15 +108,14 @@ export default function Navbar() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 space-y-2">
+          <div className="md:hidden py-4 space-y-2 border-t border-gray-100">
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
-                pathname === '/'
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname === '/'
                   ? 'text-primary-600 bg-primary-50'
                   : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
-              }`}
+                }`}
             >
               <Home className="w-4 h-4" />
               <span>Beranda</span>
@@ -108,11 +125,10 @@ export default function Navbar() {
               <Link
                 href="/dashboard"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
-                  pathname.startsWith('/dashboard')
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${pathname.startsWith('/dashboard')
                     ? 'text-primary-600 bg-primary-50'
                     : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
-                }`}
+                  }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
                 <span>Dashboard</span>
@@ -120,27 +136,46 @@ export default function Navbar() {
             )}
 
             {session ? (
-              <div className="space-y-2">
-                <div className="px-3 py-2 text-sm text-gray-700">{session.user.name}</div>
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <div className="px-3 py-2">
+                  <p className="text-sm font-medium text-gray-900">{session.user?.name}</p>
+                  {username && (
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <AtSign className="w-3 h-3" />
+                      {username}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false)
                     signOut({ callbackUrl: '/' })
                   }}
-                  className="flex items-center space-x-2 w-full px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                  className="flex items-center space-x-2 w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Logout</span>
                 </button>
               </div>
             ) : (
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-center"
-              >
-                Login
-              </Link>
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center space-x-2 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-md"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Masuk</span>
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Daftar</span>
+                </Link>
+              </div>
             )}
           </div>
         )}

@@ -12,6 +12,7 @@ import ParticipantsTab from './ParticipantsTab'
 import ContributionsTab from './ContributionsTab'
 import RincianTab from './RincianTab'
 import NoteTab from './NoteTab'
+import AdminManager from './AdminManager'
 
 type Tab = 'info' | 'rundown' | 'expenses' | 'participants' | 'contributions' | 'rincian' | 'note'
 
@@ -840,6 +841,11 @@ export default function PlanDetailPage() {
                       </label>
                     </div>
                   </div>
+                </div>
+
+                {/* Admin Manager Section */}
+                <div className="border-t pt-6">
+                  <AdminManager planId={planId} isOwner={plan?.isOwner || false} />
                 </div>
               </div>
             )}
