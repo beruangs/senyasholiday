@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Check, X, MoreVertical, DollarSign, ChevronDown, ChevronRight, Users, Wallet, AlertTriangle, History, Clock, ArrowUpRight, ArrowDownRight, Settings } from 'lucide-react'
+import { Check, X, DollarSign, ChevronDown, Users, AlertTriangle, History, Clock, ArrowUpRight, ArrowDownRight, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface PaymentHistoryItem {
@@ -54,11 +54,9 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   const [editMaxPayValue, setEditMaxPayValue] = useState<number | null>(null)
 
   // State untuk manage pembayaran
-  const [editingPayment, setEditingPayment] = useState<string | null>(null)
   const [editPaymentValue, setEditPaymentValue] = useState<number>(0)
   const [editPaymentMethod, setEditPaymentMethod] = useState<string>('manual')
   const [showPaymentForm, setShowPaymentForm] = useState<string | null>(null)
-  const [showMobileMenu, setShowMobileMenu] = useState<string | null>(null)
 
   // State untuk payment history
   const [showHistoryModal, setShowHistoryModal] = useState(false)
@@ -92,27 +90,6 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     }
   }
 
-  const togglePaid = async (contributionId: string, currentStatus: boolean) => {
-    try {
-      const res = await fetch('/api/contributions', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          _id: contributionId,
-          isPaid: !currentStatus,
-          paidAt: !currentStatus ? new Date() : null,
-        }),
-      })
-
-      if (res.ok) {
-        toast.success('Status pembayaran diupdate')
-        fetchData()
-      }
-    } catch {
-      toast.error('Gagal mengupdate status')
-    }
-  }
-
   const updateMaxPay = async (contributionId: string, maxPay: number | null) => {
     try {
       const res = await fetch('/api/contributions', {
@@ -125,12 +102,12 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       })
 
       if (res.ok) {
-        toast.success('Max bayar berhasil diupdate')
+        toast.success('Batas bayar berhasil diupdate')
         setEditingMaxPay(null)
         fetchData()
       }
     } catch {
-      toast.error('Gagal mengupdate max bayar')
+      toast.error('Gagal mengupdate batas bayar')
     }
   }
 
@@ -150,7 +127,6 @@ export default function ContributionsTab({ planId }: { planId: string }) {
 
       if (res.ok) {
         toast.success('Pembayaran berhasil diinput')
-        setEditingPayment(null)
         setShowPaymentForm(null)
         setEditPaymentValue(0)
         setEditPaymentMethod('manual')
@@ -204,8 +180,8 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       case 'payment': return 'Pembayaran'
       case 'refund': return 'Refund'
       case 'adjustment': return 'Penyesuaian'
-      case 'max_pay_set': return 'Set Max Bayar'
-      case 'max_pay_removed': return 'Hapus Max Bayar'
+      case 'max_pay_set': return 'Set Batas Bayar'
+      case 'max_pay_removed': return 'Hapus Batas Bayar'
       default: return action
     }
   }
@@ -235,49 +211,27 @@ export default function ContributionsTab({ planId }: { planId: string }) {
   // Helper function untuk toggle accordion
   const toggleAccordion = (collectorId: string) => {
     setOpenAccordion(prev => prev === collectorId ? null : collectorId)
-    // Reset any editing states when closing
     setEditingMaxPay(null)
-    setEditingPayment(null)
-    setShowMobileMenu(null)
   }
 
-  // Group contributions by collector (pengumpul) - bukan per expense
+  // Group contributions by collector, then aggregate per participant
   const groupByCollector = (contribs: Contribution[]) => {
-    const groups = new Map<string, {
+    // First, group all contributions by collector
+    const collectorMap = new Map<string, {
       collectorId: string
       collectorName: string
-      expenseItems: Array<{
-        itemName: string
-        expenseItemId: string
-        contributions: Contribution[]
-        totalAmount: number
-      }>
-      totalShare: number
-      totalPaid: number
-      totalKurang: number
-      totalLebih: number
-      participantCount: number
-    }>()
-
-    // First pass - group by expense item
-    const expenseGroups = new Map<string, {
-      collectorId: string
-      collectorName: string
-      itemName: string
+      itemNames: string[]
       contributions: Contribution[]
-      totalAmount: number
     }>()
 
     contribs.forEach(c => {
       let collectorId = 'no-collector'
       let collectorName = 'Tanpa Pengumpul'
       let itemName = 'Item Tidak Diketahui'
-      let expenseItemId = ''
 
       if (c.expenseItemId && typeof c.expenseItemId === 'object') {
         const expenseItem = c.expenseItemId as ExpenseItem
         itemName = expenseItem.itemName || 'Item Tidak Diketahui'
-        expenseItemId = expenseItem._id
 
         if (expenseItem.collectorId && typeof expenseItem.collectorId === 'object') {
           const collector = expenseItem.collectorId as Participant
@@ -288,149 +242,181 @@ export default function ContributionsTab({ planId }: { planId: string }) {
         }
       }
 
-      const groupKey = expenseItemId || `unknown-${Math.random()}`
-
-      if (!expenseGroups.has(groupKey)) {
-        expenseGroups.set(groupKey, {
+      if (!collectorMap.has(collectorId)) {
+        collectorMap.set(collectorId, {
           collectorId,
           collectorName,
-          itemName,
+          itemNames: [],
           contributions: [],
-          totalAmount: 0,
         })
       }
 
-      const group = expenseGroups.get(groupKey)!
+      const group = collectorMap.get(collectorId)!
       group.contributions.push(c)
-      group.totalAmount += c.amount
-    })
-
-    // Second pass - group expense items by collector
-    expenseGroups.forEach((expenseGroup, expenseItemId) => {
-      const collectorId = expenseGroup.collectorId
-
-      if (!groups.has(collectorId)) {
-        groups.set(collectorId, {
-          collectorId,
-          collectorName: expenseGroup.collectorName,
-          expenseItems: [],
-          totalShare: 0,
-          totalPaid: 0,
-          totalKurang: 0,
-          totalLebih: 0,
-          participantCount: 0,
-        })
-      }
-
-      const collectorGroup = groups.get(collectorId)!
-      collectorGroup.expenseItems.push({
-        itemName: expenseGroup.itemName,
-        expenseItemId,
-        contributions: expenseGroup.contributions,
-        totalAmount: expenseGroup.totalAmount,
-      })
-    })
-
-    // Calculate stats for each collector group with REDISTRIBUTION
-    groups.forEach(group => {
-      const uniqueParticipants = new Set<string>()
-
-      group.expenseItems.forEach(item => {
-        // Calculate redistribution per expense item
-        const redistributedShares = calculateRedistributedShares(item.contributions)
-
-        item.contributions.forEach(c => {
-          const participantId = typeof c.participantId === 'object'
-            ? (c.participantId as any)._id
-            : c.participantId
-          uniqueParticipants.add(participantId)
-
-          const redistributedShare = redistributedShares.get(c._id || '') || c.amount
-          const paid = c.paid || 0
-          const remaining = Math.max(0, redistributedShare - paid)
-          const overpaid = paid > redistributedShare ? paid - redistributedShare : 0
-
-          group.totalShare += redistributedShare
-          group.totalPaid += paid
-          group.totalKurang += remaining
-          group.totalLebih += overpaid
-        })
-      })
-
-      group.participantCount = uniqueParticipants.size
-    })
-
-    return Array.from(groups.values())
-  }
-
-  // Calculate redistributed shares when someone has maxPay
-  const calculateRedistributedShares = (contribs: Contribution[]) => {
-    const shares = new Map<string, number>()
-
-    if (contribs.length === 0) return shares
-
-    // Total amount for this expense item
-    const totalAmount = contribs.reduce((sum, c) => sum + c.amount, 0)
-
-    // First pass: identify who has max pay restrictions
-    let remainingAmount = totalAmount
-    let remainingContributors: Contribution[] = []
-
-    contribs.forEach(c => {
-      if (typeof c.maxPay === 'number' && c.maxPay < c.amount) {
-        // This person has a max pay limit
-        shares.set(c._id || '', c.maxPay)
-        remainingAmount -= c.maxPay
-      } else {
-        // This person will share the remaining amount
-        remainingContributors.push(c)
+      if (!group.itemNames.includes(itemName)) {
+        group.itemNames.push(itemName)
       }
     })
 
-    // Second pass: distribute remaining amount evenly among non-capped contributors
-    if (remainingContributors.length > 0) {
-      const sharePerPerson = remainingAmount / remainingContributors.length
-      remainingContributors.forEach(c => {
-        shares.set(c._id || '', sharePerPerson)
-      })
-    } else if (remainingAmount > 0) {
-      // Everyone has max pay but there's still remaining - redistribute proportionally
-      const maxPayTotal = contribs.reduce((sum, c) => sum + (c.maxPay || c.amount), 0)
-      contribs.forEach(c => {
-        const currentShare = shares.get(c._id || '') || 0
-        const proportion = currentShare / maxPayTotal
-        shares.set(c._id || '', currentShare + (remainingAmount * proportion))
-      })
-    }
+    // Now aggregate per participant within each collector
+    const result: Array<{
+      collectorId: string
+      collectorName: string
+      itemNames: string[]
+      participantSummaries: Array<{
+        participantId: string
+        participantName: string
+        totalIuran: number  // Total bagian awal
+        totalHarusBayar: number  // Setelah redistribusi
+        totalTerbayar: number
+        totalKurang: number
+        contributions: Contribution[]  // Original contributions for this participant
+      }>
+      totalShare: number
+      totalPaid: number
+      totalKurang: number
+    }> = []
 
-    return shares
+    collectorMap.forEach((group) => {
+      // Group contributions by participant
+      const participantMap = new Map<string, {
+        participantId: string
+        participantName: string
+        contributions: Contribution[]
+        totalIuran: number
+        totalPaid: number
+      }>()
+
+      group.contributions.forEach(c => {
+        let participantId = ''
+        let participantName = 'Unknown'
+
+        if (typeof c.participantId === 'object' && c.participantId !== null) {
+          participantId = (c.participantId as any)._id
+          participantName = (c.participantId as any).name
+        } else {
+          participantId = c.participantId
+          const p = participants.find(p => p._id === participantId)
+          participantName = p?.name || 'Unknown'
+        }
+
+        if (!participantMap.has(participantId)) {
+          participantMap.set(participantId, {
+            participantId,
+            participantName,
+            contributions: [],
+            totalIuran: 0,
+            totalPaid: 0,
+          })
+        }
+
+        const pData = participantMap.get(participantId)!
+        pData.contributions.push(c)
+        pData.totalIuran += c.amount
+        pData.totalPaid += c.paid || 0
+      })
+
+      // Calculate redistribution for this collector group
+      // Total amount that needs to be collected
+      const totalAmount = group.contributions.reduce((sum, c) => sum + c.amount, 0)
+
+      // Find who has max pay limits
+      let cappedAmount = 0
+      let uncappedParticipants: string[] = []
+
+      participantMap.forEach((pData, pId) => {
+        // Check if any of this participant's contributions have maxPay
+        const hasMaxPay = pData.contributions.some(c =>
+          typeof c.maxPay === 'number' && c.maxPay < c.amount
+        )
+
+        if (hasMaxPay) {
+          // Sum up their max pays
+          const maxPayTotal = pData.contributions.reduce((sum, c) => {
+            if (typeof c.maxPay === 'number' && c.maxPay < c.amount) {
+              return sum + c.maxPay
+            }
+            return sum + c.amount
+          }, 0)
+          cappedAmount += maxPayTotal
+        } else {
+          uncappedParticipants.push(pId)
+        }
+      })
+
+      // Remaining amount to be distributed
+      const remainingAmount = totalAmount - cappedAmount
+      const perUncappedPerson = uncappedParticipants.length > 0
+        ? remainingAmount / uncappedParticipants.length
+        : 0
+
+      // Build participant summaries with redistributed amounts
+      const participantSummaries: typeof result[0]['participantSummaries'] = []
+      let groupTotalShare = 0
+      let groupTotalPaid = 0
+      let groupTotalKurang = 0
+
+      participantMap.forEach((pData) => {
+        // Check if capped
+        const hasMaxPay = pData.contributions.some(c =>
+          typeof c.maxPay === 'number' && c.maxPay < c.amount
+        )
+
+        let harusBayar = pData.totalIuran
+        if (hasMaxPay) {
+          harusBayar = pData.contributions.reduce((sum, c) => {
+            if (typeof c.maxPay === 'number' && c.maxPay < c.amount) {
+              return sum + c.maxPay
+            }
+            return sum + c.amount
+          }, 0)
+        } else if (uncappedParticipants.includes(pData.participantId)) {
+          // This person gets extra from redistribution
+          const originalShare = pData.totalIuran
+          const extraShare = (perUncappedPerson * uncappedParticipants.length / participantMap.size) - (totalAmount / participantMap.size)
+          harusBayar = originalShare + (cappedAmount > 0 ? (remainingAmount / uncappedParticipants.length) - originalShare + originalShare : 0)
+
+          // Simpler: just recalculate based on uncapped share
+          if (cappedAmount > 0) {
+            harusBayar = remainingAmount / uncappedParticipants.length
+          }
+        }
+
+        const kurang = Math.max(0, harusBayar - pData.totalPaid)
+
+        participantSummaries.push({
+          participantId: pData.participantId,
+          participantName: pData.participantName,
+          totalIuran: pData.totalIuran,
+          totalHarusBayar: harusBayar,
+          totalTerbayar: pData.totalPaid,
+          totalKurang: kurang,
+          contributions: pData.contributions,
+        })
+
+        groupTotalShare += harusBayar
+        groupTotalPaid += pData.totalPaid
+        groupTotalKurang += kurang
+      })
+
+      // Sort by name
+      participantSummaries.sort((a, b) => a.participantName.localeCompare(b.participantName))
+
+      result.push({
+        collectorId: group.collectorId,
+        collectorName: group.collectorName,
+        itemNames: group.itemNames,
+        participantSummaries,
+        totalShare: groupTotalShare,
+        totalPaid: groupTotalPaid,
+        totalKurang: groupTotalKurang,
+      })
+    })
+
+    return result
   }
 
-  // Calculate share for display with redistribution context
-  const calculateShareWithRedistribution = (contribution: Contribution, allContributions: Contribution[]) => {
-    const redistributedShares = calculateRedistributedShares(allContributions)
-    const redistributedShare = redistributedShares.get(contribution._id || '') || contribution.amount
-    const paid = contribution.paid || 0
-
-    const hasMaxPay = typeof contribution.maxPay === 'number' && contribution.maxPay < contribution.amount
-    const originalShare = contribution.amount
-    const remaining = Math.max(0, redistributedShare - paid)
-    const overpaid = paid > redistributedShare ? paid - redistributedShare : 0
-    const status = paid === 0 ? 'Belum' : paid >= redistributedShare ? 'Lunas' : 'Sebagian'
-
-    return {
-      redistributedShare,
-      originalShare,
-      paid,
-      remaining,
-      overpaid,
-      status,
-      hasMaxPay,
-      maxPay: contribution.maxPay
-    }
-  }
-
-  const contributionsByCollector = useMemo(() => groupByCollector(contributions), [contributions])
+  const contributionsByCollector = useMemo(() => groupByCollector(contributions), [contributions, participants])
 
   // Hitung total keseluruhan
   const grandTotal = contributions.reduce((sum: number, c: Contribution) => sum + c.amount, 0)
@@ -439,16 +425,14 @@ export default function ContributionsTab({ planId }: { planId: string }) {
     let totalShare = 0
     let totalPaid = 0
     let totalKurang = 0
-    let totalLebih = 0
 
     contributionsByCollector.forEach(group => {
       totalShare += group.totalShare
       totalPaid += group.totalPaid
       totalKurang += group.totalKurang
-      totalLebih += group.totalLebih
     })
 
-    return { totalShare, totalPaid, totalKurang, totalLebih }
+    return { totalShare, totalPaid, totalKurang }
   }, [contributionsByCollector])
 
   if (loading) {
@@ -471,18 +455,18 @@ export default function ContributionsTab({ planId }: { planId: string }) {
       {contributions.length === 0 ? (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
           <p className="text-gray-600">Belum ada data iuran.</p>
-          <p className="text-sm text-gray-500 mt-2">Silakan tambahkan iuran melalui tab Pengeluaran atau menu lainnya.</p>
+          <p className="text-sm text-gray-500 mt-2">Silakan tambahkan iuran melalui tab Keuangan.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {/* Info redistribusi */}
-          {totalStats.totalKurang > 0 && (
+          {totalStats.totalKurang > 0 && contributions.some(c => c.maxPay !== undefined && c.maxPay !== null) && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-amber-800">Fitur Redistribusi Aktif</p>
+                <p className="font-medium text-amber-800">Redistribusi Aktif</p>
                 <p className="text-amber-700 mt-1">
-                  Jika ada peserta dengan batas "Max Bayar", kekurangannya akan otomatis didistribusikan ke peserta lain dalam grup yang sama.
+                  Ada peserta dengan batas bayar, kekurangannya dibagi ke peserta lain.
                 </p>
               </div>
             </div>
@@ -501,15 +485,15 @@ export default function ContributionsTab({ planId }: { planId: string }) {
               >
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg transition-colors duration-200 ${openAccordion === collectorGroup.collectorId
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'bg-gray-200 text-gray-600'
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'bg-gray-200 text-gray-600'
                     }`}>
                     <Users className="w-4 h-4" />
                   </div>
                   <div className="text-left">
                     <h3 className="font-semibold text-gray-900">{collectorGroup.collectorName}</h3>
                     <p className="text-xs text-gray-500">
-                      {collectorGroup.expenseItems.length} item • {collectorGroup.participantCount} peserta
+                      {collectorGroup.itemNames.length} item • {collectorGroup.participantSummaries.length} peserta
                     </p>
                   </div>
                 </div>
@@ -536,251 +520,249 @@ export default function ContributionsTab({ planId }: { planId: string }) {
               {/* Accordion Content with Animation */}
               <div
                 className={`transition-all duration-300 ease-in-out overflow-hidden ${openAccordion === collectorGroup.collectorId
-                  ? 'max-h-[2000px] opacity-100'
-                  : 'max-h-0 opacity-0'
+                    ? 'max-h-[2000px] opacity-100'
+                    : 'max-h-0 opacity-0'
                   }`}
               >
                 <div className="border-t border-gray-100">
-                  {/* Loop through expense items within this collector */}
-                  {collectorGroup.expenseItems.map((expenseItem, itemIndex) => (
-                    <div key={expenseItem.expenseItemId} className={itemIndex > 0 ? 'border-t border-gray-100' : ''}>
-                      {/* Item Header */}
-                      <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="w-4 h-4 text-primary-600" />
-                          <span className="text-sm font-medium text-gray-700">{expenseItem.itemName}</span>
-                          <span className="text-xs text-gray-500">({expenseItem.contributions.length} peserta)</span>
-                        </div>
-                      </div>
+                  {/* Item list - compact */}
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                    <p className="text-xs text-gray-500">
+                      <span className="font-medium">Item:</span> {collectorGroup.itemNames.join(', ')}
+                    </p>
+                  </div>
 
-                      {/* Desktop Table */}
-                      <div className="hidden md:block">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50/50">
-                            <tr className="text-xs text-gray-500 uppercase">
-                              <th className="px-4 py-2 text-left font-medium">Nama</th>
-                              <th className="px-4 py-2 text-right font-medium">Share Awal</th>
-                              <th className="px-4 py-2 text-right font-medium">Max Bayar</th>
-                              <th className="px-4 py-2 text-right font-medium">Share Final</th>
-                              <th className="px-4 py-2 text-right font-medium">Terbayar</th>
-                              <th className="px-4 py-2 text-right font-medium">Sisa/Lebih</th>
-                              <th className="px-4 py-2 text-center font-medium">Aksi</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {expenseItem.contributions.map((contribution) => {
-                              let participantName = 'Unknown'
-                              if (typeof contribution.participantId === 'object' && contribution.participantId !== null) {
-                                participantName = (contribution.participantId as any).name
-                              } else {
-                                const participant = participants.find(p => p._id === contribution.participantId)
-                                participantName = participant?.name || 'Unknown'
-                              }
+                  {/* Desktop Table - Simplified */}
+                  <div className="hidden md:block">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50/50">
+                        <tr className="text-xs text-gray-500 uppercase">
+                          <th className="px-4 py-2 text-left font-medium">Nama</th>
+                          <th className="px-4 py-2 text-right font-medium">Iuran</th>
+                          <th className="px-4 py-2 text-right font-medium">Batas Bayar</th>
+                          <th className="px-4 py-2 text-right font-medium">Harus Bayar</th>
+                          <th className="px-4 py-2 text-right font-medium">Terbayar</th>
+                          <th className="px-4 py-2 text-right font-medium">Kurang</th>
+                          <th className="px-4 py-2 text-center font-medium">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {collectorGroup.participantSummaries.map((summary) => {
+                          // Check if any contribution has maxPay set
+                          const maxPayContrib = summary.contributions.find(c =>
+                            typeof c.maxPay === 'number' && c.maxPay < c.amount
+                          )
+                          const hasMaxPay = !!maxPayContrib
+                          const maxPayValue = hasMaxPay
+                            ? summary.contributions.reduce((sum, c) => sum + (c.maxPay ?? c.amount), 0)
+                            : null
 
-                              const { redistributedShare, originalShare, paid, remaining, overpaid, status, hasMaxPay, maxPay } =
-                                calculateShareWithRedistribution(contribution, expenseItem.contributions)
-                              const isEditingMax = editingMaxPay === contribution._id
-
-                              return (
-                                <tr key={contribution._id} className="hover:bg-gray-50/50">
-                                  <td className="px-4 py-2.5 font-medium text-gray-900">{participantName}</td>
-                                  <td className="px-4 py-2.5 text-right text-gray-600">
-                                    {formatCurrency(originalShare)}
-                                  </td>
-                                  <td className="px-4 py-2.5 text-right">
-                                    {isEditingMax ? (
-                                      <div className="flex gap-1 justify-end items-center">
-                                        <input
-                                          type="number"
-                                          value={editMaxPayValue ?? ''}
-                                          onChange={(e) => setEditMaxPayValue(e.target.value ? Number(e.target.value) : null)}
-                                          className="w-24 px-2 py-1 text-xs border border-gray-300 rounded"
-                                          placeholder="Max"
-                                        />
-                                        <button
-                                          onClick={() => updateMaxPay(contribution._id!, editMaxPayValue)}
-                                          className="p-1 bg-green-600 text-white rounded hover:bg-green-700"
-                                        >
-                                          <Check className="w-3 h-3" />
-                                        </button>
-                                        <button
-                                          onClick={() => setEditingMaxPay(null)}
-                                          className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                                        >
-                                          <X className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        onClick={() => {
-                                          setEditingMaxPay(contribution._id!)
-                                          setEditMaxPayValue(maxPay ?? null)
-                                        }}
-                                        className={`text-xs px-2 py-1 rounded transition-colors ${hasMaxPay
-                                          ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium'
-                                          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-                                          }`}
-                                      >
-                                        {hasMaxPay ? formatCurrency(maxPay!) : 'Set Max'}
-                                      </button>
-                                    )}
-                                  </td>
-                                  <td className={`px-4 py-2.5 text-right font-medium ${hasMaxPay ? 'text-amber-600' : 'text-gray-900'
-                                    }`}>
-                                    {formatCurrency(redistributedShare)}
-                                    {hasMaxPay && redistributedShare !== originalShare && (
-                                      <span className="text-xs text-amber-500 block">+redistribusi</span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-2.5 text-right text-green-600 font-medium">
-                                    {formatCurrency(paid)}
-                                  </td>
-                                  <td className="px-4 py-2.5 text-right">
-                                    {remaining > 0 && (
-                                      <span className="text-red-600 font-medium">-{formatCurrency(remaining)}</span>
-                                    )}
-                                    {overpaid > 0 && (
-                                      <span className="text-orange-600 font-medium">+{formatCurrency(overpaid)}</span>
-                                    )}
-                                    {remaining === 0 && overpaid === 0 && (
-                                      <span className="text-green-600">✓</span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-2.5 text-center">
-                                    <button
-                                      onClick={() => {
-                                        setEditingPayment(contribution._id!)
-                                        setEditPaymentValue(paid)
-                                        setShowPaymentForm(contribution._id!)
-                                      }}
-                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-medium transition-colors border border-green-200"
-                                    >
-                                      <DollarSign className="w-3 h-3" />
-                                      Input
-                                    </button>
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Mobile Card View */}
-                      <div className="md:hidden p-3 space-y-2">
-                        {expenseItem.contributions.map((contribution) => {
-                          let participantName = 'Unknown'
-                          if (typeof contribution.participantId === 'object' && contribution.participantId !== null) {
-                            participantName = (contribution.participantId as any).name
-                          } else {
-                            const participant = participants.find(p => p._id === contribution.participantId)
-                            participantName = participant?.name || 'Unknown'
-                          }
-
-                          const { redistributedShare, originalShare, paid, remaining, overpaid, status, hasMaxPay, maxPay } =
-                            calculateShareWithRedistribution(contribution, expenseItem.contributions)
+                          const isEditingMax = summary.contributions.some(c => editingMaxPay === c._id)
+                          const firstContrib = summary.contributions[0]
 
                           return (
-                            <div key={contribution._id} className="bg-gray-50 rounded-lg p-3">
-                              {/* Header */}
-                              <div className="flex justify-between items-start mb-2">
-                                <div>
-                                  <h4 className="font-medium text-gray-900">{participantName}</h4>
-                                  <p className="text-xs text-gray-500">
-                                    Share: {formatCurrency(redistributedShare)}
-                                    {hasMaxPay && <span className="text-amber-600"> (max: {formatCurrency(maxPay!)})</span>}
-                                  </p>
-                                </div>
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${status === 'Lunas' ? 'bg-green-100 text-green-700' :
-                                  status === 'Sebagian' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-red-100 text-red-700'
-                                  }`}>
-                                  {status}
-                                </span>
-                              </div>
-
-                              {/* Stats */}
-                              <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                                <div className="bg-white rounded p-2">
-                                  <span className="text-gray-500">Terbayar</span>
-                                  <p className="font-semibold text-green-600">{formatCurrency(paid)}</p>
-                                </div>
-                                <div className="bg-white rounded p-2">
-                                  <span className="text-gray-500">Sisa</span>
-                                  <p className={`font-semibold ${remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                    {remaining > 0 ? formatCurrency(remaining) : '✓ Lunas'}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Action Buttons */}
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingMaxPay(contribution._id!)
-                                    setEditMaxPayValue(maxPay ?? null)
-                                  }}
-                                  className="flex-1 text-xs px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-medium transition-colors border border-blue-200"
-                                >
-                                  {hasMaxPay ? `Max: ${formatCurrency(maxPay!)}` : 'Set Max Bayar'}
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setEditingPayment(contribution._id!)
-                                    setEditPaymentValue(paid)
-                                    setShowPaymentForm(contribution._id!)
-                                  }}
-                                  className="flex-1 text-xs px-3 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-medium transition-colors border border-green-200 flex items-center justify-center gap-1"
-                                >
-                                  <DollarSign className="w-3 h-3" />
-                                  Input Bayar
-                                </button>
-                              </div>
-
-                              {/* Edit Max Pay Inline - Mobile */}
-                              {editingMaxPay === contribution._id && (
-                                <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
-                                  <label className="text-xs text-gray-600">Batas maksimal bayar:</label>
-                                  <input
-                                    type="number"
-                                    value={editMaxPayValue ?? ''}
-                                    onChange={(e) => setEditMaxPayValue(e.target.value ? Number(e.target.value) : null)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
-                                    placeholder="Kosongkan untuk tanpa batas"
-                                  />
-                                  <div className="flex gap-2">
+                            <tr key={summary.participantId} className="hover:bg-gray-50/50">
+                              <td className="px-4 py-2.5 font-medium text-gray-900">
+                                {summary.participantName}
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-gray-600">
+                                {formatCurrency(summary.totalIuran)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right">
+                                {isEditingMax ? (
+                                  <div className="flex gap-1 justify-end items-center">
+                                    <input
+                                      type="number"
+                                      value={editMaxPayValue ?? ''}
+                                      onChange={(e) => setEditMaxPayValue(e.target.value ? Number(e.target.value) : null)}
+                                      className="w-24 px-2 py-1 text-xs border border-gray-300 rounded"
+                                      placeholder="Batas"
+                                    />
                                     <button
-                                      onClick={() => updateMaxPay(contribution._id!, editMaxPayValue)}
-                                      className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                                      onClick={() => {
+                                        if (firstContrib?._id) {
+                                          updateMaxPay(firstContrib._id, editMaxPayValue)
+                                        }
+                                      }}
+                                      className="p-1 bg-green-600 text-white rounded hover:bg-green-700"
                                     >
-                                      Simpan
+                                      <Check className="w-3 h-3" />
                                     </button>
                                     <button
                                       onClick={() => setEditingMaxPay(null)}
-                                      className="flex-1 px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300"
+                                      className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
                                     >
-                                      Batal
+                                      <X className="w-3 h-3" />
                                     </button>
                                   </div>
-                                </div>
-                              )}
-                            </div>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      if (firstContrib?._id) {
+                                        setEditingMaxPay(firstContrib._id)
+                                        setEditMaxPayValue(maxPayValue)
+                                      }
+                                    }}
+                                    className={`text-xs px-2 py-1 rounded transition-colors ${hasMaxPay
+                                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 font-medium'
+                                        : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                                      }`}
+                                  >
+                                    {hasMaxPay ? formatCurrency(maxPayValue!) : 'Set Batas'}
+                                  </button>
+                                )}
+                              </td>
+                              <td className={`px-4 py-2.5 text-right font-medium ${hasMaxPay || summary.totalHarusBayar !== summary.totalIuran
+                                  ? 'text-amber-600'
+                                  : 'text-gray-900'
+                                }`}>
+                                {formatCurrency(summary.totalHarusBayar)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-green-600 font-medium">
+                                {formatCurrency(summary.totalTerbayar)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right">
+                                {summary.totalKurang > 0 ? (
+                                  <span className="text-red-600 font-medium">
+                                    {formatCurrency(summary.totalKurang)}
+                                  </span>
+                                ) : (
+                                  <span className="text-green-600">✓ Lunas</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                <button
+                                  onClick={() => {
+                                    if (firstContrib?._id) {
+                                      setEditPaymentValue(summary.totalTerbayar)
+                                      setShowPaymentForm(firstContrib._id)
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-medium transition-colors border border-green-200"
+                                >
+                                  <DollarSign className="w-3 h-3" />
+                                  Input
+                                </button>
+                              </td>
+                            </tr>
                           )
                         })}
-                      </div>
-                    </div>
-                  ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className="md:hidden p-3 space-y-2">
+                    {collectorGroup.participantSummaries.map((summary) => {
+                      const maxPayContrib = summary.contributions.find(c =>
+                        typeof c.maxPay === 'number' && c.maxPay < c.amount
+                      )
+                      const hasMaxPay = !!maxPayContrib
+                      const firstContrib = summary.contributions[0]
+
+                      return (
+                        <div key={summary.participantId} className="bg-gray-50 rounded-lg p-3">
+                          {/* Header */}
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h4 className="font-medium text-gray-900">{summary.participantName}</h4>
+                              <p className="text-xs text-gray-500">
+                                Harus bayar: {formatCurrency(summary.totalHarusBayar)}
+                              </p>
+                            </div>
+                            {summary.totalKurang > 0 ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+                                Kurang {formatCurrency(summary.totalKurang)}
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
+                                ✓ Lunas
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Stats */}
+                          <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                            <div className="bg-white rounded p-2">
+                              <span className="text-gray-500">Terbayar</span>
+                              <p className="font-semibold text-green-600">{formatCurrency(summary.totalTerbayar)}</p>
+                            </div>
+                            <div className="bg-white rounded p-2">
+                              <span className="text-gray-500">Iuran</span>
+                              <p className="font-semibold text-gray-900">{formatCurrency(summary.totalIuran)}</p>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                if (firstContrib?._id) {
+                                  setEditingMaxPay(firstContrib._id)
+                                  setEditMaxPayValue(hasMaxPay ? summary.totalHarusBayar : null)
+                                }
+                              }}
+                              className="flex-1 text-xs px-3 py-2 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg font-medium transition-colors border border-amber-200"
+                            >
+                              {hasMaxPay ? 'Edit Batas' : 'Set Batas Bayar'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (firstContrib?._id) {
+                                  setEditPaymentValue(summary.totalTerbayar)
+                                  setShowPaymentForm(firstContrib._id)
+                                }
+                              }}
+                              className="flex-1 text-xs px-3 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-medium transition-colors border border-green-200 flex items-center justify-center gap-1"
+                            >
+                              <DollarSign className="w-3 h-3" />
+                              Input Bayar
+                            </button>
+                          </div>
+
+                          {/* Edit Max Pay Inline - Mobile */}
+                          {summary.contributions.some(c => editingMaxPay === c._id) && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                              <label className="text-xs text-gray-600">Batas maksimal bayar:</label>
+                              <input
+                                type="number"
+                                value={editMaxPayValue ?? ''}
+                                onChange={(e) => setEditMaxPayValue(e.target.value ? Number(e.target.value) : null)}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                                placeholder="Kosongkan untuk tanpa batas"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    if (firstContrib?._id) {
+                                      updateMaxPay(firstContrib._id, editMaxPayValue)
+                                    }
+                                  }}
+                                  className="flex-1 px-3 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700"
+                                >
+                                  Simpan
+                                </button>
+                                <button
+                                  onClick={() => setEditingMaxPay(null)}
+                                  className="flex-1 px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300"
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
 
                   {/* Collector Total */}
                   <div className="px-4 py-3 bg-gradient-to-r from-primary-50 to-primary-100 border-t border-primary-200">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                       <span className="text-sm font-medium text-gray-700">Total {collectorGroup.collectorName}</span>
-                      <div className="flex items-center gap-3 text-sm">
-                        <span className="text-gray-600">
-                          Share: <span className="font-semibold">{formatCurrency(collectorGroup.totalShare)}</span>
-                        </span>
+                      <div className="flex flex-wrap items-center gap-3 text-sm">
                         <span className="text-green-600">
-                          Bayar: <span className="font-semibold">{formatCurrency(collectorGroup.totalPaid)}</span>
+                          Terbayar: <span className="font-semibold">{formatCurrency(collectorGroup.totalPaid)}</span>
                         </span>
                         {collectorGroup.totalKurang > 0 && (
                           <span className="text-red-600">
@@ -802,7 +784,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                 <p className="text-primary-100 text-sm mb-1">Total Iuran Keseluruhan</p>
                 <p className="text-2xl font-bold">{formatCurrency(grandTotal)}</p>
                 <p className="text-xs text-primary-200 mt-1">
-                  {contributionsByCollector.length} pengumpul • {contributions.length} iuran
+                  {contributionsByCollector.length} pengumpul
                 </p>
               </div>
               <div className="text-left sm:text-right">
@@ -847,34 +829,10 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                   participantName = participants.find(p => p._id === contrib.participantId)?.name || 'Unknown'
                 }
 
-                // Find the expense item contributions for redistribution calculation
-                let allContribsInItem: Contribution[] = [contrib]
-                contributionsByCollector.forEach(group => {
-                  group.expenseItems.forEach(item => {
-                    if (item.contributions.some(c => c._id === contrib._id)) {
-                      allContribsInItem = item.contributions
-                    }
-                  })
-                })
-
-                const { redistributedShare, hasMaxPay, maxPay } = calculateShareWithRedistribution(contrib, allContribsInItem)
-
                 return (
-                  <>
-                    <p className="text-sm text-gray-600">
-                      Peserta: <span className="font-semibold">{participantName}</span>
-                    </p>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3 text-sm">
-                      <p className="text-blue-900">
-                        <span className="font-semibold">Nominal Share:</span> {formatCurrency(redistributedShare)}
-                      </p>
-                      {hasMaxPay && (
-                        <p className="text-blue-700 text-xs mt-1">
-                          (Max Bayar: {formatCurrency(maxPay!)})
-                        </p>
-                      )}
-                    </div>
-                  </>
+                  <p className="text-sm text-gray-600">
+                    Peserta: <span className="font-semibold">{participantName}</span>
+                  </p>
                 )
               })()}
             </div>
@@ -882,7 +840,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nominal Pembayaran
+                  Jumlah Pembayaran
                 </label>
                 <div className="flex items-center">
                   <span className="text-gray-500 mr-2">Rp</span>
@@ -905,7 +863,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                   onChange={(e) => setEditPaymentMethod(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
-                  <option value="manual">Transfer Langsung</option>
+                  <option value="manual">Transfer</option>
                   <option value="cash">Cash</option>
                 </select>
               </div>
@@ -915,7 +873,6 @@ export default function ContributionsTab({ planId }: { planId: string }) {
               <button
                 onClick={() => {
                   setShowPaymentForm(null)
-                  setEditingPayment(null)
                 }}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
@@ -927,7 +884,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
-                Simpan Pembayaran
+                Simpan
               </button>
             </div>
           </div>
@@ -946,7 +903,7 @@ export default function ContributionsTab({ planId }: { planId: string }) {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">History Pembayaran</h3>
-                  <p className="text-sm text-gray-500">Log semua perubahan pembayaran</p>
+                  <p className="text-sm text-gray-500">Log semua perubahan</p>
                 </div>
               </div>
               <button
@@ -967,14 +924,14 @@ export default function ContributionsTab({ planId }: { planId: string }) {
               ) : paymentHistory.length === 0 ? (
                 <div className="text-center py-12">
                   <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-600 font-medium">Belum ada history pembayaran</p>
+                  <p className="text-gray-600 font-medium">Belum ada history</p>
                   <p className="text-sm text-gray-500 mt-1">
                     History akan muncul setelah ada perubahan pembayaran
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {paymentHistory.map((item, index) => {
+                  {paymentHistory.map((item) => {
                     const participantName = typeof item.participantId === 'object'
                       ? item.participantId.name
                       : 'Unknown'
