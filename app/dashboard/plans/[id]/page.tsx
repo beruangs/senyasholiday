@@ -25,10 +25,10 @@ export default function PlanDetailPage() {
   const [editingPassword, setEditingPassword] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [completingEvent, setCompletingEvent] = useState(false)
-  
+
   // Set page title when plan loads
   usePageTitle(plan ? pageTitle.dashboardPlan(plan.title) : 'Dashboard | Loading...')
-  
+
   // Edit Info states
   const [editingInfo, setEditingInfo] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -330,33 +330,33 @@ export default function PlanDetailPage() {
         {/* Back Button */}
         <Link
           href="/dashboard"
-          className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-6"
+          className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-6 print:hidden"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Kembali ke Dashboard
         </Link>
 
         {/* Header with Banner & Logo */}
-        <div className="mb-6 rounded-2xl overflow-hidden shadow-xl">
+        <div className="mb-6 rounded-2xl overflow-hidden shadow-xl print:hidden">
           {/* Banner Section */}
           <div className="relative h-32 sm:h-40 md:h-48 lg:h-56">
             {plan?.bannerImage ? (
-              <img 
-                src={plan.bannerImage} 
-                alt="Banner" 
+              <img
+                src={plan.bannerImage}
+                alt="Banner"
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-primary-500 to-primary-700" />
             )}
-            
+
             {/* Logo Overlay - Responsive positioning */}
             <div className="absolute -bottom-8 left-4 sm:left-6 md:left-8">
               <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl overflow-hidden bg-white shadow-lg border-4 border-white">
                 {plan?.logoImage ? (
-                  <img 
-                    src={plan.logoImage} 
-                    alt="Logo" 
+                  <img
+                    src={plan.logoImage}
+                    alt="Logo"
                     className="w-full h-full object-contain p-1"
                   />
                 ) : (
@@ -384,7 +384,7 @@ export default function PlanDetailPage() {
                     </span>
                   )}
                 </div>
-                
+
                 {/* Dates - Mobile friendly */}
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-600">
                   <div className="flex items-center">
@@ -421,16 +421,15 @@ export default function PlanDetailPage() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm">
-          <div className="border-b border-gray-200">
+        <div className="bg-white rounded-lg shadow-sm print:shadow-none print:rounded-none">
+          <div className="border-b border-gray-200 print:hidden">
             <nav className="flex overflow-x-auto">
               <button
                 onClick={() => setActiveTab('info')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                  activeTab === 'info'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'info'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 <Settings className="w-5 h-5" />
                 <span>Info</span>
@@ -438,11 +437,10 @@ export default function PlanDetailPage() {
 
               <button
                 onClick={() => setActiveTab('rundown')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                  activeTab === 'rundown'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'rundown'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 <Calendar className="w-5 h-5" />
                 <span>Rundown</span>
@@ -450,11 +448,10 @@ export default function PlanDetailPage() {
 
               <button
                 onClick={() => setActiveTab('participants')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                  activeTab === 'participants'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'participants'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 <Users className="w-5 h-5" />
                 <span>Peserta</span>
@@ -462,11 +459,10 @@ export default function PlanDetailPage() {
 
               <button
                 onClick={() => setActiveTab('expenses')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                  activeTab === 'expenses'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'expenses'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 <DollarSign className="w-5 h-5" />
                 <span>Keuangan</span>
@@ -474,11 +470,10 @@ export default function PlanDetailPage() {
 
               <button
                 onClick={() => setActiveTab('contributions')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                  activeTab === 'contributions'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'contributions'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 <DollarSign className="w-5 h-5" />
                 <span>Iuran</span>
@@ -486,11 +481,10 @@ export default function PlanDetailPage() {
 
               <button
                 onClick={() => setActiveTab('note')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                  activeTab === 'note'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'note'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 <FileText className="w-5 h-5" />
                 <span>Note</span>
@@ -499,11 +493,10 @@ export default function PlanDetailPage() {
               {plan?.status === 'completed' && (
                 <button
                   onClick={() => setActiveTab('rincian')}
-                  className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                    activeTab === 'rincian'
-                      ? 'border-primary-600 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'rincian'
+                    ? 'border-primary-600 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
                 >
                   <FileText className="w-5 h-5" />
                   <span>Rincian</span>
@@ -639,14 +632,14 @@ export default function PlanDetailPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
-                        <p className="text-gray-900">{new Date(plan?.startDate).toLocaleDateString('id-ID', { 
-                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                        <p className="text-gray-900">{new Date(plan?.startDate).toLocaleDateString('id-ID', {
+                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                         })}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Selesai</label>
-                        <p className="text-gray-900">{new Date(plan?.endDate).toLocaleDateString('id-ID', { 
-                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                        <p className="text-gray-900">{new Date(plan?.endDate).toLocaleDateString('id-ID', {
+                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                         })}</p>
                       </div>
                     </div>
@@ -656,7 +649,7 @@ export default function PlanDetailPage() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Password Section */}
                 <div className="border-t pt-6">
                   <div className="flex items-center justify-between mb-4">
@@ -674,7 +667,7 @@ export default function PlanDetailPage() {
                       </button>
                     )}
                   </div>
-                  
+
                   {editingPassword ? (
                     <div className="space-y-4">
                       <div className="flex items-center space-x-2">
@@ -737,7 +730,7 @@ export default function PlanDetailPage() {
                 {/* Banner & Logo Upload Section */}
                 <div className="border-t pt-6 space-y-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Kustomisasi Tampilan</h3>
-                  
+
                   {/* Banner Upload */}
                   <div>
                     <div className="flex items-center justify-between mb-3">
@@ -756,14 +749,14 @@ export default function PlanDetailPage() {
                         </button>
                       )}
                     </div>
-                    
+
                     <div className="relative">
                       {/* Preview */}
                       <div className="w-full h-32 md:h-48 rounded-lg overflow-hidden bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
                         {bannerPreview ? (
-                          <img 
-                            src={bannerPreview} 
-                            alt="Banner" 
+                          <img
+                            src={bannerPreview}
+                            alt="Banner"
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -773,7 +766,7 @@ export default function PlanDetailPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Upload Button */}
                       <label className="absolute bottom-3 right-3 cursor-pointer">
                         <input
@@ -811,14 +804,14 @@ export default function PlanDetailPage() {
                         </button>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center space-x-4">
                       {/* Preview */}
                       <div className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center">
                         {logoPreview ? (
-                          <img 
-                            src={logoPreview} 
-                            alt="Logo" 
+                          <img
+                            src={logoPreview}
+                            alt="Logo"
                             className="w-full h-full object-contain p-2"
                           />
                         ) : (
@@ -828,7 +821,7 @@ export default function PlanDetailPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Upload Button */}
                       <label className="cursor-pointer flex-1">
                         <input
