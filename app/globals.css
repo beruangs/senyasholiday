@@ -27,6 +27,7 @@ body {
 
 /* Print Styles */
 @media print {
+
   /* Hide navigation, sidebar, and other non-printable elements */
   nav,
   aside,
@@ -35,24 +36,27 @@ body {
   .sidebar,
   .navigation,
   [data-sidebar],
-  [role="navigation"] {
+  [role="navigation"],
+  .print-hidden {
     display: none !important;
   }
-  
+
   /* Ensure print modal is visible and positioned correctly */
   .print-modal {
+    display: block !important;
     position: static !important;
     overflow: visible !important;
     height: auto !important;
     width: 100% !important;
+    z-index: 99999 !important;
   }
-  
+
   /* Reset page margins */
   @page {
     margin: 1.5cm;
     size: A4;
   }
-  
+
   /* Prevent color issues */
   body {
     print-color-adjust: exact;

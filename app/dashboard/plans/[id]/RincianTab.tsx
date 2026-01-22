@@ -154,7 +154,7 @@ export default function RincianTab({ planId, plan }: RincianTabProps) {
 
   return (
     <>
-      <div className="space-y-8 print:hidden">
+      <div className="space-y-8 print:hidden print-hidden">
         {/* Header Section */}
         <div className="bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl shadow-xl p-8 text-white">
           <div className="flex items-center justify-between mb-6">
@@ -642,8 +642,8 @@ export default function RincianTab({ planId, plan }: RincianTabProps) {
                       <td className="border border-gray-300 px-3 py-2 text-sm text-right text-red-700 font-medium">{formatCurrency(item.remaining)}</td>
                       <td className="border border-gray-300 px-3 py-2 text-sm text-center">
                         <span className={`px-2 py-1 rounded text-xs ${item.status === 'lunas' ? 'bg-green-100 text-green-800' :
-                            item.status === 'sebagian' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
+                          item.status === 'sebagian' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
                           }`}>
                           {item.status === 'lunas' ? '✓ Lunas' : item.status === 'sebagian' ? '⏳ Sebagian' : '✗ Belum'}
                         </span>
@@ -675,14 +675,12 @@ export default function RincianTab({ planId, plan }: RincianTabProps) {
           {/* Print Styles */}
           <style jsx global>{`
           @media print {
-            /* Hide everything except print modal */
-            body > *:not(.print-modal) {
-              display: none !important;
-            }
+            /* Ensure print-modal is visible */
             .print-modal {
               display: block !important;
               position: static !important;
               overflow: visible !important;
+              z-index: 99999 !important;
             }
             body {
               print-color-adjust: exact;
@@ -696,7 +694,6 @@ export default function RincianTab({ planId, plan }: RincianTabProps) {
             thead {
               display: table-header-group;
             }
-            /* For tables that should NOT repeat headers, use this class */
             table {
               page-break-inside: auto;
             }
@@ -718,7 +715,7 @@ export default function RincianTab({ planId, plan }: RincianTabProps) {
             button {
               display: none !important;
             }
-            /* Ensure content flows properly without fixed positioning */
+            /* Ensure content flows properly */
             .print-modal > div {
               position: static !important;
             }
