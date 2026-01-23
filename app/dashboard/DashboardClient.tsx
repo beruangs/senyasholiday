@@ -254,7 +254,11 @@ function PlanCard({
   userRole: string
   isDeleting: boolean
 }) {
-  const canDelete = plan.isOwner || (plan.isSenPlan && userRole === 'superadmin') || userRole === 'superadmin'
+  // Delete permission: 
+  // - Owner can delete their own plan
+  // - Superadmin can delete SEN plans (plans without owner)
+  // - Admins/Editors CANNOT delete - they can only edit
+  const canDelete = plan.isOwner || (plan.isSenPlan && userRole === 'superadmin')
 
   return (
     <div className={`group bg-white rounded-xl border transition-all hover:shadow-lg ${plan.isSenPlan ? 'border-primary-200 hover:border-primary-300' : 'border-gray-100 hover:border-gray-200'
@@ -274,10 +278,12 @@ function PlanCard({
             ) : plan.isOwner ? (
               <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">
                 <Crown className="w-3 h-3" />
+                Milik Saya
               </span>
             ) : plan.isAdmin ? (
               <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
                 <User className="w-3 h-3" />
+                Editor
               </span>
             ) : null}
             {plan.hasPassword && (
@@ -298,6 +304,20 @@ function PlanCard({
               {format(new Date(plan.startDate), 'd MMM', { locale: id })} - {format(new Date(plan.endDate), 'd MMM yyyy', { locale: id })}
             </span>
           </div>
+          {/* Show owner info for plans where user is admin/editor */}
+          {!plan.isOwner && !plan.isSenPlan && plan.ownerId && (
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <Crown className="w-3 h-3" />
+              <span>oleh @{plan.ownerId.username}</span>
+            </div>
+          )}
+          {/* SEN plans show managed by superadmin */}
+          {plan.isSenPlan && (
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <Sparkles className="w-3 h-3" />
+              <span>Dikelola Superadmin</span>
+            </div>
+          )}
         </div>
 
         {/* Description */}

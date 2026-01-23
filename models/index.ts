@@ -48,8 +48,10 @@ const holidayPlanSchema = new Schema({
   logoImage: String,
   // Owner - user yang membuat plan (optional for SEN plans and env-admin)
   ownerId: { type: Schema.Types.ObjectId, ref: 'User' },
-  // Admins - user lain yang bisa mengedit plan
+  // Admins - user lain yang bisa mengedit plan (confirmed)
   adminIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  // Pending Admins - waiting for confirmation from the invited user
+  pendingAdminIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   // Legacy field - untuk backward compatibility
   createdBy: { type: String },
   createdAt: { type: Date, default: Date.now },
@@ -133,6 +135,30 @@ const noteSchema = new Schema({
   updatedAt: { type: Date, default: Date.now },
 })
 
+// Notification Schema - for admin invitations and other notifications
+const notificationSchema = new Schema({
+  // Who receives this notification
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  // Type of notification
+  type: {
+    type: String,
+    enum: ['admin_invite', 'admin_invite_accepted', 'admin_invite_rejected', 'general'],
+    required: true
+  },
+  // Related plan (for admin invite notifications)
+  planId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan' },
+  // Who sent/triggered this notification
+  fromUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+  // Message content
+  title: { type: String, required: true },
+  message: { type: String },
+  // Has user read this notification
+  read: { type: Boolean, default: false },
+  // For invite: has user responded
+  responded: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+})
+
 // Payment History Schema
 const paymentHistorySchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
@@ -163,3 +189,4 @@ export const Contribution = mongoose.models.Contribution || mongoose.model('Cont
 export const SplitPayment = mongoose.models.SplitPayment || mongoose.model('SplitPayment', splitPaymentSchema)
 export const Note = mongoose.models.Note || mongoose.model('Note', noteSchema)
 export const PaymentHistory = mongoose.models.PaymentHistory || mongoose.model('PaymentHistory', paymentHistorySchema)
+export const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema)

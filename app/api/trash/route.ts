@@ -87,12 +87,16 @@ export async function POST(req: NextRequest) {
         await dbConnect()
         const { planId } = await req.json()
 
+        console.log('[Trash] POST request for planId:', planId)
+
         if (!planId || !isValidObjectId(planId)) {
+            console.log('[Trash] Invalid plan ID')
             return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 })
         }
 
         const plan = await HolidayPlan.findById(planId)
         if (!plan) {
+            console.log('[Trash] Plan not found')
             return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
         }
 
@@ -102,24 +106,43 @@ export async function POST(req: NextRequest) {
         const isEnvAdmin = userId.startsWith('env-')
         const isOwner = plan.ownerId?.toString() === userId
         const isSenPlan = !plan.ownerId
+
+        // Only owner can delete their own plan. Superadmin/env-admin can delete SEN plans or any plan.
         const canDelete = isOwner || (isSenPlan && (userRole === 'superadmin' || isEnvAdmin)) || userRole === 'superadmin' || isEnvAdmin
+
+        console.log('[Trash] Permission check:', { userId, userRole, isEnvAdmin, isOwner, isSenPlan, canDelete })
 
         if (!canDelete) {
             return NextResponse.json({ error: 'Not authorized to delete this plan' }, { status: 403 })
         }
 
-        // Move to trash
+        // Move to trash using updateOne to ensure fields are saved
         const now = new Date()
-        plan.deletedAt = now
-        plan.trashExpiresAt = new Date(now.getTime() + TRASH_RETENTION_MS)
-        await plan.save()
+        const trashExpiresAt = new Date(now.getTime() + TRASH_RETENTION_MS)
+
+        const result = await HolidayPlan.updateOne(
+            { _id: planId },
+            {
+                $set: {
+                    deletedAt: now,
+                    trashExpiresAt: trashExpiresAt
+                }
+            }
+        )
+
+        console.log('[Trash] Update result:', result)
+
+        if (result.modifiedCount === 0) {
+            console.log('[Trash] Failed to update - modifiedCount is 0')
+            return NextResponse.json({ error: 'Failed to move to trash' }, { status: 500 })
+        }
 
         return NextResponse.json({
             message: 'Plan moved to trash',
-            expiresAt: plan.trashExpiresAt
+            expiresAt: trashExpiresAt
         })
     } catch (error) {
-        console.error('Error moving to trash:', error)
+        console.error('[Trash] Error moving to trash:', error)
         return NextResponse.json({ error: 'Failed to move to trash' }, { status: 500 })
     }
 }
