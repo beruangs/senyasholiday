@@ -89,18 +89,39 @@ export async function DELETE(
             return NextResponse.json({ error: 'Superadmin access required' }, { status: 403 })
         }
 
-        // Prevent deleting yourself (only for database users)
-        const isEnvAdmin = session.user.id.startsWith('env-')
-        if (!isEnvAdmin && params.id === session.user.id) {
+        console.log(`[Admin] Attempting to delete user ${params.id} by admin ${session.user.id}`)
+
+        // Prevent deleting yourself
+        if (params.id === session.user.id) {
             return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 })
         }
 
-        const user = await User.findByIdAndDelete(params.id)
-
+        const user = await User.findById(params.id)
         if (!user) {
+            console.log(`[Admin] User ${params.id} not found in database`)
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
+        // 1. Remove this user from all plans they are an owner of
+        // (Optional: You might want to delete their plans or transfer them)
+        // For now, we'll keep the plans but they'll have no owner
+        // or you could delete them. Let's delete individual plans and set SEN plans owner to null.
+        const { HolidayPlan } = await import('@/models')
+
+        // Remove from admin committees
+        await HolidayPlan.updateMany(
+            { adminIds: params.id },
+            { $pull: { adminIds: params.id } }
+        )
+        await HolidayPlan.updateMany(
+            { pendingAdminIds: params.id },
+            { $pull: { pendingAdminIds: params.id } }
+        )
+
+        // Actually delete the user
+        await User.findByIdAndDelete(params.id)
+
+        console.log(`[Admin] User ${params.id} (@${user.username}) successfully deleted`)
         return NextResponse.json({ success: true })
     } catch (error) {
         console.error('Error deleting user:', error)

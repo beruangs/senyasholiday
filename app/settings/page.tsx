@@ -11,7 +11,9 @@ export default function SettingsPage() {
     const { data: session, status } = useSession()
     const router = useRouter()
     const [showPassword, setShowPassword] = useState(false)
+    const [userProfile, setUserProfile] = useState<any>(null)
     const [loading, setLoading] = useState(false)
+    const [profileLoading, setProfileLoading] = useState(true)
     const [formData, setFormData] = useState({
         name: '',
         currentPassword: '',
@@ -27,8 +29,23 @@ export default function SettingsPage() {
                 ...prev,
                 name: session.user.name || '',
             }))
+            fetchUserProfile()
         }
     }, [status, session, router])
+
+    const fetchUserProfile = async () => {
+        try {
+            const res = await fetch('/api/user/profile')
+            if (res.ok) {
+                const data = await res.json()
+                setUserProfile(data)
+            }
+        } catch (error) {
+            console.error('Error fetching profile:', error)
+        } finally {
+            setProfileLoading(false)
+        }
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -80,9 +97,9 @@ export default function SettingsPage() {
         )
     }
 
-    const username = (session?.user as any)?.username || session?.user?.email?.split('@')[0]
-    const userRole = (session?.user as any)?.role || 'user'
-    const isEnvAdmin = session?.user?.id?.startsWith('env-')
+    const username = userProfile?.username || (session?.user as any)?.username || session?.user?.email?.split('@')[0]
+    const userRole = userProfile?.role || (session?.user as any)?.role || 'user'
+    const isEnvAdmin = userProfile?.isEnvAdmin ?? session?.user?.id?.startsWith('env-')
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100">
@@ -126,10 +143,10 @@ export default function SettingsPage() {
                                 <span className="text-gray-600">Role</span>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${userRole === 'superadmin'
-                                    ? 'bg-amber-100 text-amber-700'
-                                    : userRole === 'sen_user'
-                                        ? 'bg-primary-100 text-primary-700'
-                                        : 'bg-gray-100 text-gray-700'
+                                ? 'bg-amber-100 text-amber-700'
+                                : userRole === 'sen_user'
+                                    ? 'bg-primary-100 text-primary-700'
+                                    : 'bg-gray-100 text-gray-700'
                                 }`}>
                                 {userRole === 'superadmin' ? 'Superadmin' :
                                     userRole === 'sen_user' ? 'SEN User' : 'User'}
@@ -143,8 +160,8 @@ export default function SettingsPage() {
                                 <span className="text-gray-600">Tipe Akun</span>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${isEnvAdmin
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'bg-green-100 text-green-700'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-green-100 text-green-700'
                                 }`}>
                                 {isEnvAdmin ? 'Environment Admin' : 'Database User'}
                             </span>

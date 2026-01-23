@@ -54,11 +54,11 @@ export default function ExpensesTab({ planId }: { planId: string }) {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [splitAmount, setSplitAmount] = useState(0)
   const [autoDistribute, setAutoDistribute] = useState(true) // Auto redistribute when adding participants
-  
+
   // State untuk edit nominal iuran peserta
   const [editingContributionId, setEditingContributionId] = useState<string | null>(null)
   const [editingContributionAmount, setEditingContributionAmount] = useState<number>(0)
-  
+
   // Form state untuk penambahan pengeluaran
   const [formParticipants, setFormParticipants] = useState<string[]>([])
   const [formSplitAmount, setFormSplitAmount] = useState(0)
@@ -114,14 +114,14 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       const expensesWithDetails: ExpenseWithContributions[] = expensesData.map(expense => {
         // Handle both populated (object) and non-populated (string) expenseItemId
         const expenseContributions = contributionsData.filter(c => {
-          const contributionExpenseId = typeof c.expenseItemId === 'object' 
-            ? (c.expenseItemId as any)?._id 
+          const contributionExpenseId = typeof c.expenseItemId === 'object'
+            ? (c.expenseItemId as any)?._id
             : c.expenseItemId
           return contributionExpenseId === expense._id
         })
-        
+
         console.log(`Expense "${expense.itemName}" (${expense._id}): Found ${expenseContributions.length} contributions`)
-        
+
         const contributors = expenseContributions.map(c => {
           // Handle populated participantId
           const participantId = typeof c.participantId === 'object'
@@ -130,7 +130,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
           const participantName = typeof c.participantId === 'object'
             ? (c.participantId as any)?.name
             : participantsData.find(p => p._id === participantId)?.name
-            
+
           return {
             participantName: participantName || 'Unknown',
             amount: c.amount,
@@ -158,7 +158,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Prevent double submit
     if (isSubmitting) return
     setIsSubmitting(true)
@@ -167,7 +167,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
     console.log('Form Data:', formData)
     console.log('Form Participants:', formParticipants)
     console.log('Form Collector:', formCollector)
-    
+
     const total = formData.price * formData.quantity
 
     if (formParticipants.length === 0) {
@@ -251,7 +251,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       }
 
       console.log(`Created ${formParticipants.length - failedContributions} contributions successfully`)
-      
+
       if (failedContributions > 0) {
         toast.warning(
           `Pengeluaran berhasil ditambahkan, tapi ${failedContributions} iuran gagal ditambahkan`
@@ -319,7 +319,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       }
 
       let shouldRecalculateContributions = false
-      
+
       // Check if total changed - need to recalculate contributions
       if (newTotal !== expense.total) {
         shouldRecalculateContributions = true
@@ -341,8 +341,8 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       // If total changed, recalculate all contributions for this expense
       if (shouldRecalculateContributions) {
         const expenseContributions = contributions.filter(c => {
-          const cExpenseId = typeof c.expenseItemId === 'object' 
-            ? (c.expenseItemId as any)?._id 
+          const cExpenseId = typeof c.expenseItemId === 'object'
+            ? (c.expenseItemId as any)?._id
             : c.expenseItemId
           return cExpenseId === id
         })
@@ -351,7 +351,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
           const rawNewAmount = newTotal / expenseContributions.length
           const newAmount = Math.round(rawNewAmount / 100) * 100
 
-          const updatePromises = expenseContributions.map(c => 
+          const updatePromises = expenseContributions.map(c =>
             fetch('/api/contributions', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
@@ -364,7 +364,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
           )
 
           await Promise.all(updatePromises)
-          
+
           toast.success(
             `✅ Pengeluaran diupdate. Iuran disesuaikan menjadi ${formatCurrency(newAmount)}/orang untuk ${expenseContributions.length} peserta`,
             { duration: 5000 }
@@ -387,7 +387,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
   const addParticipantsToExpense = async (expenseId?: string) => {
     const targetExpenseId = expenseId || selectedExpenseId
-    
+
     if (!targetExpenseId) {
       toast.error('Pilih pengeluaran terlebih dahulu')
       return
@@ -407,8 +407,8 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
       // Get existing contributions for this expense
       const existingContributions = contributions.filter(c => {
-        const cExpenseId = typeof c.expenseItemId === 'object' 
-          ? (c.expenseItemId as any)?._id 
+        const cExpenseId = typeof c.expenseItemId === 'object'
+          ? (c.expenseItemId as any)?._id
           : c.expenseItemId
         return cExpenseId === targetExpenseId
       })
@@ -423,7 +423,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
         // Update existing contributions with new amount
         if (existingContributions.length > 0) {
-          const updatePromises = existingContributions.map(c => 
+          const updatePromises = existingContributions.map(c =>
             fetch('/api/contributions', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
@@ -462,9 +462,9 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       )
 
       await Promise.all(promises)
-      
+
       const totalParticipantsAfter = existingContributions.length + selectedParticipants.length
-      
+
       if (autoDistribute) {
         toast.success(
           `✅ ${selectedParticipants.length} peserta ditambahkan. Iuran disesuaikan menjadi ${formatCurrency(amountPerPerson)}/orang untuk ${totalParticipantsAfter} peserta`,
@@ -497,8 +497,8 @@ export default function ExpensesTab({ planId }: { planId: string }) {
 
       // Get all contributions for this expense
       const expenseContributions = contributions.filter(c => {
-        const cExpenseId = typeof c.expenseItemId === 'object' 
-          ? (c.expenseItemId as any)?._id 
+        const cExpenseId = typeof c.expenseItemId === 'object'
+          ? (c.expenseItemId as any)?._id
           : c.expenseItemId
         return cExpenseId === expenseId
       })
@@ -546,7 +546,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
       }
 
       // Update all remaining contributions with new amount
-      const updatePromises = remainingContributors.map(c => 
+      const updatePromises = remainingContributors.map(c =>
         fetch('/api/contributions', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -580,8 +580,8 @@ export default function ExpensesTab({ planId }: { planId: string }) {
     try {
       // Find the contribution ID
       const contribution = contributions.find(c => {
-        const cExpenseId = typeof c.expenseItemId === 'object' 
-          ? (c.expenseItemId as any)?._id 
+        const cExpenseId = typeof c.expenseItemId === 'object'
+          ? (c.expenseItemId as any)?._id
           : c.expenseItemId
         const cParticipantId = typeof c.participantId === 'object'
           ? (c.participantId as any)?._id
@@ -648,7 +648,8 @@ export default function ExpensesTab({ planId }: { planId: string }) {
             className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
             <Plus className="w-5 h-5" />
-            <span>Tambah Pengeluaran</span>
+            <span className="hidden sm:inline">Tambah Pengeluaran</span>
+            <span className="sm:hidden text-sm">Tambah</span>
           </button>
         </div>
 
@@ -793,11 +794,10 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                   {participants.map(participant => (
                     <label
                       key={participant._id}
-                      className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-all ${
-                        formParticipants.includes(participant._id)
+                      className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-all ${formParticipants.includes(participant._id)
                           ? 'bg-primary-100 border border-primary-500'
                           : 'bg-gray-50 border border-gray-200 hover:border-primary-300'
-                      }`}
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -1014,17 +1014,16 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                             {participants.map(participant => {
                               const isContributor = expense.contributors?.some(c => c.participantId === participant._id) || false
                               const wasInitiallySelected = isContributor
-                              
+
                               return (
                                 <label
                                   key={participant._id}
-                                  className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-all ${
-                                    selectedParticipants.includes(participant._id)
+                                  className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-all ${selectedParticipants.includes(participant._id)
                                       ? 'bg-primary-100 border border-primary-500'
                                       : wasInitiallySelected
-                                      ? 'bg-green-50 border border-green-300'
-                                      : 'bg-white border border-gray-200 hover:border-primary-300'
-                                  }`}
+                                        ? 'bg-green-50 border border-green-300'
+                                        : 'bg-white border border-gray-200 hover:border-primary-300'
+                                    }`}
                                 >
                                   <input
                                     type="checkbox"
@@ -1078,7 +1077,7 @@ export default function ExpensesTab({ planId }: { planId: string }) {
                                     🔄 Distribusi Otomatis
                                   </span>
                                   <p className="text-xs text-gray-600 mt-0.5">
-                                    {autoDistribute 
+                                    {autoDistribute
                                       ? `Iuran akan dibagi merata ke semua peserta (${expense.contributors?.length || 0} existing + ${selectedParticipants.length} baru = ${(expense.contributors?.length || 0) + selectedParticipants.length} total)`
                                       : 'Gunakan nominal manual tanpa mengubah iuran peserta lain'}
                                   </p>

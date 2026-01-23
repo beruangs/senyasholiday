@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowLeft, Calendar, DollarSign, Users, Share2, Settings, Eye, EyeOff, Edit2, Save, X, CheckCircle, FileText, Upload, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, Calendar, DollarSign, Users, Share2, Settings, Eye, EyeOff, Edit2, Save, X, CheckCircle, FileText, Upload, Image as ImageIcon, CreditCard, ClipboardCheck, ArrowUpRight } from 'lucide-react'
 import { usePageTitle, pageTitle } from '@/lib/usePageTitle'
 import RundownTab from './RundownTab'
 import ExpensesTab from './ExpensesTab'
@@ -13,8 +13,9 @@ import ContributionsTab from './ContributionsTab'
 import RincianTab from './RincianTab'
 import NoteTab from './NoteTab'
 import AdminManager from './AdminManager'
+import ChecklistTab from './ChecklistTab'
 
-type Tab = 'info' | 'rundown' | 'expenses' | 'participants' | 'contributions' | 'rincian' | 'note'
+type Tab = 'info' | 'rundown' | 'expenses' | 'participants' | 'contributions' | 'rincian' | 'note' | 'checklist'
 
 export default function PlanDetailPage() {
   const params = useParams()
@@ -317,6 +318,25 @@ export default function PlanDetailPage() {
     }
   }
 
+  // Countdown logic
+  const getDaysRemaining = () => {
+    if (!plan?.startDate) return null
+    const start = new Date(plan.startDate)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const diff = start.getTime() - today.getTime()
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+
+    if (days === 0) return 'Hari ini! 🚀'
+    if (days < 0) return null
+    return `${days} hari lagi`
+  }
+
+  const handlePrint = () => {
+    window.open(`/plan/${planId}?print=true`, '_blank')
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -334,13 +354,14 @@ export default function PlanDetailPage() {
           className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-6 print:hidden"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Kembali ke Dashboard
+          <span className="hidden sm:inline">Kembali ke Dashboard</span>
+          <span className="sm:hidden">Kembali</span>
         </Link>
 
         {/* Header with Banner & Logo */}
-        <div className="mb-6 rounded-2xl overflow-hidden shadow-xl print:hidden">
+        <div className="mb-4 rounded-xl sm:rounded-2xl overflow-hidden shadow-lg print:hidden">
           {/* Banner Section */}
-          <div className="relative h-32 sm:h-40 md:h-48 lg:h-56">
+          <div className="relative h-24 sm:h-40 md:h-48 lg:h-56">
             {plan?.bannerImage ? (
               <img
                 src={plan.bannerImage}
@@ -351,268 +372,326 @@ export default function PlanDetailPage() {
               <div className="w-full h-full bg-gradient-to-br from-primary-500 to-primary-700" />
             )}
 
-            {/* Logo Overlay - Responsive positioning */}
-            <div className="absolute -bottom-8 left-4 sm:left-6 md:left-8">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl overflow-hidden bg-white shadow-lg border-4 border-white">
+            {/* Logo Overlay - Compact for Mobile */}
+            <div className="absolute -bottom-6 left-4 sm:-bottom-8 sm:left-6 md:left-8">
+              <div className="w-12 h-12 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl overflow-hidden bg-white shadow-lg border-2 sm:border-4 border-white">
                 {plan?.logoImage ? (
                   <img
                     src={plan.logoImage}
                     alt="Logo"
-                    className="w-full h-full object-contain p-1"
+                    className="w-full h-full object-contain p-0.5 sm:p-1"
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg sm:text-xl md:text-2xl">SYD</span>
+                    <span className="text-white font-bold text-xs sm:text-xl md:text-2xl">SYD</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Content Section */}
-          <div className="bg-white px-4 sm:px-6 md:px-8 pt-12 pb-6">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between">
-              <div className="flex-1 mb-4 md:mb-0">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+          <div className="bg-white px-4 sm:px-6 md:px-8 pt-8 sm:pt-12">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 pb-4 sm:pb-8 border-b border-gray-100">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-3xl lg:text-5xl font-black text-gray-900 tracking-tight mb-1 truncate">
                   {plan?.title}
                 </h1>
-                <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-base sm:text-lg text-gray-600">{plan?.destination}</p>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                  <p className="text-sm sm:text-xl font-bold text-primary-600">{plan?.destination}</p>
                   {plan?.status === 'completed' && (
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs sm:text-sm font-medium inline-flex items-center">
-                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                    <span className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-100 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider inline-flex items-center">
+                      <CheckCircle className="w-3 h-3 mr-1" />
                       Selesai
                     </span>
                   )}
                 </div>
 
-                {/* Dates - Mobile friendly */}
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-1" />
-                    <span>{new Date(plan?.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                {/* Dates & Countdown - Compact on Mobile */}
+                <div className="mt-2 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-sm font-bold text-gray-500">
+                  <div className="flex items-center px-2 py-1 bg-gray-50 rounded-lg">
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 text-primary-500" />
+                    <span>
+                      {new Date(plan?.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} — {new Date(plan?.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
                   </div>
-                  <span>→</span>
-                  <span>{new Date(plan?.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+
+                  {getDaysRemaining() && (
+                    <span className="px-2 py-1 bg-primary-50 text-primary-700 rounded-lg text-[10px] font-black uppercase tracking-tight animate-pulse border border-primary-100">
+                      {getDaysRemaining()}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {/* Action Buttons - Neat Row */}
+              <div className="flex items-center gap-2 mt-2 md:mt-0">
+                <button
+                  onClick={handlePrint}
+                  title="Cetak Itinerary"
+                  className="p-2 sm:p-3 bg-white border-2 border-gray-100 text-gray-600 rounded-lg sm:rounded-xl hover:bg-gray-50 transition-all shadow-sm"
+                >
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                <button
+                  onClick={copyShareLink}
+                  title="Share Plan"
+                  className="p-2 sm:p-3 bg-white border-2 border-gray-100 text-gray-600 rounded-lg sm:rounded-xl hover:bg-gray-50 transition-all shadow-sm"
+                >
+                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
                 {plan?.status !== 'completed' && (
                   <button
                     onClick={handleCompleteEvent}
                     disabled={completingEvent}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center space-x-2 px-4 sm:px-6 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-green-600 text-white rounded-lg sm:rounded-xl hover:bg-green-700 transition-all font-black text-[10px] sm:text-sm shadow-lg shadow-green-100 disabled:opacity-50"
                   >
                     <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>{completingEvent ? 'Menyimpan...' : 'Selesaikan Acara'}</span>
+                    <span>{completingEvent ? '...' : 'Selesai'}</span>
                   </button>
                 )}
-                <button
-                  onClick={copyShareLink}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center space-x-2 px-4 sm:px-6 py-2 sm:py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm sm:text-base"
-                >
-                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>Share</span>
-                </button>
               </div>
+            </div>
+
+            {/* Integrated Tabs - More compact on Mobile */}
+            <div className="py-2 sm:py-4 overflow-x-auto no-scrollbar print:hidden">
+              <nav className="flex items-center gap-1">
+                {[
+                  { id: 'info', label: 'Info', icon: Settings },
+                  { id: 'rundown', label: 'Jadwal', icon: Calendar },
+                  { id: 'participants', label: 'Peserta', icon: Users },
+                  { id: 'expenses', label: 'Biaya', icon: DollarSign },
+                  { id: 'contributions', label: 'Iuran', icon: CreditCard },
+                  { id: 'note', label: 'Note', icon: FileText },
+                  { id: 'checklist', label: 'Check', icon: CheckCircle },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as Tab)}
+                      className={`
+                        flex items-center gap-1.5 px-3 py-2 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black transition-all duration-300 whitespace-nowrap
+                        ${isActive
+                          ? 'bg-primary-50 text-primary-700 shadow-sm border border-primary-100 scale-105'
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isActive ? 'text-primary-600' : ''}`} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+
+                {plan?.status === 'completed' && (
+                  <button
+                    onClick={() => setActiveTab('rincian')}
+                    className={`
+                      flex items-center gap-2 px-3 py-2 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black transition-all duration-300 whitespace-nowrap
+                      ${activeTab === 'rincian'
+                        ? 'bg-primary-50 text-primary-700 shadow-sm border border-primary-100 scale-105'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    <span>Rincian</span>
+                  </button>
+                )}
+              </nav>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm print:shadow-none print:rounded-none">
-          <div className="border-b border-gray-200 print:hidden">
-            <nav className="flex overflow-x-auto">
-              <button
-                onClick={() => setActiveTab('info')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'info'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                <Settings className="w-5 h-5" />
-                <span>Info</span>
-              </button>
+        {/* Tab Content Container - Reduced Mobile Padding */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl shadow-gray-200/50 p-4 sm:p-8 border border-gray-100 min-h-[400px] sm:min-h-[600px]">
+          {activeTab === 'info' && (
+            <div className="space-y-6">
+              {/* Edit Button */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Informasi Acara</h3>
+                {!editingInfo && plan?.status !== 'completed' && (
+                  <button
+                    onClick={() => setEditingInfo(true)}
+                    className="flex items-center space-x-2 px-4 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Edit Info</span>
+                  </button>
+                )}
+              </div>
 
-              <button
-                onClick={() => setActiveTab('rundown')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'rundown'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                <Calendar className="w-5 h-5" />
-                <span>Rundown</span>
-              </button>
+              {editingInfo ? (
+                // Edit Mode
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Judul <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.title}
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      placeholder="Nama acara liburan"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                    />
+                  </div>
 
-              <button
-                onClick={() => setActiveTab('participants')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'participants'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                <Users className="w-5 h-5" />
-                <span>Peserta</span>
-              </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Destinasi <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.destination}
+                      onChange={(e) => setEditForm({ ...editForm, destination: e.target.value })}
+                      placeholder="Tujuan liburan"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                    />
+                  </div>
 
-              <button
-                onClick={() => setActiveTab('expenses')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'expenses'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                <DollarSign className="w-5 h-5" />
-                <span>Keuangan</span>
-              </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tanggal Mulai <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={editForm.startDate}
+                        onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tanggal Selesai <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={editForm.endDate}
+                        onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                  </div>
 
-              <button
-                onClick={() => setActiveTab('contributions')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'contributions'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                <DollarSign className="w-5 h-5" />
-                <span>Iuran</span>
-              </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Deskripsi
+                    </label>
+                    <textarea
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      placeholder="Deskripsi atau catatan tambahan tentang acara ini"
+                      rows={4}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
+                    />
+                  </div>
 
-              <button
-                onClick={() => setActiveTab('note')}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'note'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                <FileText className="w-5 h-5" />
-                <span>Note</span>
-              </button>
-
-              {plan?.status === 'completed' && (
-                <button
-                  onClick={() => setActiveTab('rincian')}
-                  className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'rincian'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                >
-                  <FileText className="w-5 h-5" />
-                  <span>Rincian</span>
-                </button>
-              )}
-            </nav>
-          </div>
-
-          {/* Tab Content */}
-          <div className="p-6">
-            {activeTab === 'info' && (
-              <div className="space-y-6">
-                {/* Edit Button */}
-                <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Informasi Acara</h3>
-                  {!editingInfo && plan?.status !== 'completed' && (
+                  {/* Action Buttons */}
+                  <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
                     <button
-                      onClick={() => setEditingInfo(true)}
-                      className="flex items-center space-x-2 px-4 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                      onClick={handleUpdateInfo}
+                      className="flex items-center space-x-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Simpan Perubahan</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingInfo(false)
+                        // Reset form to current plan data
+                        setEditForm({
+                          title: plan?.title || '',
+                          destination: plan?.destination || '',
+                          startDate: plan?.startDate ? new Date(plan.startDate).toISOString().split('T')[0] : '',
+                          endDate: plan?.endDate ? new Date(plan.endDate).toISOString().split('T')[0] : '',
+                          description: plan?.description || ''
+                        })
+                      }}
+                      className="flex items-center space-x-2 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Batal</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // View Mode
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Judul</label>
+                    <p className="text-gray-900 text-lg font-semibold">{plan?.title}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Destinasi</label>
+                    <p className="text-gray-900 text-lg">{plan?.destination}</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
+                      <p className="text-gray-900">{new Date(plan?.startDate).toLocaleDateString('id-ID', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                      })}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Selesai</label>
+                      <p className="text-gray-900">{new Date(plan?.endDate).toLocaleDateString('id-ID', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                      })}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
+                    <p className="text-gray-900 whitespace-pre-wrap">{plan?.description || '-'}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Password Section */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Password Share Link</label>
+                  {!editingPassword && (
+                    <button
+                      onClick={() => {
+                        setEditingPassword(true)
+                        setNewPassword(plan?.password || '')
+                      }}
+                      className="flex items-center space-x-2 text-primary-600 hover:text-primary-700 text-sm"
                     >
                       <Edit2 className="w-4 h-4" />
-                      <span>Edit Info</span>
+                      <span>Edit</span>
                     </button>
                   )}
                 </div>
 
-                {editingInfo ? (
-                  // Edit Mode
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Judul <span className="text-red-500">*</span>
-                      </label>
+                {editingPassword ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
                       <input
                         type="text"
-                        value={editForm.title}
-                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                        placeholder="Nama acara liburan"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Masukkan password (kosongkan jika publik)"
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                       />
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Destinasi <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={editForm.destination}
-                        onChange={(e) => setEditForm({ ...editForm, destination: e.target.value })}
-                        placeholder="Tujuan liburan"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Tanggal Mulai <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          value={editForm.startDate}
-                          onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Tanggal Selesai <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          value={editForm.endDate}
-                          onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Deskripsi
-                      </label>
-                      <textarea
-                        value={editForm.description}
-                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                        placeholder="Deskripsi atau catatan tambahan tentang acara ini"
-                        rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
-                      />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
+                    <div className="flex items-center space-x-2">
                       <button
-                        onClick={handleUpdateInfo}
-                        className="flex items-center space-x-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                        onClick={handleUpdatePassword}
+                        className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                       >
                         <Save className="w-4 h-4" />
-                        <span>Simpan Perubahan</span>
+                        <span>Simpan</span>
                       </button>
                       <button
                         onClick={() => {
-                          setEditingInfo(false)
-                          // Reset form to current plan data
-                          setEditForm({
-                            title: plan?.title || '',
-                            destination: plan?.destination || '',
-                            startDate: plan?.startDate ? new Date(plan.startDate).toISOString().split('T')[0] : '',
-                            endDate: plan?.endDate ? new Date(plan.endDate).toISOString().split('T')[0] : '',
-                            description: plan?.description || ''
-                          })
+                          setEditingPassword(false)
+                          setNewPassword(plan?.password || '')
                         }}
-                        className="flex items-center space-x-2 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                        className="flex items-center space-x-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                       >
                         <X className="w-4 h-4" />
                         <span>Batal</span>
@@ -620,242 +699,161 @@ export default function PlanDetailPage() {
                     </div>
                   </div>
                 ) : (
-                  // View Mode
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Judul</label>
-                      <p className="text-gray-900 text-lg font-semibold">{plan?.title}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Destinasi</label>
-                      <p className="text-gray-900 text-lg">{plan?.destination}</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
-                        <p className="text-gray-900">{new Date(plan?.startDate).toLocaleDateString('id-ID', {
-                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                        })}</p>
+                  <div className="space-y-2">
+                    {plan?.password ? (
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono">
+                          {showPassword ? plan.password : '••••••••'}
+                        </div>
+                        <button
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5 text-gray-600" /> : <Eye className="w-5 h-5 text-gray-600" />}
+                        </button>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Selesai</label>
-                        <p className="text-gray-900">{new Date(plan?.endDate).toLocaleDateString('id-ID', {
-                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                        })}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
-                      <p className="text-gray-900 whitespace-pre-wrap">{plan?.description || '-'}</p>
+                    ) : (
+                      <p className="text-gray-500 italic">Plan ini tidak memiliki password (publik)</p>
+                    )}
+                    <div className="flex items-center space-x-2 mt-2">
+                      {plan?.password ? (
+                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">🔒 Terproteksi</span>
+                      ) : (
+                        <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">🌍 Publik</span>
+                      )}
                     </div>
                   </div>
                 )}
+              </div>
 
-                {/* Password Section */}
-                <div className="border-t pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Password Share Link</label>
-                    {!editingPassword && (
+              {/* Banner & Logo Upload Section */}
+              <div className="border-t pt-6 space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Kustomisasi Tampilan</h3>
+
+                {/* Banner Upload */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Banner Image</label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Rekomendasi: Landscape 16:9 atau 21:9, maksimal 2MB
+                      </p>
+                    </div>
+                    {bannerPreview && (
                       <button
-                        onClick={() => {
-                          setEditingPassword(true)
-                          setNewPassword(plan?.password || '')
-                        }}
-                        className="flex items-center space-x-2 text-primary-600 hover:text-primary-700 text-sm"
+                        onClick={handleRemoveBanner}
+                        className="text-sm text-red-600 hover:text-red-700"
                       >
-                        <Edit2 className="w-4 h-4" />
-                        <span>Edit</span>
+                        Hapus & Reset
                       </button>
                     )}
                   </div>
 
-                  {editingPassword ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="Masukkan password (kosongkan jika publik)"
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  <div className="relative">
+                    {/* Preview */}
+                    <div className="w-full h-32 md:h-48 rounded-lg overflow-hidden bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
+                      {bannerPreview ? (
+                        <img
+                          src={bannerPreview}
+                          alt="Banner"
+                          className="w-full h-full object-cover"
                         />
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={handleUpdatePassword}
-                          className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                        >
-                          <Save className="w-4 h-4" />
-                          <span>Simpan</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingPassword(false)
-                            setNewPassword(plan?.password || '')
-                          }}
-                          className="flex items-center space-x-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                          <span>Batal</span>
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {plan?.password ? (
-                        <div className="flex items-center space-x-3">
-                          <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono">
-                            {showPassword ? plan.password : '••••••••'}
-                          </div>
-                          <button
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="w-5 h-5 text-gray-600" /> : <Eye className="w-5 h-5 text-gray-600" />}
-                          </button>
-                        </div>
                       ) : (
-                        <p className="text-gray-500 italic">Plan ini tidak memiliki password (publik)</p>
-                      )}
-                      <div className="flex items-center space-x-2 mt-2">
-                        {plan?.password ? (
-                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">🔒 Terproteksi</span>
-                        ) : (
-                          <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">🌍 Publik</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Banner & Logo Upload Section */}
-                <div className="border-t pt-6 space-y-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Kustomisasi Tampilan</h3>
-
-                  {/* Banner Upload */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Banner Image</label>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Rekomendasi: Landscape 16:9 atau 21:9, maksimal 2MB
-                        </p>
-                      </div>
-                      {bannerPreview && (
-                        <button
-                          onClick={handleRemoveBanner}
-                          className="text-sm text-red-600 hover:text-red-700"
-                        >
-                          Hapus & Reset
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="relative">
-                      {/* Preview */}
-                      <div className="w-full h-32 md:h-48 rounded-lg overflow-hidden bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                        {bannerPreview ? (
-                          <img
-                            src={bannerPreview}
-                            alt="Banner"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="text-white text-center">
-                            <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm opacity-75">Default Gradient Banner</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Upload Button */}
-                      <label className="absolute bottom-3 right-3 cursor-pointer">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleBannerUpload}
-                          className="hidden"
-                          disabled={uploadingBanner}
-                        />
-                        <div className="flex items-center space-x-2 px-4 py-2 bg-white border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors shadow-lg">
-                          <Upload className="w-4 h-4" />
-                          <span className="text-sm font-medium">
-                            {uploadingBanner ? 'Uploading...' : 'Upload Banner'}
-                          </span>
+                        <div className="text-white text-center">
+                          <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm opacity-75">Default Gradient Banner</p>
                         </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Logo Upload */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Logo</label>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Rekomendasi: Square 1:1, maksimal 1MB
-                        </p>
-                      </div>
-                      {logoPreview && (
-                        <button
-                          onClick={handleRemoveLogo}
-                          className="text-sm text-red-600 hover:text-red-700"
-                        >
-                          Hapus & Reset
-                        </button>
                       )}
                     </div>
 
-                    <div className="flex items-center space-x-4">
-                      {/* Preview */}
-                      <div className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center">
-                        {logoPreview ? (
-                          <img
-                            src={logoPreview}
-                            alt="Logo"
-                            className="w-full h-full object-contain p-2"
-                          />
-                        ) : (
-                          <div className="text-center">
-                            <ImageIcon className="w-8 h-8 mx-auto text-gray-400" />
-                            <p className="text-xs text-gray-500 mt-1">SYD Logo</p>
-                          </div>
-                        )}
+                    {/* Upload Button */}
+                    <label className="absolute bottom-3 right-3 cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBannerUpload}
+                        className="hidden"
+                        disabled={uploadingBanner}
+                      />
+                      <div className="flex items-center space-x-2 px-4 py-2 bg-white border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors shadow-lg">
+                        <Upload className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          {uploadingBanner ? 'Uploading...' : 'Upload Banner'}
+                        </span>
                       </div>
-
-                      {/* Upload Button */}
-                      <label className="cursor-pointer flex-1">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          className="hidden"
-                          disabled={uploadingLogo}
-                        />
-                        <div className="flex items-center justify-center space-x-2 px-4 py-3 bg-white border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors">
-                          <Upload className="w-4 h-4" />
-                          <span className="text-sm font-medium">
-                            {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                          </span>
-                        </div>
-                      </label>
-                    </div>
+                    </label>
                   </div>
                 </div>
 
-                {/* Admin Manager Section */}
-                <div className="border-t pt-6">
-                  <AdminManager planId={planId} isOwner={plan?.isOwner || false} />
+                {/* Logo Upload */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Logo</label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Rekomendasi: Square 1:1, maksimal 1MB
+                      </p>
+                    </div>
+                    {logoPreview && (
+                      <button
+                        onClick={handleRemoveLogo}
+                        className="text-sm text-red-600 hover:text-red-700"
+                      >
+                        Hapus & Reset
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    {/* Preview */}
+                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center">
+                      {logoPreview ? (
+                        <img
+                          src={logoPreview}
+                          alt="Logo"
+                          className="w-full h-full object-contain p-2"
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <ImageIcon className="w-8 h-8 mx-auto text-gray-400" />
+                          <p className="text-xs text-gray-500 mt-1">SYD Logo</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upload Button */}
+                    <label className="cursor-pointer flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                        disabled={uploadingLogo}
+                      />
+                      <div className="flex items-center justify-center space-x-2 px-4 py-3 bg-white border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors">
+                        <Upload className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                        </span>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </div>
-            )}
-            {activeTab === 'rundown' && <RundownTab planId={planId} />}
-            {activeTab === 'participants' && <ParticipantsTab planId={planId} />}
-            {activeTab === 'expenses' && <ExpensesTab planId={planId} />}
-            {activeTab === 'contributions' && <ContributionsTab planId={planId} />}
-            {activeTab === 'note' && <NoteTab planId={planId} />}
-            {activeTab === 'rincian' && plan?.status === 'completed' && <RincianTab planId={planId} plan={plan} />}
-          </div>
+
+              {/* Admin Manager Section */}
+              <div className="border-t pt-6">
+                <AdminManager planId={planId} isOwner={plan?.isOwner || false} />
+              </div>
+            </div>
+          )}
+          {activeTab === 'rundown' && <RundownTab planId={planId} />}
+          {activeTab === 'participants' && <ParticipantsTab planId={planId} />}
+          {activeTab === 'expenses' && <ExpensesTab planId={planId} />}
+          {activeTab === 'contributions' && <ContributionsTab planId={planId} />}
+          {activeTab === 'note' && <NoteTab planId={planId} />}
+          {activeTab === 'rincian' && plan?.status === 'completed' && <RincianTab planId={planId} plan={plan} />}
+          {activeTab === 'checklist' && <ChecklistTab planId={planId} planTitle={plan.title} destination={plan.destination} />}
         </div>
       </div>
     </div>

@@ -15,7 +15,7 @@ export default function PublicPlanPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const planId = params.id as string
-  
+
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [plan, setPlan] = useState<any>(null)
@@ -55,7 +55,14 @@ export default function PublicPlanPage() {
     } else if (paymentStatus === 'pending') {
       toast.info('Pembayaran pending. Mohon selesaikan pembayaran Anda.')
     }
-  }, [searchParams, isAuthenticated])
+
+    // Handle Auto Print Mode
+    if (searchParams.get('print') === 'true' && isAuthenticated && !loading) {
+      setTimeout(() => {
+        window.print()
+      }, 2000)
+    }
+  }, [searchParams, isAuthenticated, loading])
 
   const fetchPlan = async () => {
     try {
@@ -100,16 +107,16 @@ export default function PublicPlanPage() {
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       const res = await fetch(`/api/plans/${planId}/verify-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       })
-      
+
       const data = await res.json()
-      
+
       if (data.valid) {
         setIsAuthenticated(true)
         toast.success('Akses diberikan!')
@@ -132,7 +139,7 @@ export default function PublicPlanPage() {
 
   const handlePayment = async (participantId: string, participantName: string) => {
     setPaymentLoading(participantId)
-    
+
     try {
       // Get all contributions for this participant that are not fully paid
       const participantContributions = contributions.filter((c: any) => {
@@ -243,7 +250,7 @@ export default function PublicPlanPage() {
   }
 
   const grandTotal = expenses.reduce((sum, exp) => sum + exp.total, 0)
-  
+
   // Group contributions by COLLECTOR, then by PARTICIPANT
   const groupedContributions = (() => {
     const collectorMap = new Map()
@@ -318,7 +325,7 @@ export default function PublicPlanPage() {
   // Flatten all participants for "Total Per Orang" section
   const allParticipantsFlattened = (() => {
     const participantMap = new Map()
-    
+
     groupedContributions.forEach((group: any) => {
       group.participants.forEach((p: any) => {
         if (participantMap.has(p.participantId)) {
@@ -352,178 +359,132 @@ export default function PublicPlanPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header with Banner & Logo */}
-      <div className="relative">
-        {/* Banner */}
-        <div className="h-40 sm:h-48 md:h-56 lg:h-64 w-full">
+      <div className="relative mb-4 sm:mb-8">
+        {/* Banner Section */}
+        <div className="relative h-28 sm:h-56 md:h-64 lg:h-72 w-full overflow-hidden shadow-lg">
           {plan.bannerImage ? (
-            <img 
-              src={plan.bannerImage} 
-              alt="Banner" 
-              className="w-full h-full object-cover"
-            />
+            <img src={plan.bannerImage} alt="Banner" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary-500 to-primary-700" />
           )}
+          <div className="absolute inset-0 bg-black/10" />
         </div>
 
-        {/* Content Container */}
-        <div className="relative">
-          {/* Logo - Overlapping banner */}
-          <div className="absolute -top-10 sm:-top-12 md:-top-14 left-1/2 transform -translate-x-1/2">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-2xl overflow-hidden bg-white shadow-xl border-4 border-white">
-              {plan.logoImage ? (
-                <img 
-                  src={plan.logoImage} 
-                  alt="Logo" 
-                  className="w-full h-full object-contain p-2"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-                  <span className="text-white font-bold text-2xl sm:text-3xl md:text-4xl">SYD</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Title & Info */}
-          <div className="bg-white pt-14 sm:pt-16 md:pt-20 pb-6 px-4">
-            <div className="max-w-7xl mx-auto text-center">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-3">{plan.title}</h1>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm sm:text-base text-gray-600">
-                <div className="flex items-center">
-                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary-600" />
-                  <span>{plan.destination}</span>
-                </div>
-                <div className="hidden sm:block w-1 h-1 rounded-full bg-gray-400" />
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary-600" />
-                  <span>
-                    {format(new Date(plan.startDate), 'd MMM', { locale: id })} -{' '}
-                    {format(new Date(plan.endDate), 'd MMM yyyy', { locale: id })}
-                  </span>
-                </div>
-              </div>
-              {plan.description && (
-                <p className="mt-4 text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
-                  {plan.description}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('info')}
-              className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                activeTab === 'info'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500'
-              }`}
-            >
-              <Settings className="w-5 h-5" />
-              <span>Info</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('rundown')}
-              className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                activeTab === 'rundown'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500'
-              }`}
-            >
-              <Calendar className="w-5 h-5" />
-              <span>Rundown</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('peserta')}
-              className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                activeTab === 'peserta'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500'
-              }`}
-            >
-              <Users className="w-5 h-5" />
-              <span>Peserta</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('keuangan')}
-              className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                activeTab === 'keuangan'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500'
-              }`}
-            >
-              <DollarSign className="w-5 h-5" />
-              <span>Keuangan</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('iuran')}
-              className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                activeTab === 'iuran'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500'
-              }`}
-            >
-              <CreditCard className="w-5 h-5" />
-              <span>Iuran</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('note')}
-              className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
-                activeTab === 'note'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500'
-              }`}
-            >
-              <FileText className="w-5 h-5" />
-              <span>Note</span>
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'info' && (
-          <div className="space-y-6">
-            {/* Plan Details Card */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="p-6 space-y-6">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600 mb-2">Destinasi</h3>
-                  <p className="text-lg text-gray-900">{plan.destination}</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-600 mb-2">Tanggal Mulai</h3>
-                    <p className="text-lg text-gray-900">
-                      {format(new Date(plan.startDate), 'd MMMM yyyy', { locale: id })}
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-600 mb-2">Tanggal Berakhir</h3>
-                    <p className="text-lg text-gray-900">
-                      {format(new Date(plan.endDate), 'd MMMM yyyy', { locale: id })}
-                    </p>
-                  </div>
-                </div>
-                {plan.description && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-600 mb-2">Deskripsi</h3>
-                    <p className="text-gray-700 leading-relaxed">{plan.description}</p>
+        {/* Floating Profile Card */}
+        <div className="relative max-w-5xl mx-auto px-4 -mt-10 sm:-mt-20">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-10 border border-gray-100 flex flex-col items-center">
+            {/* Logo Overlay */}
+            <div className="absolute -top-8 sm:-top-16 left-1/2 transform -translate-x-1/2">
+              <div className="w-16 h-16 sm:w-32 sm:h-32 rounded-2xl sm:rounded-3xl overflow-hidden bg-white shadow-xl border-2 sm:border-4 border-white transform transition-transform hover:scale-105 duration-300">
+                {plan.logoImage ? (
+                  <img src={plan.logoImage} alt="Logo" className="w-full h-full object-contain p-1 sm:p-2" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
+                    <span className="text-white font-black text-3xl sm:text-4xl">SYD</span>
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Title Section */}
+            <div className="mt-8 sm:mt-16 text-center space-y-2 sm:space-y-4">
+              <h1 className="text-xl sm:text-4xl lg:text-5xl font-black text-gray-900 tracking-tight leading-tight">
+                {plan.title}
+              </h1>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
+                <div className="flex items-center px-3 py-1 sm:px-4 sm:py-2 bg-primary-50 text-primary-700 rounded-full text-[10px] sm:text-sm font-black whitespace-nowrap">
+                  <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  {plan.destination}
+                </div>
+                <div className="flex items-center px-3 py-1 sm:px-4 sm:py-2 bg-gray-50 text-gray-600 rounded-full text-[10px] sm:text-sm font-bold whitespace-nowrap border border-gray-100">
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 text-primary-500" />
+                  {format(new Date(plan.startDate), 'd MMM', { locale: id })} — {format(new Date(plan.endDate), 'd MMM yyyy', { locale: id })}
+                </div>
+              </div>
+
+              {plan.description && (
+                <p className="max-w-xl mx-auto text-gray-500 text-[10px] sm:text-base leading-relaxed font-medium">
+                  {plan.description}
+                </p>
+              )}
+            </div>
+
+            {/* Modern Segmented Navigation */}
+            <div className="mt-6 sm:mt-10 w-full overflow-x-auto no-scrollbar">
+              <nav className="flex items-center sm:justify-center gap-1 min-w-max pb-2">
+                {[
+                  { id: 'info', label: 'Info', icon: Settings },
+                  { id: 'rundown', label: 'Jadwal', icon: Calendar },
+                  { id: 'peserta', label: 'Peserta', icon: Users },
+                  { id: 'keuangan', label: 'Biaya', icon: DollarSign },
+                  { id: 'iuran', label: 'Iuran', icon: CreditCard },
+                  { id: 'note', label: 'Catatan', icon: FileText },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={`
+                        flex items-center gap-1.5 px-4 py-2 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl text-[10px] sm:text-sm font-black transition-all duration-300
+                        ${isActive
+                          ? 'bg-primary-600 text-white shadow-lg shadow-primary-200 scale-105'
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Print View Header (Only visible when printing) */}
+      <div className="hidden print:block p-8 text-center border-b-2 border-gray-100">
+        <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-1">{plan.title}</h1>
+        <p className="text-lg text-gray-600 font-bold">{plan.destination}</p>
+        <p className="text-sm text-gray-500 mt-2">
+          {format(new Date(plan.startDate), 'd MMMM yyyy', { locale: id })} - {format(new Date(plan.endDate), 'd MMMM yyyy', { locale: id })}
+        </p>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-5xl mx-auto px-2 sm:px-4 py-6 sm:py-12 print:p-0 min-h-[500px]">
+        {(activeTab === 'info' || searchParams.get('print') === 'true') && (
+          <div className="space-y-4 sm:space-y-6 print:mb-12">
+            <h2 className="hidden print:block text-2xl font-black mb-6">Informasi Utama</h2>
+            {/* Plan Details Card */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl shadow-gray-200/50 p-4 sm:p-8 border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
+              <div className="space-y-1">
+                <h3 className="text-[10px] font-black text-primary-600 uppercase tracking-widest">Destinasi</h3>
+                <p className="text-lg sm:text-2xl font-black text-gray-900">{plan.destination}</p>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-[10px] font-black text-primary-600 uppercase tracking-widest">Periode Perjalanan</h3>
+                <p className="text-sm sm:text-xl font-bold text-gray-900 italic">
+                  {format(new Date(plan.startDate), 'd MMMM yyyy', { locale: id })} — {format(new Date(plan.endDate), 'd MMMM yyyy', { locale: id })}
+                </p>
+              </div>
+              {plan.description && (
+                <div className="md:col-span-2 pt-6 border-t border-gray-50">
+                  <h3 className="text-xs font-black text-primary-600 uppercase tracking-widest mb-3">Tentang Liburan Ini</h3>
+                  <p className="text-gray-600 leading-relaxed font-medium italic">"{plan.description}"</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
-        {activeTab === 'rundown' && (
-          <div className="space-y-6">
+
+        {(activeTab === 'rundown' || searchParams.get('print') === 'true') && (
+          <div className="space-y-6 print:mb-12 print:break-before-page">
+            <h2 className="hidden print:block text-xl font-bold border-l-4 border-primary-600 pl-4 mb-4 pt-8">Jadwal Perjalanan (Rundown)</h2>
             {Object.keys(groupedRundowns).length === 0 ? (
               <div className="text-center py-12 bg-white rounded-lg">
                 <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -563,8 +524,9 @@ export default function PublicPlanPage() {
           </div>
         )}
 
-        {activeTab === 'keuangan' && (
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {(activeTab === 'keuangan' || searchParams.get('print') === 'true') && (
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden print:shadow-none print:border print:border-gray-100 print:mb-12 print:break-before-page">
+            <h2 className="hidden print:block text-xl font-bold border-l-4 border-primary-600 pl-4 mx-6 my-6">Estimasi Keuangan</h2>
             {expenses.length === 0 ? (
               <div className="text-center py-12">
                 <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -629,8 +591,9 @@ export default function PublicPlanPage() {
           </div>
         )}
 
-        {activeTab === 'iuran' && (
-          <div className="space-y-6">
+        {(activeTab === 'iuran' || searchParams.get('print') === 'true') && (
+          <div className="space-y-6 print:mb-12 print:break-before-page">
+            <h2 className="hidden print:block text-xl font-bold border-l-4 border-primary-600 pl-4 mb-4 pt-8">Iuran Peserta</h2>
             {groupedContributions.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-lg">
                 <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -851,7 +814,7 @@ export default function PublicPlanPage() {
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             {note ? (
               <div className="p-6">
-                <div 
+                <div
                   className="prose prose-sm max-w-none text-gray-700"
                   dangerouslySetInnerHTML={{ __html: note }}
                 />
@@ -878,6 +841,50 @@ export default function PublicPlanPage() {
 
       {/* Suggestion Button */}
       <SuggestionButton page={`Shared Link - ${plan?.title || 'Unknown'}`} />
+      {/* Global Print Styles */}
+      <style jsx global>{`
+        @media print {
+          body {
+            background-color: white !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+          .print\\:block {
+            display: block !important;
+          }
+          nav, button, .sticky, .suggestion-button-container {
+            display: none !important;
+          }
+          .max-w-7xl {
+            max-width: 100% !important;
+            padding: 0 !important;
+          }
+          details {
+            display: block !important;
+          }
+          details[open] summary ~ * {
+            display: block !important;
+          }
+          summary {
+            list-style: none !important;
+            pointer-events: none !important;
+          }
+          summary::-webkit-details-marker {
+            display: none !important;
+          }
+          .bg-gray-50, .bg-primary-50 {
+            background-color: #f9fafb !important;
+            -webkit-print-color-adjust: exact;
+          }
+          .rounded-lg, .rounded-2xl {
+            border-radius: 0 !important;
+          }
+          .shadow-sm, .shadow-xl {
+            shadow: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

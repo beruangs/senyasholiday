@@ -10,9 +10,8 @@ const isValidObjectId = (id: string) => {
     return mongoose.Types.ObjectId.isValid(id) && !id.startsWith('env-')
 }
 
-// Trash retention period: 1 minute for testing (change to 3 days later)
-const TRASH_RETENTION_MS = 1 * 60 * 1000 // 1 minute
-// const TRASH_RETENTION_MS = 3 * 24 * 60 * 60 * 1000 // 3 days
+// Trash retention period: 3 days
+const TRASH_RETENTION_MS = 3 * 24 * 60 * 60 * 1000 // 3 days
 
 // GET all trashed plans for current user
 export async function GET() {

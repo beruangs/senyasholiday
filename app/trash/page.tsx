@@ -47,11 +47,51 @@ export default function TrashPage() {
         }
     }, [status, router])
 
-    // Auto-refresh every 10 seconds to update countdown
+    // Auto-update countdown every second (client-side only)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTrashedPlans(prevPlans =>
+                prevPlans.map(plan => {
+                    const now = Date.now()
+                    const expiresAt = new Date(plan.trashExpiresAt).getTime()
+                    const remainingMs = Math.max(0, expiresAt - now)
+
+                    // Format remaining time
+                    const seconds = Math.floor(remainingMs / 1000)
+                    const minutes = Math.floor(seconds / 60)
+                    const hours = Math.floor(minutes / 60)
+                    const days = Math.floor(hours / 24)
+
+                    let remainingFormatted = ''
+                    if (days > 0) {
+                        remainingFormatted = `${days} hari lagi`
+                    } else if (hours > 0) {
+                        remainingFormatted = `${hours} jam lagi`
+                    } else if (minutes > 0) {
+                        remainingFormatted = `${minutes} menit lagi`
+                    } else if (seconds > 0) {
+                        remainingFormatted = `${seconds} detik lagi`
+                    } else {
+                        remainingFormatted = 'Kedaluwarsa'
+                    }
+
+                    return {
+                        ...plan,
+                        remainingMs,
+                        remainingFormatted
+                    }
+                })
+            )
+        }, 1000) // Update every second
+
+        return () => clearInterval(interval)
+    }, [])
+
+    // Refresh from server every 30 seconds to check for deleted items
     useEffect(() => {
         const interval = setInterval(() => {
             fetchTrash()
-        }, 10000)
+        }, 30000)
         return () => clearInterval(interval)
     }, [])
 

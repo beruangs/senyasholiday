@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Calendar, MapPin, Trash2, Edit, Crown, User, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, Calendar, MapPin, Trash2, Edit, Crown, User, Sparkles, Loader2, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
@@ -22,6 +22,7 @@ interface HolidayPlan {
   isSenPlan?: boolean
   canEdit?: boolean
   ownerId?: { username: string; name: string }
+  planCategory?: 'individual' | 'sen_yas_daddy'
 }
 
 interface DeleteConfirmState {
@@ -32,6 +33,7 @@ interface DeleteConfirmState {
 
 export default function DashboardClient({ session }: any) {
   const [plans, setPlans] = useState<HolidayPlan[]>([])
+  const [userProfile, setUserProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>({
@@ -39,12 +41,35 @@ export default function DashboardClient({ session }: any) {
     planId: '',
     planTitle: '',
   })
+  const [leaveConfirm, setLeaveConfirm] = useState({
+    isOpen: false,
+    planId: '',
+    planTitle: '',
+  })
+  const [leavingId, setLeavingId] = useState<string | null>(null)
 
-  const userRole = (session.user as any)?.role || 'user'
+  const userRole = userProfile?.role || (session.user as any)?.role || 'user'
 
   useEffect(() => {
     fetchPlans()
+    fetchUserProfile()
+
+    // Listen for updates from Navbar
+    window.addEventListener('plans-updated', fetchPlans)
+    return () => window.removeEventListener('plans-updated', fetchPlans)
   }, [])
+
+  const fetchUserProfile = async () => {
+    try {
+      const res = await fetch('/api/user/profile')
+      if (res.ok) {
+        const data = await res.json()
+        setUserProfile(data)
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+    }
+  }
 
   const fetchPlans = async () => {
     try {
@@ -76,6 +101,14 @@ export default function DashboardClient({ session }: any) {
     })
   }
 
+  const openLeaveConfirm = (planId: string, planTitle: string) => {
+    setLeaveConfirm({
+      isOpen: true,
+      planId,
+      planTitle,
+    })
+  }
+
   const moveToTrash = async () => {
     const { planId, planTitle } = deleteConfirm
     setDeletingId(planId)
@@ -102,9 +135,35 @@ export default function DashboardClient({ session }: any) {
     }
   }
 
-  // Separate SEN plans from personal plans
+  const handleLeavePlan = async () => {
+    const { planId, planTitle } = leaveConfirm
+    setLeavingId(planId)
+
+    try {
+      const res = await fetch(`/api/plans/admin-invite?planId=${planId}&userId=${session.user.id}&type=admin`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        toast.success(`Berhasil keluar dari plan "${planTitle}"`)
+        fetchPlans()
+        setLeaveConfirm({ isOpen: false, planId: '', planTitle: '' })
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Gagal keluar dari plan')
+      }
+    } catch (error) {
+      toast.error('Terjadi kesalahan')
+    } finally {
+      setLeavingId(null)
+    }
+  }
+
+  // Separate plans into three categories using flags from the API
   const senPlans = plans.filter(p => p.isSenPlan)
-  const personalPlans = plans.filter(p => !p.isSenPlan)
+  const personalPlans = plans.filter(p => p.isOwner && !p.isSenPlan)
+  const sharedPlans = plans.filter(p => p.isAdmin && !p.isOwner && !p.isSenPlan)
+
   const totalPlans = plans.length
 
   return (
@@ -120,6 +179,19 @@ export default function DashboardClient({ session }: any) {
         cancelText="Batal"
         variant="danger"
         loading={deletingId === deleteConfirm.planId}
+      />
+
+      {/* Leave Confirmation Modal */}
+      <ConfirmModal
+        isOpen={leaveConfirm.isOpen}
+        onClose={() => setLeaveConfirm({ isOpen: false, planId: '', planTitle: '' })}
+        onConfirm={handleLeavePlan}
+        title="Keluar dari Plan?"
+        message={`Apakah Anda yakin ingin berhenti menjadi editor di plan "${leaveConfirm.planTitle}"?\n\nAnda tidak akan bisa melihat atau mengedit plan ini lagi kecuali diundang kembali.`}
+        confirmText="Ya, Keluar"
+        cancelText="Batal"
+        variant="danger"
+        loading={leavingId === leaveConfirm.planId}
       />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -184,8 +256,10 @@ export default function DashboardClient({ session }: any) {
                       key={plan._id}
                       plan={plan}
                       onDelete={openDeleteConfirm}
+                      onLeave={openLeaveConfirm}
                       userRole={userRole}
                       isDeleting={deletingId === plan._id}
+                      isLeaving={leavingId === plan._id}
                     />
                   ))}
                 </div>
@@ -206,8 +280,10 @@ export default function DashboardClient({ session }: any) {
                       key={plan._id}
                       plan={plan}
                       onDelete={openDeleteConfirm}
+                      onLeave={openLeaveConfirm}
                       userRole={userRole}
                       isDeleting={deletingId === plan._id}
+                      isLeaving={leavingId === plan._id}
                     />
                   ))}
                 </div>
@@ -215,7 +291,7 @@ export default function DashboardClient({ session }: any) {
             )}
 
             {/* Show empty personal plans section if only SEN plans exist */}
-            {senPlans.length > 0 && personalPlans.length === 0 && (
+            {senPlans.length > 0 && personalPlans.length === 0 && sharedPlans.length === 0 && (
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <User className="w-5 h-5 text-gray-600" />
@@ -235,6 +311,30 @@ export default function DashboardClient({ session }: any) {
                 </div>
               </section>
             )}
+
+            {/* Shared Plans - Plans where user is editor/admin */}
+            {sharedPlans.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="w-5 h-5 text-blue-600" />
+                  <h2 className="text-lg font-semibold text-gray-900">Plan Yang Dibagikan</h2>
+                  <span className="text-sm text-gray-400">({sharedPlans.length})</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {sharedPlans.map((plan) => (
+                    <PlanCard
+                      key={plan._id}
+                      plan={plan}
+                      onDelete={openDeleteConfirm}
+                      onLeave={openLeaveConfirm}
+                      userRole={userRole}
+                      isDeleting={deletingId === plan._id}
+                      isLeaving={leavingId === plan._id}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
@@ -246,19 +346,20 @@ export default function DashboardClient({ session }: any) {
 function PlanCard({
   plan,
   onDelete,
+  onLeave,
   userRole,
-  isDeleting
+  isDeleting,
+  isLeaving
 }: {
   plan: HolidayPlan
   onDelete: (id: string, title: string) => void
+  onLeave?: (id: string, title: string) => void
   userRole: string
   isDeleting: boolean
+  isLeaving?: boolean
 }) {
-  // Delete permission: 
-  // - Owner can delete their own plan
-  // - Superadmin can delete SEN plans (plans without owner)
-  // - Admins/Editors CANNOT delete - they can only edit
   const canDelete = plan.isOwner || (plan.isSenPlan && userRole === 'superadmin')
+  const canLeave = plan.isAdmin && !plan.isOwner && !plan.isSenPlan
 
   return (
     <div className={`group bg-white rounded-xl border transition-all hover:shadow-lg ${plan.isSenPlan ? 'border-primary-200 hover:border-primary-300' : 'border-gray-100 hover:border-gray-200'
@@ -336,6 +437,20 @@ function PlanCard({
             <Edit className="w-4 h-4" />
             Kelola
           </Link>
+          {canLeave && onLeave && (
+            <button
+              onClick={() => onLeave(plan._id, plan.title)}
+              disabled={isLeaving}
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+              title="Keluar dari Plan"
+            >
+              {isLeaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
+            </button>
+          )}
           {canDelete && (
             <button
               onClick={() => onDelete(plan._id, plan.title)}

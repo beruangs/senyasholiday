@@ -169,7 +169,7 @@ export async function DELETE(req: NextRequest) {
         const isOwner = plan.ownerId?.toString() === userId
         const isSenPlan = !plan.ownerId
 
-        const canManage = isOwner || (isSenPlan && (userRole === 'superadmin' || isEnvAdmin)) || userRole === 'superadmin' || isEnvAdmin
+        const canManage = isOwner || (isSenPlan && (userRole === 'superadmin' || isEnvAdmin)) || userRole === 'superadmin' || isEnvAdmin || (targetUserId === userId)
 
         if (!canManage) {
             return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -198,7 +198,20 @@ export async function DELETE(req: NextRequest) {
                 { $pull: { adminIds: targetUserId } }
             )
 
-            return NextResponse.json({ message: 'Admin removed' })
+            // Notify the user only if they are NOT removing themselves
+            if (targetUserId !== userId) {
+                const fromUserId = isValidObjectId(userId) ? userId : null
+                await Notification.create({
+                    userId: targetUserId,
+                    type: 'admin_removed',
+                    planId: plan._id,
+                    fromUserId: fromUserId,
+                    title: 'Akses Editor Dicabut',
+                    message: `${session.user.name || 'Pemilik plan'} telah menghapus akses editor kamu dari plan "${plan.title}"`,
+                })
+            }
+
+            return NextResponse.json({ message: targetUserId === userId ? 'Berhasil keluar dari plan' : 'Admin removed' })
         }
     } catch (error) {
         console.error('Error managing admin:', error)

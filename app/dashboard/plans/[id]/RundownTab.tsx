@@ -157,7 +157,8 @@ export default function RundownTab({ planId }: { planId: string }) {
           className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
-          <span>Tambah Rundown</span>
+          <span className="hidden sm:inline">Tambah Rundown</span>
+          <span className="sm:hidden text-sm">Tambah</span>
         </button>
       </div>
 

@@ -46,6 +46,12 @@ const holidayPlanSchema = new Schema({
   completedAt: Date,
   bannerImage: String,
   logoImage: String,
+  // Plan Category - untuk kategorisasi plan
+  planCategory: {
+    type: String,
+    enum: ['individual', 'sen_yas_daddy'],
+    default: 'individual'
+  },
   // Owner - user yang membuat plan (optional for SEN plans and env-admin)
   ownerId: { type: Schema.Types.ObjectId, ref: 'User' },
   // Admins - user lain yang bisa mengedit plan (confirmed)
@@ -135,6 +141,18 @@ const noteSchema = new Schema({
   updatedAt: { type: Date, default: Date.now },
 })
 
+// Checklist Schema - for packing lists and persiapan
+const checklistSchema = new Schema({
+  holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
+  category: { type: String, default: 'packing' },
+  item: { type: String, required: true },
+  isCompleted: { type: Boolean, default: false },
+  assignedTo: { type: Schema.Types.ObjectId, ref: 'Participant' },
+  order: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+})
+
 // Notification Schema - for admin invitations and other notifications
 const notificationSchema = new Schema({
   // Who receives this notification
@@ -190,3 +208,4 @@ export const SplitPayment = mongoose.models.SplitPayment || mongoose.model('Spli
 export const Note = mongoose.models.Note || mongoose.model('Note', noteSchema)
 export const PaymentHistory = mongoose.models.PaymentHistory || mongoose.model('PaymentHistory', paymentHistorySchema)
 export const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema)
+export const Checklist = mongoose.models.Checklist || mongoose.model('Checklist', checklistSchema)

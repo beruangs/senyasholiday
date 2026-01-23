@@ -83,8 +83,8 @@ export async function GET() {
         .lean() as any[]
 
       const plansWithInfo = plans.map(plan => {
-        // Plan tanpa ownerId adalah plan SEN Yas Daddy (legacy)
-        const isSenPlan = !plan.ownerId
+        // Plan tanpa ownerId ATAU planCategory === 'sen_yas_daddy' adalah plan SEN Yas Daddy
+        const isSenPlan = !plan.ownerId || plan.planCategory === 'sen_yas_daddy'
         const isOwner = plan.ownerId?._id?.toString() === userId
         const isAdmin = plan.adminIds?.some((admin: any) => admin._id?.toString() === userId) || false
         const canEdit = isOwner || isAdmin || (isSenPlan && (dbUserRole === 'sen_user' || dbUserRole === 'superadmin' || isEnvAdmin))
@@ -98,6 +98,7 @@ export async function GET() {
           isAdmin,
           isSenPlan,
           canEdit,
+          planCategory: plan.planCategory || 'individual',
         }
       })
 
@@ -135,6 +136,11 @@ export async function POST(req: NextRequest) {
       ...body,
       adminIds: [],
       createdBy: session.user.email, // Legacy
+    }
+
+    // Set planCategory if provided, otherwise default to 'individual'
+    if (!planData.planCategory) {
+      planData.planCategory = 'individual'
     }
 
     // Only set ownerId if user has valid MongoDB ObjectId

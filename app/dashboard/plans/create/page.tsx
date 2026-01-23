@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ArrowLeft, Save } from 'lucide-react'
@@ -10,6 +11,7 @@ import { usePageTitle, pageTitle } from '@/lib/usePageTitle'
 export default function CreatePlanPage() {
   usePageTitle(pageTitle.dashboard())
   const router = useRouter()
+  const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
@@ -18,7 +20,11 @@ export default function CreatePlanPage() {
     endDate: '',
     description: '',
     password: '',
+    planCategory: 'individual' as 'individual' | 'sen_yas_daddy',
   })
+
+  const userRole = (session?.user as any)?.role || 'user'
+  const canSelectCategory = userRole === 'sen_user' || userRole === 'superadmin'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,6 +101,28 @@ export default function CreatePlanPage() {
                   placeholder="Contoh: Yogyakarta"
                 />
               </div>
+
+              {/* Plan Category Selector - Only for SEN User and Superadmin */}
+              {canSelectCategory && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Kategori Database <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.planCategory}
+                    onChange={(e) => setFormData({ ...formData, planCategory: e.target.value as 'individual' | 'sen_yas_daddy' })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
+                  >
+                    <option value="individual">Individu</option>
+                    <option value="sen_yas_daddy">SEN Yas Daddy</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {formData.planCategory === 'individual'
+                      ? 'Plan pribadi, hanya Anda yang bisa melihat'
+                      : 'Plan organisasi SEN Yas Daddy, dapat dilihat oleh SEN User dan Superadmin'}
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
