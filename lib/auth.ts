@@ -17,24 +17,67 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+        console.log('[Auth] Authorize called with credentials:', {
+          username: credentials?.username,
+          passwordProvided: !!credentials?.password
+        })
+
         if (!credentials?.username || !credentials?.password) {
+          console.log('[Auth] Missing username or password')
           return null
         }
 
         // Clean username (remove @ if present)
         const username = credentials.username.trim().toLowerCase().replace(/^@/, '')
+        console.log('[Auth] Cleaned username:', username)
 
+        // Check environment variable admins FIRST (higher priority)
+        console.log('[Auth] Checking env admins first. Available usernames:', adminUsernames)
+        const adminIndex = adminUsernames.findIndex(
+          (u) => u.trim().toLowerCase() === username
+        )
+        console.log('[Auth] Admin index found:', adminIndex)
+
+        if (adminIndex !== -1) {
+          // Verify password
+          const expectedPassword = adminPasswords[adminIndex]?.trim()
+          const providedPassword = credentials.password
+          console.log('[Auth] Expected password length:', expectedPassword?.length)
+          console.log('[Auth] Provided password length:', providedPassword?.length)
+          console.log('[Auth] Password match:', expectedPassword === providedPassword)
+
+          const validPassword = providedPassword === expectedPassword
+
+          if (validPassword) {
+            const result = {
+              id: `env-admin-${adminIndex}`,
+              email: `${username}@senyasdaddy.app`,
+              name: adminNames[adminIndex]?.trim() || username,
+              username: username,
+              role: 'superadmin',
+            }
+            console.log('[Auth] Returning env admin:', result)
+            return result
+          }
+          // If env admin password doesn't match, still try database
+          console.log('[Auth] Env admin password did not match, checking database...')
+        }
+
+        // Try database user
         try {
           await dbConnect()
 
-          // Try to find user in database first
+          // Try to find user in database
           const user = await User.findOne({ username })
+          console.log('[Auth] Database user found:', !!user)
 
           if (user) {
             // Verify password with database user
             const isValidPassword = await user.comparePassword(credentials.password)
+            console.log('[Auth] Database password valid:', isValidPassword)
 
             if (!isValidPassword) {
+              console.log('[Auth] Database password invalid, returning null')
               return null
             }
 
@@ -43,39 +86,21 @@ export const authOptions: NextAuthOptions = {
             await user.save()
 
             // Return user object
-            return {
+            const result = {
               id: user._id.toString(),
               email: `${user.username}@senyasdaddy.app`,
               name: user.name,
               username: user.username,
               role: user.role,
             }
+            console.log('[Auth] Returning database user:', result)
+            return result
           }
         } catch (error) {
-          console.error('Database auth error:', error)
-          // Continue to fallback auth
+          console.error('[Auth] Database auth error:', error)
         }
 
-        // Fallback: Check environment variable admins
-        const adminIndex = adminUsernames.findIndex(
-          (u) => u.trim().toLowerCase() === username
-        )
-
-        if (adminIndex !== -1) {
-          // Verify password
-          const validPassword = credentials.password === adminPasswords[adminIndex]?.trim()
-
-          if (validPassword) {
-            return {
-              id: `env-admin-${adminIndex}`,
-              email: `${username}@senyasdaddy.app`,
-              name: adminNames[adminIndex]?.trim() || username,
-              username: username,
-              role: 'superadmin',
-            }
-          }
-        }
-
+        console.log('[Auth] No valid credentials found, returning null')
         return null
       },
     }),
