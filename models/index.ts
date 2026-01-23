@@ -54,6 +54,9 @@ const holidayPlanSchema = new Schema({
   createdBy: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  // Soft delete / Trash feature
+  deletedAt: { type: Date, default: null },
+  trashExpiresAt: { type: Date, default: null },
 })
 
 // Rundown/Schedule Schema

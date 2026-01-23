@@ -33,14 +33,15 @@ export async function GET() {
         dbUserRole = user?.role || userRole
       }
 
-      let query: any = {}
+      let query: any = { deletedAt: null } // Exclude trashed plans
 
       if (dbUserRole === 'superadmin' || isEnvAdmin) {
-        // Superadmin (including env admins) sees all plans
-        query = {}
+        // Superadmin (including env admins) sees all non-deleted plans
+        query.deletedAt = null
       } else if (dbUserRole === 'sen_user') {
         // SEN User sees: own plans, plans they're admin of, and SEN plans (no ownerId)
         query = {
+          deletedAt: null,
           $or: [
             ...(isValidObjectId(userId) ? [{ ownerId: userId }, { adminIds: userId }] : []),
             { ownerId: { $exists: false } }, // Legacy SEN plans
@@ -51,6 +52,7 @@ export async function GET() {
         // Regular user sees only own plans and plans they're admin of
         if (isValidObjectId(userId)) {
           query = {
+            deletedAt: null,
             $or: [
               { ownerId: userId },
               { adminIds: userId }
