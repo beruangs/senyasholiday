@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // Debug endpoint to check environment variables (production safe - no sensitive data exposed)
 export async function GET(request: NextRequest) {
-    // Only allow in development or with secret header
+    // Only allow in development or with secret header/query
     const isDev = process.env.NODE_ENV === 'development'
     const authHeader = request.headers.get('x-debug-key')
+    const { searchParams } = new URL(request.url)
+    const queryKey = searchParams.get('key')
     const debugKey = process.env.DEBUG_KEY || 'sen-debug-2024'
 
-    if (!isDev && authHeader !== debugKey) {
+    if (!isDev && authHeader !== debugKey && queryKey !== debugKey) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
