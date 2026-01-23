@@ -22,16 +22,16 @@ export async function GET(
             .populate('ownerId', '_id username name')
             .populate('adminIds', '_id username name')
             .populate('pendingAdminIds', '_id username name')
-            .lean()
+            .lean() as any
 
         if (!plan) {
             return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
         }
 
         const owner = plan.ownerId ? {
-            _id: (plan.ownerId as any)._id.toString(),
-            username: (plan.ownerId as any).username,
-            name: (plan.ownerId as any).name,
+            _id: plan.ownerId._id.toString(),
+            username: plan.ownerId.username,
+            name: plan.ownerId.name,
         } : null
 
         const admins = ((plan.adminIds as any[]) || []).map((admin: any) => ({
