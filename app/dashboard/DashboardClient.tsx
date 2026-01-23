@@ -6,6 +6,7 @@ import { Plus, Calendar, MapPin, Trash2, Edit, Crown, User, Sparkles, Loader2 } 
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface HolidayPlan {
   _id: string
@@ -23,10 +24,21 @@ interface HolidayPlan {
   ownerId?: { username: string; name: string }
 }
 
+interface DeleteConfirmState {
+  isOpen: boolean
+  planId: string
+  planTitle: string
+}
+
 export default function DashboardClient({ session }: any) {
   const [plans, setPlans] = useState<HolidayPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>({
+    isOpen: false,
+    planId: '',
+    planTitle: '',
+  })
 
   const userRole = (session.user as any)?.role || 'user'
 
@@ -48,10 +60,26 @@ export default function DashboardClient({ session }: any) {
     }
   }
 
-  const moveToTrash = async (planId: string, title: string) => {
-    if (!confirm(`Pindahkan "${title}" ke Trash?\n\nPlan akan dihapus permanen dalam 1 menit.`)) return
+  const openDeleteConfirm = (planId: string, planTitle: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      planId,
+      planTitle,
+    })
+  }
 
+  const closeDeleteConfirm = () => {
+    setDeleteConfirm({
+      isOpen: false,
+      planId: '',
+      planTitle: '',
+    })
+  }
+
+  const moveToTrash = async () => {
+    const { planId, planTitle } = deleteConfirm
     setDeletingId(planId)
+
     try {
       const res = await fetch('/api/trash', {
         method: 'POST',
@@ -60,8 +88,9 @@ export default function DashboardClient({ session }: any) {
       })
 
       if (res.ok) {
-        toast.success('Plan dipindahkan ke Trash')
+        toast.success(`"${planTitle}" dipindahkan ke Trash`)
         fetchPlans()
+        closeDeleteConfirm()
       } else {
         const data = await res.json()
         toast.error(data.error || 'Gagal memindahkan ke Trash')
@@ -79,122 +108,137 @@ export default function DashboardClient({ session }: any) {
   const totalPlans = plans.length
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      {/* Header - Minimalis */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Selamat datang, {session.user.name} 👋
-            </h1>
-            <p className="text-gray-500 mt-1">
-              {totalPlans > 0 ? `${totalPlans} rencana liburan` : 'Belum ada rencana liburan'}
+    <>
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={closeDeleteConfirm}
+        onConfirm={moveToTrash}
+        title="Pindahkan ke Trash?"
+        message={`"${deleteConfirm.planTitle}" akan dipindahkan ke Trash.\n\nPlan akan dihapus permanen dalam 1 menit.`}
+        confirmText="Ya, Pindahkan"
+        cancelText="Batal"
+        variant="danger"
+        loading={deletingId === deleteConfirm.planId}
+      />
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        {/* Header - Minimalis */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                Selamat datang, {session.user.name} 👋
+              </h1>
+              <p className="text-gray-500 mt-1">
+                {totalPlans > 0 ? `${totalPlans} rencana liburan` : 'Belum ada rencana liburan'}
+              </p>
+            </div>
+            <Link
+              href="/dashboard/plans/create"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-sm hover:shadow-md font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="hidden sm:inline">Buat Rencana Baru</span>
+              <span className="sm:hidden">Buat</span>
+            </Link>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 animate-spin text-primary-600" />
+          </div>
+        ) : plans.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+            <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Calendar className="w-10 h-10 text-primary-500" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Belum ada rencana liburan
+            </h3>
+            <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+              Mulai rencanakan liburan impianmu bersama teman-teman!
             </p>
+            <Link
+              href="/dashboard/plans/create"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              Buat Rencana Pertama
+            </Link>
           </div>
-          <Link
-            href="/dashboard/plans/create"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-sm hover:shadow-md font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">Buat Rencana Baru</span>
-            <span className="sm:hidden">Buat</span>
-          </Link>
-        </div>
+        ) : (
+          <div className="space-y-8">
+            {/* SEN Yas Daddy Plans */}
+            {senPlans.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-5 h-5 text-primary-600" />
+                  <h2 className="text-lg font-semibold text-gray-900">Plan SEN Yas Daddy</h2>
+                  <span className="text-sm text-gray-400">({senPlans.length})</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {senPlans.map((plan) => (
+                    <PlanCard
+                      key={plan._id}
+                      plan={plan}
+                      onDelete={openDeleteConfirm}
+                      userRole={userRole}
+                      isDeleting={deletingId === plan._id}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Personal Plans */}
+            {personalPlans.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="w-5 h-5 text-gray-600" />
+                  <h2 className="text-lg font-semibold text-gray-900">Plan Saya</h2>
+                  <span className="text-sm text-gray-400">({personalPlans.length})</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {personalPlans.map((plan) => (
+                    <PlanCard
+                      key={plan._id}
+                      plan={plan}
+                      onDelete={openDeleteConfirm}
+                      userRole={userRole}
+                      isDeleting={deletingId === plan._id}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Show empty personal plans section if only SEN plans exist */}
+            {senPlans.length > 0 && personalPlans.length === 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="w-5 h-5 text-gray-600" />
+                  <h2 className="text-lg font-semibold text-gray-900">Plan Saya</h2>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-8 text-center border border-dashed border-gray-200">
+                  <p className="text-gray-500 mb-4">
+                    Belum ada plan pribadi
+                  </p>
+                  <Link
+                    href="/dashboard/plans/create"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Buat Plan Baru
+                  </Link>
+                </div>
+              </section>
+            )}
+          </div>
+        )}
       </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-10 h-10 animate-spin text-primary-600" />
-        </div>
-      ) : plans.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-          <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Calendar className="w-10 h-10 text-primary-500" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Belum ada rencana liburan
-          </h3>
-          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-            Mulai rencanakan liburan impianmu bersama teman-teman!
-          </p>
-          <Link
-            href="/dashboard/plans/create"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            Buat Rencana Pertama
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {/* SEN Yas Daddy Plans */}
-          {senPlans.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-primary-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Plan SEN Yas Daddy</h2>
-                <span className="text-sm text-gray-400">({senPlans.length})</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {senPlans.map((plan) => (
-                  <PlanCard
-                    key={plan._id}
-                    plan={plan}
-                    onDelete={moveToTrash}
-                    userRole={userRole}
-                    isDeleting={deletingId === plan._id}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Personal Plans */}
-          {personalPlans.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-4">
-                <User className="w-5 h-5 text-gray-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Plan Saya</h2>
-                <span className="text-sm text-gray-400">({personalPlans.length})</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {personalPlans.map((plan) => (
-                  <PlanCard
-                    key={plan._id}
-                    plan={plan}
-                    onDelete={moveToTrash}
-                    userRole={userRole}
-                    isDeleting={deletingId === plan._id}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Show empty personal plans section if only SEN plans exist */}
-          {senPlans.length > 0 && personalPlans.length === 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-4">
-                <User className="w-5 h-5 text-gray-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Plan Saya</h2>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-8 text-center border border-dashed border-gray-200">
-                <p className="text-gray-500 mb-4">
-                  Belum ada plan pribadi
-                </p>
-                <Link
-                  href="/dashboard/plans/create"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors text-sm font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  Buat Plan Baru
-                </Link>
-              </div>
-            </section>
-          )}
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 
