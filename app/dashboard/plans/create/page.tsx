@@ -31,15 +31,18 @@ export default function CreatePlanPage() {
         body: JSON.stringify(formData),
       })
 
+      const data = await res.json()
+
       if (res.ok) {
-        const plan = await res.json()
         toast.success('Rencana liburan berhasil dibuat!')
-        router.push(`/dashboard/plans/${plan._id}`)
+        router.push(`/dashboard/plans/${data._id}`)
       } else {
-        toast.error('Gagal membuat rencana')
+        console.error('Create plan error:', data)
+        toast.error(data.details || data.error || 'Gagal membuat rencana')
       }
-    } catch (error) {
-      toast.error('Terjadi kesalahan')
+    } catch (error: any) {
+      console.error('Create plan exception:', error)
+      toast.error('Terjadi kesalahan: ' + error.message)
     } finally {
       setLoading(false)
     }

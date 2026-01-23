@@ -102,15 +102,20 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    console.log('Create plan - Session:', JSON.stringify(session, null, 2))
+
     if (!session?.user?.id) {
+      console.log('Create plan - No session or user ID')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     await dbConnect()
     const body = await req.json()
+    console.log('Create plan - Request body:', JSON.stringify(body, null, 2))
 
     // For env admins, don't set ownerId (creates a SEN plan)
     const isEnvAdmin = session.user.id.startsWith('env-')
+    console.log('Create plan - isEnvAdmin:', isEnvAdmin, 'userId:', session.user.id)
 
     const planData: any = {
       ...body,
@@ -123,11 +128,18 @@ export async function POST(req: NextRequest) {
       planData.ownerId = session.user.id
     }
 
+    console.log('Create plan - Plan data to save:', JSON.stringify(planData, null, 2))
+
     const plan = await HolidayPlan.create(planData)
+    console.log('Create plan - Plan created:', plan._id)
 
     return NextResponse.json(plan, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating plan:', error)
-    return NextResponse.json({ error: 'Failed to create plan' }, { status: 500 })
+    console.error('Error details:', error.message, error.stack)
+    return NextResponse.json({
+      error: 'Failed to create plan',
+      details: error.message
+    }, { status: 500 })
   }
 }
