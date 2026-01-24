@@ -155,7 +155,7 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
       <ContributionsTab planId={planId} readOnly={isCompleted} />
 
       {showModal && (
-        <ExpenseModal isOpen={showModal} onClose={() => setShowModal(false)} onSuccess={() => { setShowModal(false); fetchData(); }} planId={planId} participants={participants} editData={editingExpense} t={t} language={language} />
+        <ExpenseModal isOpen={showModal} onClose={() => setShowModal(false)} onSuccess={() => { setShowModal(false); fetchData(); }} planId={planId} participants={participants} editData={editingExpense} />
       )}
     </div>
   )

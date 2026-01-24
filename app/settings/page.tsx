@@ -58,12 +58,12 @@ export default function SettingsPage() {
                     <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm p-10 font-bold">
                         <h2 className="text-xl font-black uppercase mb-10">{t.settings.edit_profile}</h2>
                         <form onSubmit={handleSubmit} className="space-y-8">
-                            <FormInput label={t.settings.name} val={formData.name} setVal={v => setFormData({ ...formData, name: v })} />
+                            <FormInput label={t.settings.name} val={formData.name} setVal={(v: any) => setFormData({ ...formData, name: v })} />
                             <div className="pt-8 border-t border-gray-50 space-y-6"><h3 className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">{t.settings.change_password}</h3>
                                 <div className="space-y-4">
-                                    <div className="relative"><FormInput label={t.settings.current_password} val={formData.currentPassword} setVal={v => setFormData({ ...formData, currentPassword: v })} type={showPassword ? 'text' : 'password'} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-[55%] text-gray-300 hover:text-primary-600 transition-all">{showPassword ? <EyeOff /> : <Eye />}</button></div>
-                                    <FormInput label={t.settings.new_password} val={formData.newPassword} setVal={v => setFormData({ ...formData, newPassword: v })} type={showPassword ? 'text' : 'password'} />
-                                    <FormInput label={t.settings.confirm_password} val={formData.confirmPassword} setVal={v => setFormData({ ...formData, confirmPassword: v })} type={showPassword ? 'text' : 'password'} />
+                                    <div className="relative"><FormInput label={t.settings.current_password} val={formData.currentPassword} setVal={(v: any) => setFormData({ ...formData, currentPassword: v })} type={showPassword ? 'text' : 'password'} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-[55%] text-gray-300 hover:text-primary-600 transition-all">{showPassword ? <EyeOff /> : <Eye />}</button></div>
+                                    <FormInput label={t.settings.new_password} val={formData.newPassword} setVal={(v: any) => setFormData({ ...formData, newPassword: v })} type={showPassword ? 'text' : 'password'} />
+                                    <FormInput label={t.settings.confirm_password} val={formData.confirmPassword} setVal={(v: any) => setFormData({ ...formData, confirmPassword: v })} type={showPassword ? 'text' : 'password'} />
                                 </div>
                             </div>
                             <button type="submit" disabled={loading} className="w-full py-6 bg-primary-600 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-2xl shadow-primary-100 hover:bg-primary-700 transition-all flex items-center justify-center gap-4">{loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />} {t.settings.save_changes}</button>

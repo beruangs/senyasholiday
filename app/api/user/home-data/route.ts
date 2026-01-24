@@ -48,7 +48,7 @@ export async function GET() {
         const totalBudget = expenseItems.reduce((sum, item) => sum + (item.total || 0), 0)
 
         // 3. Recent Notifications
-        let recentNotifs = []
+        let recentNotifs: any[] = []
         if (!isEnvAdmin && mongoose.Types.ObjectId.isValid(userId)) {
             recentNotifs = await Notification.find({ userId })
                 .sort({ createdAt: -1 })

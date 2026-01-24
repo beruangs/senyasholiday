@@ -33,7 +33,7 @@ export default function ImpersonationBanner() {
                     </div>
                     <div>
                         <p className="text-xs sm:text-sm font-bold leading-tight">
-                            Mode Impersonate: <span className="text-purple-200">@{session.user.username}</span>
+                            Mode Impersonate: <span className="text-purple-200">@{(session.user as any).username}</span>
                         </p>
                         <p className="text-[10px] text-purple-200 font-medium opacity-80 leading-tight">
                             Sesi asli: Admin @{impersonatedBy.username}

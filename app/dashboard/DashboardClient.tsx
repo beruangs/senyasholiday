@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Calendar, MapPin, Trash2, Edit, Crown, User, Sparkles, Loader2, LogOut } from 'lucide-react'
+import { Plus, Calendar, MapPin, Trash2, Edit, Crown, User, Users, Sparkles, Loader2, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id, enUS } from 'date-fns/locale'
