@@ -15,12 +15,12 @@ export default function GuestHomePage() {
             <Navbar />
             <SuggestionButton page="Homepage" />
 
-            <section className="py-16 md:py-24">
-                <div className="max-w-7xl mx-auto px-6 text-center">
-                    <div className="flex justify-center mb-8"><Image src="/logo.png" alt="LOGO" width={100} height={100} className="rounded-[2.5rem] shadow-2xl p-1 bg-white border border-gray-100 transition-all hover:scale-105" /></div>
-                    <h1 className="text-4xl md:text-7xl font-black text-gray-900 mb-4 tracking-tighter leading-none uppercase">SEN YAS DADDY</h1>
-                    <p className="text-lg md:text-xl text-primary-600 mb-6 font-black uppercase tracking-[0.3em] font-bold">{t.guest.hero_subtitle}</p>
-                    <p className="text-base md:text-lg text-gray-400 max-w-xl mx-auto mb-12 uppercase leading-relaxed tracking-widest">{t.guest.hero_desc}</p>
+            <section className="py-12 md:py-24">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+                    <div className="flex justify-center mb-8"><Image src="/logo.png" alt="LOGO" width={80} height={80} className="rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl p-1 bg-white border border-gray-100 transition-all hover:scale-105" /></div>
+                    <h1 className="text-3xl md:text-7xl font-black text-gray-900 mb-4 tracking-tighter leading-none uppercase">SEN YAS DADDY</h1>
+                    <p className="text-sm md:text-xl text-primary-600 mb-6 font-black uppercase tracking-[0.3em] font-bold">{t.guest.hero_subtitle}</p>
+                    <p className="text-xs md:text-lg text-gray-400 max-w-xl mx-auto mb-10 uppercase leading-relaxed tracking-widest">{t.guest.hero_desc}</p>
                     <div className="flex flex-wrap gap-3 justify-center">
                         <Link href="/signup" className="px-10 py-5 bg-primary-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary-50 hover:bg-primary-700 transition-all flex items-center gap-3"><UserPlus className="w-5 h-5" /> {t.common.signup}</Link>
                         <Link href="/demo" className="px-10 py-5 bg-gray-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] shadow-lg shadow-gray-200 hover:bg-black transition-all flex items-center gap-3"><Sparkles className="w-5 h-5" /> {t.guest.view_demo}</Link>
@@ -28,7 +28,7 @@ export default function GuestHomePage() {
                 </div>
             </section>
 
-            <section className="py-24 bg-gray-50 rounded-[4rem] mx-6 mb-16 border border-gray-100 shadow-sm">
+            <section className="py-16 md:py-24 bg-gray-50 rounded-[2rem] sm:rounded-[4rem] mx-2 sm:mx-6 mb-16 border border-gray-100 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 text-center">
                     <h2 className="text-2xl md:text-4xl font-black text-gray-900 mb-20 uppercase tracking-tighter">{t.guest.features_title}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -40,7 +40,7 @@ export default function GuestHomePage() {
                 </div>
             </section>
 
-            <section className="py-24 bg-gray-900 mx-6 rounded-[3.5rem] relative overflow-hidden text-center text-white mb-20 shadow-2xl">
+            <section className="py-16 md:py-24 bg-gray-900 mx-2 sm:mx-6 rounded-[2rem] sm:rounded-[3.5rem] relative overflow-hidden text-center text-white mb-20 shadow-2xl">
                 <div className="absolute inset-0 opacity-[0.05]"><Sparkles className="w-[40rem] h-[40rem] -bottom-20 -right-20 absolute" /></div>
                 <div className="relative z-10 max-w-4xl mx-auto px-6">
                     <h2 className="text-3xl md:text-6xl font-black uppercase tracking-tight mb-6 leading-none">{t.guest.cta_title}</h2>

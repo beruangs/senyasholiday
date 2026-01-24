@@ -37,12 +37,12 @@ export default function DashboardClient({ session }: any) {
       <ConfirmModal isOpen={deleteConfirm.isOpen} onClose={() => setDeleteConfirm({ isOpen: false, planId: '', planTitle: '' })} onConfirm={moveToTrash} title={t.dashboard.move_to_trash} message={`"${deleteConfirm.planTitle}" ${t.dashboard.trash_confirm}`} confirmText={t.dashboard.yes_move} cancelText={t.common.cancel} variant="danger" loading={deletingId === deleteConfirm.planId} />
       <ConfirmModal isOpen={leaveConfirm.isOpen} onClose={() => setLeaveConfirm({ isOpen: false, planId: '', planTitle: '' })} onConfirm={handleLeavePlan} title={t.dashboard.leave_plan} message={t.dashboard.leave_confirm} confirmText={t.dashboard.yes_leave} cancelText={t.common.cancel} variant="danger" loading={leavingId === leaveConfirm.planId} />
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 sm:gap-8 mb-12 sm:mb-16">
         <div>
-          <h1 className="text-3xl md:text-5xl font-black text-gray-900 uppercase tracking-tighter leading-none mb-3">{t.dashboard.welcome_back}, {session.user.name.split(' ')[0]} 👋</h1>
-          <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">{plans.length > 0 ? `${plans.length} ${t.dashboard.stats_plans}` : t.dashboard.no_plans}</p>
+          <h1 className="text-2xl sm:text-5xl font-black text-gray-900 uppercase tracking-tighter leading-tight mb-2 sm:mb-3">{t.dashboard.welcome_back}, <br className="sm:hidden" />{session.user.name.split(' ')[0]} 👋</h1>
+          <p className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">{plans.length > 0 ? `${plans.length} ${t.dashboard.stats_plans}` : t.dashboard.no_plans}</p>
         </div>
-        <Link href="/dashboard/plans/create" className="px-8 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary-50 hover:bg-primary-700 transition-all flex items-center gap-3 group"><Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" /> <span>{t.dashboard.create_new}</span></Link>
+        <Link href="/dashboard/plans/create" className="w-full sm:w-auto px-8 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary-50 hover:bg-primary-700 transition-all flex items-center justify-center gap-3 group"><Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" /> <span>{t.dashboard.create_new}</span></Link>
       </div>
 
       {loading ? <div className="flex justify-center py-32"><Loader2 className="w-10 h-10 animate-spin text-primary-600" /></div> : plans.length === 0 ? (

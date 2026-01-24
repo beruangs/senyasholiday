@@ -7,6 +7,16 @@ export async function POST(request: NextRequest) {
     try {
         await dbConnect()
 
+        // Check if registration is allowed
+        const { SystemSetting } = await import('@/models')
+        const allowReg = await SystemSetting.findOne({ key: 'allow_registration' })
+        if (allowReg && allowReg.value === false) {
+            return NextResponse.json(
+                { error: 'Pendaftaran user baru sedang dinonaktifkan oleh admin.' },
+                { status: 403 }
+            )
+        }
+
         const body = await request.json()
         const { username, password, name } = body
 

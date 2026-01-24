@@ -159,19 +159,19 @@ export default function PublicPlanPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 font-bold px-4">
-      <div className="relative mb-8 max-w-6xl mx-auto pt-8">
-        <div className="relative h-48 sm:h-64 w-full overflow-hidden rounded-[2rem] sm:rounded-[3rem] shadow-xl">
+      <div className="relative mb-8 max-w-6xl mx-auto pt-4 sm:pt-8">
+        <div className="relative h-40 sm:h-64 w-full overflow-hidden rounded-[1.5rem] sm:rounded-[3rem] shadow-xl">
           {plan.bannerImage ? <img src={plan.bannerImage} alt="Banner" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-900" />}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
           {plan.status === 'completed' && <div className="absolute top-4 right-4 px-4 py-1.5 bg-emerald-600 text-white rounded-full font-black text-[9px] uppercase tracking-widest shadow-lg flex items-center gap-2"><CheckSquare className="w-3.5 h-3.5" /> {t.plan.trip_completed}</div>}
         </div>
 
-        <div className="relative px-6 sm:px-12 -mt-16">
-          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl p-6 sm:p-10 border border-gray-100 relative overflow-hidden">
+        <div className="relative px-4 sm:px-12 -mt-12 sm:-mt-16">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl p-5 sm:p-10 border border-gray-100 relative overflow-hidden">
             <div className="flex flex-col lg:flex-row gap-6 items-center lg:items-end">
               <div className="flex-shrink-0 relative">
-                <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl p-2 border-4 border-white flex items-center justify-center -mt-16 sm:-mt-24 relative z-10 font-black">
-                  {plan.logoImage ? <img src={plan.logoImage} alt="Logo" className="w-full h-full object-contain" /> : <div className="w-full h-full bg-primary-600 rounded-[1rem] sm:rounded-[1.5rem] flex items-center justify-center font-black text-white text-3xl sm:text-4xl">SYD</div>}
+                <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-[1.2rem] sm:rounded-[2rem] shadow-2xl p-2 border-4 border-white flex items-center justify-center -mt-14 sm:-mt-24 relative z-10 font-black">
+                  {plan.logoImage ? <img src={plan.logoImage} alt="Logo" className="w-full h-full object-contain" /> : <div className="w-full h-full bg-primary-600 rounded-[1rem] sm:rounded-[1.5rem] flex items-center justify-center font-black text-2xl sm:text-4xl leading-none">SYD</div>}
                 </div>
               </div>
 
@@ -207,7 +207,7 @@ export default function PublicPlanPage() {
 
       <main className="max-w-6xl mx-auto pb-24 font-bold">
         {plan.status === 'completed' && activeTab === 'keuangan' && (
-          <div className="mb-8 bg-emerald-600 rounded-[2.5rem] p-8 sm:p-12 text-white shadow-2xl relative overflow-hidden mx-4">
+          <div className="mb-8 bg-emerald-600 rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-12 text-white shadow-2xl relative overflow-hidden mx-0 select-none">
             <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none transition-transform"><TrendingUp className="w-40 h-40" /></div>
             <div className="relative z-10">
               <h2 className="text-2xl font-black uppercase tracking-tight mb-8 font-bold">{t.plan.final_report}</h2>
@@ -220,7 +220,7 @@ export default function PublicPlanPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-[3rem] p-6 sm:p-12 shadow-xl border border-gray-100 min-h-[500px] transition-all mx-4">
+        <div className="bg-white rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-12 shadow-xl border border-gray-100 min-h-[500px] transition-all mx-0">
           {activeTab === 'rundown' && (
             <div className="space-y-12">
               {Object.keys(groupedRundowns).length === 0 ? (
@@ -331,15 +331,7 @@ export default function PublicPlanPage() {
         </div>
       </main>
 
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 duration-1000 print:hidden w-full px-6 max-w-md">
-        <Link href="/" className="group flex items-center justify-between gap-4 px-8 py-4 bg-gray-900 text-white rounded-full shadow-[0_20px_40px_-5px_rgba(0,0,0,0.4)] hover:scale-105 active:scale-95 transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center ring-2 ring-gray-800"><Globe className="w-4 h-4 text-white" /></div>
-            <span className="text-[9px] font-black uppercase tracking-widest truncate">Orchestrate with S.E.N</span>
-          </div>
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-all text-primary-500" />
-        </Link>
-      </div>
+
 
       <style jsx global>{`
         @media print { body { background: white !important; } .max-w-6xl { max-width: 100% !important; padding: 0 !important; } nav, button, footer, .suggestion-button-container, .fixed { display: none !important; } .rounded-[4rem], .rounded-[3rem], .rounded-[2.5rem] { border-radius: 1.5rem !important; } .shadow-xl, .shadow-2xl { box-shadow: none !important; border: 1px solid #eee !important; } .bg-gray-50/50, .bg-gray-50 { background: white !important; } }

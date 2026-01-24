@@ -19,11 +19,11 @@ export default function UserHomePage({ session }: { session: any }) {
 
     return (
         <div className="min-h-screen bg-white font-bold">
-            <section className="py-16 md:py-24">
-                <div className="max-w-7xl mx-auto px-6 text-center">
-                    <div className="flex justify-center mb-8"><Image src="/logo.png" alt="LOGO" width={100} height={100} className="rounded-[2rem] shadow-xl p-1 bg-white border border-gray-100 transition-all hover:scale-105" /></div>
-                    <h1 className="text-4xl md:text-7xl font-black text-gray-900 mb-4 tracking-tighter leading-none uppercase">{t.home.hero_title}, <span className="text-primary-600">{firstName}</span>!</h1>
-                    <p className="text-base md:text-lg text-gray-400 mb-12 uppercase tracking-widest leading-none">{t.home.hero_subtitle}</p>
+            <section className="py-12 md:py-24">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+                    <div className="flex justify-center mb-8"><Image src="/logo.png" alt="LOGO" width={80} height={80} className="rounded-[1.5rem] sm:rounded-[2rem] shadow-xl p-1 bg-white border border-gray-100 transition-all hover:scale-105" /></div>
+                    <h1 className="text-3xl md:text-7xl font-black text-gray-900 mb-4 tracking-tighter leading-none uppercase">{t.home.hero_title}, <br className="sm:hidden" /><span className="text-primary-600">{firstName}</span>!</h1>
+                    <p className="text-xs md:text-lg text-gray-400 mb-10 uppercase tracking-widest leading-none">{t.home.hero_subtitle}</p>
                     <div className="flex flex-wrap gap-3 justify-center">
                         <Link href="/dashboard/plans/create" className="px-8 py-4 bg-primary-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary-50 hover:bg-primary-700 transition-all flex items-center gap-2"><Plus className="w-4 h-4" /> {t.home.create_plan}</Link>
                         <Link href="/dashboard" className="px-8 py-4 bg-gray-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] shadow-lg shadow-gray-200 hover:bg-black transition-all flex items-center gap-2"><LayoutDashboard className="w-4 h-4" /> {t.home.to_dashboard}</Link>
@@ -32,7 +32,7 @@ export default function UserHomePage({ session }: { session: any }) {
                 </div>
             </section>
 
-            <section className="py-20 bg-gray-50/50 rounded-[3.5rem] mx-6 mb-16 border border-gray-100">
+            <section className="py-16 md:py-20 bg-gray-50/50 rounded-[2rem] sm:rounded-[3.5rem] mx-2 sm:mx-6 mb-16 border border-gray-100">
                 <div className="max-w-7xl mx-auto px-6">
                     <h2 className="text-xl md:text-2xl font-black text-center text-gray-300 mb-16 uppercase tracking-[0.4em]">{t.home.summary_title}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -44,7 +44,7 @@ export default function UserHomePage({ session }: { session: any }) {
                 </div>
             </section>
 
-            <section className="py-24 bg-gray-900 mx-6 rounded-[4rem] relative overflow-hidden text-center text-white mb-20 shadow-2xl">
+            <section className="py-16 md:py-24 bg-gray-900 mx-2 sm:mx-6 rounded-[2rem] sm:rounded-[4rem] relative overflow-hidden text-center text-white mb-20 shadow-2xl">
                 <div className="absolute inset-0 opacity-[0.05]"><Globe className="w-[40rem] h-[40rem] -bottom-30 -right-30 absolute" /></div>
                 <div className="relative z-10 max-w-4xl mx-auto px-6">
                     <h2 className="text-3xl md:text-6xl font-black uppercase tracking-tight mb-6 leading-none">{t.home.ready_hero} <br /><span className="text-primary-500">{t.home.holiday_dream}</span></h2>

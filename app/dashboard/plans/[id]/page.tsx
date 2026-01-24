@@ -105,21 +105,21 @@ export default function PlanDetailPage() {
         <Link href="/dashboard" className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-6 font-black uppercase text-[9px] tracking-widest group transition-all"><ArrowLeft className="w-3.5 h-3.5 mr-2 group-hover:-translate-x-1 transition-transform" /> {t.common.back}</Link>
 
         {/* Scaled Down Premium Header */}
-        <div className="mb-8 rounded-[2.5rem] overflow-hidden shadow-xl border border-gray-100 bg-white relative">
-          <div className="relative h-48 sm:h-64">
+        <div className="mb-8 rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-xl border border-gray-100 bg-white relative">
+          <div className="relative h-40 sm:h-64">
             {plan.bannerImage ? <img src={plan.bannerImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-900" />}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-            <div className="absolute -bottom-10 left-8">
-              <div className="w-24 h-24 sm:w-36 sm:h-36 rounded-[2rem] sm:rounded-[2.5rem] bg-white p-2 shadow-2xl overflow-hidden border-4 border-white">
-                {plan.logoImage ? <img src={plan.logoImage} className="w-full h-full object-contain" /> : <div className="w-full h-full bg-primary-600 rounded-[1.2rem] sm:rounded-[1.8rem] flex items-center justify-center"><span className="text-white font-black text-2xl sm:text-4xl">SYD</span></div>}
+            <div className="absolute -bottom-8 sm:-bottom-10 left-4 sm:left-8">
+              <div className="w-20 h-20 sm:w-36 sm:h-36 rounded-[1.2rem] sm:rounded-[2.5rem] bg-white p-2 shadow-2xl overflow-hidden border-4 border-white">
+                {plan.logoImage ? <img src={plan.logoImage} className="w-full h-full object-contain" /> : <div className="w-full h-full bg-primary-600 rounded-[0.8rem] sm:rounded-[1.8rem] flex items-center justify-center"><span className="text-white font-black text-xl sm:text-4xl">SYD</span></div>}
               </div>
             </div>
           </div>
 
-          <div className="pt-16 px-8 pb-8">
-            <div className="flex flex-col lg:flex-row justify-between items-end gap-6">
-              <div className="flex-1 space-y-4">
-                <h1 className="text-3xl sm:text-5xl font-black text-gray-900 uppercase tracking-tight leading-none">{plan.title}</h1>
+          <div className="pt-14 sm:pt-16 px-4 sm:px-8 pb-6 sm:pb-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+              <div className="flex-1 space-y-4 w-full">
+                <h1 className="text-2xl sm:text-5xl font-black text-gray-900 uppercase tracking-tight leading-none break-words">{plan.title}</h1>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="px-4 py-1.5 bg-primary-50 text-primary-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><MapPin className="w-3.5 h-3.5" /> {plan.destination}</span>
                   {plan.status === 'completed' && <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><CheckCircle className="w-3.5 h-3.5" /> {t.plan.trip_completed}</span>}
@@ -139,7 +139,7 @@ export default function PlanDetailPage() {
           </div>
         </div>
 
-        <main className="bg-white rounded-[2.5rem] p-8 sm:p-12 border border-gray-100 shadow-sm min-h-[600px] font-bold animate-in fade-in duration-500">
+        <main className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-12 border border-gray-100 shadow-sm min-h-[600px] font-bold animate-in fade-in duration-500">
           {activeTab === 'info' && (<div className="space-y-20">
             <section className="space-y-12">
               <div className="flex justify-between items-center border-b border-gray-50 pb-8"><h2 className="text-2xl font-black uppercase tracking-tight">{t.plan.event_info}</h2>{!editingInfo && plan.status !== 'completed' && <button onClick={() => setEditingInfo(true)} className="px-6 py-3 bg-primary-50 text-primary-600 rounded-xl font-black uppercase text-[9px] tracking-widest">{t.plan.edit_info}</button>}</div>

@@ -10,7 +10,7 @@ const isValidObjectId = (id: string) => {
 }
 
 // GET - Fetch all notifications for current user
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions)
         if (!session?.user?.id) {
@@ -18,20 +18,31 @@ export async function GET() {
         }
 
         const userId = session.user.id
-        if (!isValidObjectId(userId)) {
-            // Env admins don't have notifications yet
-            return NextResponse.json([])
-        }
+        const { searchParams } = new URL(req.url)
+        const isAdminLog = searchParams.get('admin') === 'true'
+
+        const isEnvAdmin = userId.startsWith('env-')
+        let userRole = (session.user as any)?.role || 'user'
 
         await dbConnect()
 
-        const notifications = await Notification.find({
-            userId,
-            responded: false // Only show unresponded notifications
-        })
+        if (!isEnvAdmin && isAdminLog) {
+            const user = await User.findById(userId)
+            userRole = user?.role || userRole
+        }
+
+        let query: any = { userId }
+        if (isAdminLog && (userRole === 'superadmin' || isEnvAdmin)) {
+            query = {} // All notifications for system logs
+        } else {
+            query = { userId, responded: false }
+        }
+
+        const notifications = await Notification.find(query)
             .populate('planId', 'title destination')
             .populate('fromUserId', 'username name')
             .sort({ createdAt: -1 })
+            .limit(isAdminLog ? 50 : 20)
             .lean()
 
         const formattedNotifications = notifications.map((n: any) => ({
