@@ -1,7 +1,7 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import dbConnect from './mongodb'
-import { User } from '@/models'
+import { User, ImpersonationToken } from '@/models'
 
 // Parse admin credentials from environment variables (legacy/fallback)
 const adminUsernames = process.env.ADMIN_USERNAMES?.split(',') || []
@@ -15,12 +15,48 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         username: { label: 'Username', type: 'text' },
         password: { label: 'Password', type: 'password' },
+        impersonateToken: { label: 'Token', type: 'text' },
       },
       async authorize(credentials) {
         console.log('[Auth] Authorize called with credentials:', {
           username: credentials?.username,
           passwordProvided: !!credentials?.password
         })
+
+        // Check for Impersonation Token
+        if (credentials?.impersonateToken) {
+          try {
+            await dbConnect()
+            const tokenDoc = await ImpersonationToken.findOne({ token: credentials.impersonateToken })
+              .populate('adminId')
+              .lean() as any
+
+            if (tokenDoc) {
+              const targetUser = await User.findById(tokenDoc.targetUserId)
+              if (targetUser) {
+                // Delete token after use
+                await ImpersonationToken.deleteOne({ _id: tokenDoc._id })
+
+                return {
+                  id: targetUser._id.toString(),
+                  email: `${targetUser.username}@senyasdaddy.app`,
+                  name: targetUser.name,
+                  username: targetUser.username,
+                  role: targetUser.role,
+                  impersonatedBy: {
+                    id: tokenDoc.adminId._id.toString(),
+                    name: tokenDoc.adminId.name,
+                    username: tokenDoc.adminId.username
+                  }
+                }
+              }
+            }
+            return null
+          } catch (error) {
+            console.error('[Auth] Impersonation error:', error)
+            return null
+          }
+        }
 
         if (!credentials?.username || !credentials?.password) {
           console.log('[Auth] Missing username or password')
@@ -113,13 +149,14 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
         token.email = user.email
         token.name = user.name
         token.username = (user as any).username
         token.role = (user as any).role
+        token.impersonatedBy = (user as any).impersonatedBy
       }
       return token
     },
@@ -130,6 +167,7 @@ export const authOptions: NextAuthOptions = {
         session.user.name = token.name as string
           ; (session.user as any).username = token.username as string
           ; (session.user as any).role = token.role as string
+          ; (session.user as any).impersonatedBy = token.impersonatedBy
       }
       return session
     },

@@ -7,306 +7,67 @@ import Link from 'next/link'
 import { Trash2, RotateCcw, AlertTriangle, Clock, ArrowLeft, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
+import { useLanguage } from '@/context/LanguageContext'
 
-interface TrashedPlan {
-    _id: string
-    title: string
-    destination: string
-    startDate: string
-    endDate: string
-    deletedAt: string
-    trashExpiresAt: string
-    remainingMs: number
-    remainingFormatted: string
-    ownerId?: { username: string; name: string }
-}
-
-interface ConfirmState {
-    type: 'restore' | 'delete' | null
-    planId: string
-    planTitle: string
-}
+interface TrashedPlan { _id: string; title: string; destination: string; startDate: string; endDate: string; deletedAt: string; trashExpiresAt: string; remainingMs: number; remainingFormatted: string; ownerId?: { username: string; name: string } }
 
 export default function TrashPage() {
-    const { data: session, status } = useSession()
-    const router = useRouter()
-    const [trashedPlans, setTrashedPlans] = useState<TrashedPlan[]>([])
-    const [loading, setLoading] = useState(true)
-    const [actionLoading, setActionLoading] = useState<string | null>(null)
-    const [confirmState, setConfirmState] = useState<ConfirmState>({
-        type: null,
-        planId: '',
-        planTitle: '',
-    })
+    const { language, t } = useLanguage()
+    const { status } = useSession(); const router = useRouter()
+    const [trashedPlans, setTrashedPlans] = useState<TrashedPlan[]>([]); const [loading, setLoading] = useState(true); const [actionLoading, setActionLoading] = useState<string | null>(null)
+    const [confirmState, setConfirmState] = useState<{ type: 'restore' | 'delete' | null; planId: string; planTitle: string }>({ type: null, planId: '', planTitle: '' })
 
-    useEffect(() => {
-        if (status === 'unauthenticated') {
-            router.push('/login')
-        } else if (status === 'authenticated') {
-            fetchTrash()
-        }
-    }, [status, router])
+    useEffect(() => { if (status === 'unauthenticated') router.push('/login'); else if (status === 'authenticated') fetchTrash(); }, [status])
 
-    // Auto-update countdown every second (client-side only)
     useEffect(() => {
         const interval = setInterval(() => {
-            setTrashedPlans(prevPlans =>
-                prevPlans.map(plan => {
-                    const now = Date.now()
-                    const expiresAt = new Date(plan.trashExpiresAt).getTime()
-                    const remainingMs = Math.max(0, expiresAt - now)
+            setTrashedPlans(prev => prev.map(p => {
+                const rem = Math.max(0, new Date(p.trashExpiresAt).getTime() - Date.now()); const s = Math.floor(rem / 1000); const m = Math.floor(s / 60); const h = Math.floor(m / 60); const d = Math.floor(h / 24)
+                let f = ''; if (d > 0) f = `${d} ${language === 'id' ? 'hari lagi' : 'days left'}`; else if (h > 0) f = `${h} ${language === 'id' ? 'jam lagi' : 'hours left'}`; else if (m > 0) f = `${m} ${language === 'id' ? 'menit lagi' : 'mins left'}`; else f = `${s} ${language === 'id' ? 'detik lagi' : 'secs left'}`
+                return { ...p, remainingMs: rem, remainingFormatted: f }
+            }))
+        }, 1000); return () => clearInterval(interval)
+    }, [language])
 
-                    // Format remaining time
-                    const seconds = Math.floor(remainingMs / 1000)
-                    const minutes = Math.floor(seconds / 60)
-                    const hours = Math.floor(minutes / 60)
-                    const days = Math.floor(hours / 24)
-
-                    let remainingFormatted = ''
-                    if (days > 0) {
-                        remainingFormatted = `${days} hari lagi`
-                    } else if (hours > 0) {
-                        remainingFormatted = `${hours} jam lagi`
-                    } else if (minutes > 0) {
-                        remainingFormatted = `${minutes} menit lagi`
-                    } else if (seconds > 0) {
-                        remainingFormatted = `${seconds} detik lagi`
-                    } else {
-                        remainingFormatted = 'Kedaluwarsa'
-                    }
-
-                    return {
-                        ...plan,
-                        remainingMs,
-                        remainingFormatted
-                    }
-                })
-            )
-        }, 1000) // Update every second
-
-        return () => clearInterval(interval)
-    }, [])
-
-    // Refresh from server every 30 seconds to check for deleted items
-    useEffect(() => {
-        const interval = setInterval(() => {
-            fetchTrash()
-        }, 30000)
-        return () => clearInterval(interval)
-    }, [])
-
-    const fetchTrash = async () => {
-        try {
-            const res = await fetch('/api/trash')
-            if (res.ok) {
-                const data = await res.json()
-                setTrashedPlans(data)
-            }
-        } catch (error) {
-            console.error('Error fetching trash:', error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const openConfirm = (type: 'restore' | 'delete', planId: string, planTitle: string) => {
-        setConfirmState({ type, planId, planTitle })
-    }
-
-    const closeConfirm = () => {
-        setConfirmState({ type: null, planId: '', planTitle: '' })
-    }
+    const fetchTrash = async () => { try { const res = await fetch('/api/trash'); if (res.ok) setTrashedPlans(await res.json()); } catch { toast.error(t.dashboard.loading_data) } finally { setLoading(false) } }
 
     const handleConfirm = async () => {
-        if (confirmState.type === 'restore') {
-            await restorePlan()
-        } else if (confirmState.type === 'delete') {
-            await permanentDelete()
-        }
-    }
-
-    const restorePlan = async () => {
-        const { planId, planTitle } = confirmState
-        setActionLoading(planId)
+        const { type, planId, planTitle } = confirmState; setActionLoading(planId)
         try {
-            const res = await fetch('/api/trash', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ planId }),
-            })
-
-            if (res.ok) {
-                toast.success(`"${planTitle}" berhasil di-restore!`)
-                fetchTrash()
-                closeConfirm()
-            } else {
-                const data = await res.json()
-                toast.error(data.error || 'Gagal me-restore plan')
-            }
-        } catch (error) {
-            toast.error('Terjadi kesalahan')
-        } finally {
-            setActionLoading(null)
-        }
+            const res = await fetch(type === 'restore' ? '/api/trash' : `/api/trash?planId=${planId}`, { method: type === 'restore' ? 'PUT' : 'DELETE', headers: { 'Content-Type': 'application/json' }, body: type === 'restore' ? JSON.stringify({ planId }) : undefined })
+            if (res.ok) { toast.success(type === 'restore' ? t.common.success : t.plan.delete_success); fetchTrash(); setConfirmState({ type: null, planId: '', planTitle: '' }); }
+        } catch { toast.error(t.common.failed) } finally { setActionLoading(null) }
     }
 
-    const permanentDelete = async () => {
-        const { planId, planTitle } = confirmState
-        setActionLoading(planId)
-        try {
-            const res = await fetch(`/api/trash?planId=${planId}`, {
-                method: 'DELETE',
-            })
-
-            if (res.ok) {
-                toast.success(`"${planTitle}" berhasil dihapus permanen`)
-                fetchTrash()
-                closeConfirm()
-            } else {
-                const data = await res.json()
-                toast.error(data.error || 'Gagal menghapus plan')
-            }
-        } catch (error) {
-            toast.error('Terjadi kesalahan')
-        } finally {
-            setActionLoading(null)
-        }
-    }
-
-    if (status === 'loading' || loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 animate-spin text-primary-600 mx-auto" />
-                    <p className="mt-4 text-gray-600">Memuat trash...</p>
-                </div>
-            </div>
-        )
-    }
+    if (loading) return <div className="min-h-screen bg-white flex items-center justify-center font-bold font-black"><Loader2 className="w-10 h-10 animate-spin text-primary-600" /></div>
 
     return (
-        <>
-            {/* Confirmation Modal */}
-            <ConfirmModal
-                isOpen={confirmState.type !== null}
-                onClose={closeConfirm}
-                onConfirm={handleConfirm}
-                title={confirmState.type === 'restore' ? 'Restore Plan?' : 'Hapus Permanen?'}
-                message={
-                    confirmState.type === 'restore'
-                        ? `"${confirmState.planTitle}" akan dikembalikan ke dashboard.`
-                        : `"${confirmState.planTitle}" akan dihapus PERMANEN.\n\nSemua data termasuk peserta, pengeluaran, dan iuran akan dihapus. Aksi ini tidak dapat dibatalkan!`
-                }
-                confirmText={confirmState.type === 'restore' ? 'Ya, Restore' : 'Ya, Hapus Permanen'}
-                cancelText="Batal"
-                variant={confirmState.type === 'restore' ? 'info' : 'danger'}
-                loading={actionLoading === confirmState.planId}
-            />
+        <div className="min-h-screen bg-white font-bold">
+            <ConfirmModal isOpen={confirmState.type !== null} onClose={() => setConfirmState({ type: null, planId: '', planTitle: '' })} onConfirm={handleConfirm} title={confirmState.type === 'restore' ? 'RESTORE PLAN?' : 'DELETE PERMANENTLY?'} message={confirmState.type === 'restore' ? `"${confirmState.planTitle}" will return to dashboard.` : `"${confirmState.planTitle}" will be GONE FOREVER.`} confirmText={confirmState.type === 'restore' ? 'RESTORE' : 'DELETE FOREVER'} cancelText={t.common.cancel} variant={confirmState.type === 'restore' ? 'info' : 'danger'} loading={actionLoading === confirmState.planId} />
 
-            <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100">
-                <div className="max-w-4xl mx-auto px-4 py-8">
-                    {/* Header */}
-                    <div className="mb-8">
-                        <Link
-                            href="/dashboard"
-                            className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
-                        >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Kembali ke Dashboard
-                        </Link>
-                        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                            <Trash2 className="w-8 h-8 text-red-500" />
-                            Trash
-                        </h1>
-                        <p className="text-gray-600 mt-2">
-                            Plan yang dihapus akan tersimpan di sini selama 1 menit sebelum dihapus permanen.
-                        </p>
-                    </div>
+            <div className="max-w-4xl mx-auto px-6 py-12">
+                <Link href="/dashboard" className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-10 font-black uppercase text-[10px] tracking-widest group transition-all"><ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> {t.common.back}</Link>
 
-                    {/* Trash List */}
-                    {trashedPlans.length === 0 ? (
-                        <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-                            <Trash2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                Trash kosong
-                            </h3>
-                            <p className="text-gray-500">
-                                Tidak ada plan yang dihapus saat ini.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {trashedPlans.map((plan) => (
-                                <div
-                                    key={plan._id}
-                                    className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 hover:shadow-md transition-shadow"
-                                >
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1">
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                                                {plan.title}
-                                            </h3>
-                                            <p className="text-sm text-gray-500 mb-2">
-                                                📍 {plan.destination}
-                                            </p>
-                                            <div className="flex items-center gap-4 text-sm flex-wrap">
-                                                <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-                                                    <Clock className="w-4 h-4" />
-                                                    {plan.remainingFormatted}
-                                                </span>
-                                                <span className="text-gray-400">
-                                                    Dihapus: {new Date(plan.deletedAt).toLocaleDateString('id-ID', {
-                                                        day: 'numeric',
-                                                        month: 'short',
-                                                        year: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                            {/* Restore Button */}
-                                            <button
-                                                onClick={() => openConfirm('restore', plan._id, plan.title)}
-                                                disabled={actionLoading === plan._id}
-                                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                {actionLoading === plan._id ? (
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                ) : (
-                                                    <RotateCcw className="w-4 h-4" />
-                                                )}
-                                                <span className="hidden sm:inline">Restore</span>
-                                            </button>
-
-                                            {/* Permanent Delete Button */}
-                                            <button
-                                                onClick={() => openConfirm('delete', plan._id, plan.title)}
-                                                disabled={actionLoading === plan._id}
-                                                className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                                <span className="hidden sm:inline">Hapus</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Warning */}
-                    <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-amber-800">
-                            <strong>Perhatian:</strong> Plan yang sudah melewati batas waktu akan dihapus secara otomatis
-                            beserta semua data terkait (peserta, pengeluaran, iuran, dll).
-                        </div>
-                    </div>
+                <div className="flex items-center gap-5 mb-12">
+                    <div className="w-14 h-14 bg-rose-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shadow-rose-100"><Trash2 className="w-7 h-7" /></div>
+                    <div><h1 className="text-4xl font-black uppercase tracking-tight">{language === 'id' ? 'Tong Sampah' : 'Bin'}</h1><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'id' ? 'TEMPAT RENCANA YANG DIHAPUS' : 'WASTE BASKET'}</p></div>
                 </div>
+
+                {trashedPlans.length === 0 ? (
+                    <div className="bg-gray-50 rounded-[4rem] p-24 text-center border border-gray-100 font-bold"><Trash2 className="w-16 h-16 text-gray-200 mx-auto mb-6" /><h3 className="text-xl font-black uppercase tracking-tight text-gray-900 mb-2">{language === 'id' ? 'TRASH KOSONG' : 'BIN IS EMPTY'}</h3><p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{language === 'id' ? 'TIDAK ADA RENCANA DI SINI' : 'NOTHING TO SEE HERE'}</p></div>
+                ) : (
+                    <div className="space-y-6">
+                        {trashedPlans.map(plan => (
+                            <div key={plan._id} className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 flex flex-col sm:flex-row items-center justify-between gap-8">
+                                <div className="flex-1"><h3 className="text-xl font-black uppercase tracking-tight text-gray-900 mb-2">{plan.title}</h3><p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">{plan.destination}</p><div className="flex items-center gap-4"><div className="px-4 py-1.5 bg-rose-50 text-rose-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2"><Clock className="w-4 h-4" /> {plan.remainingFormatted}</div><span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">{language === 'id' ? 'Dihapus pada' : 'Deleted at'} {new Date(plan.deletedAt).toLocaleDateString()}</span></div></div>
+                                <div className="flex items-center gap-3"><button onClick={() => setConfirmState({ type: 'restore', planId: plan._id, planTitle: plan.title })} className="px-8 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-primary-100 hover:bg-primary-700 transition-all flex items-center gap-3"><RotateCcw className="w-5 h-5" /> RESTORE</button><button onClick={() => setConfirmState({ type: 'delete', planId: plan._id, planTitle: plan.title })} className="p-4 bg-gray-50 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all"><Trash2 className="w-5 h-5" /></button></div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="mt-12 p-8 bg-amber-50 rounded-[2.5rem] border border-amber-100 flex items-start gap-5"><AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" /><div className="space-y-2"><p className="text-[10px] font-black text-amber-800 uppercase tracking-widest">{language === 'id' ? 'PENTING' : 'IMPORTANT'}</p><p className="text-[11px] font-bold text-amber-900/60 uppercase leading-relaxed">{language === 'id' ? 'DATA DI SINI AKAN DIHAPUS PERMANEN SECARA OTOMATIS JIKA WAKTUNYA HABIS.' : 'DATA HERE WILL BE PERMANENTLY DELETED AUTOMATICALLY ONCE THE TIMER RUNS OUT.'}</p></div></div>
             </div>
-        </>
+        </div>
     )
 }

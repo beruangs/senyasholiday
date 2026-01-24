@@ -40,30 +40,50 @@ export async function PUT(
         }
 
         const body = await request.json()
-        const { role } = body
+        const { role, password } = body
 
-        // Validate role
-        if (!['user', 'sen_user', 'superadmin'].includes(role)) {
-            return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+        const updateData: any = {}
+
+        // Validate and add role if provided
+        if (role) {
+            if (!['user', 'sen_user', 'superadmin'].includes(role)) {
+                return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+            }
+            // Prevent demoting yourself (only for database users)
+            const isEnvAdmin = session.user.id.startsWith('env-')
+            if (!isEnvAdmin && params.id === session.user.id && role !== 'superadmin') {
+                return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 })
+            }
+            updateData.role = role
         }
 
-        // Prevent demoting yourself (only for database users)
-        const isEnvAdmin = session.user.id.startsWith('env-')
-        if (!isEnvAdmin && params.id === session.user.id && role !== 'superadmin') {
-            return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 })
+        // Add password if provided (it will be hashed by the model's pre-save middleware)
+        if (password) {
+            if (password.length < 6) {
+                return NextResponse.json({ error: 'Password minimal 6 karakter' }, { status: 400 })
+            }
+            updateData.password = password
         }
 
-        const user = await User.findByIdAndUpdate(
-            params.id,
-            { role },
-            { new: true }
-        ).select('-password')
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'No data to update' }, { status: 400 })
+        }
 
+        // We use findOne and then save() to trigger the pre-save middleware for password hashing
+        const user = await User.findById(params.id)
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
-        return NextResponse.json(user)
+        if (updateData.role) user.role = updateData.role
+        if (updateData.password) user.password = updateData.password
+
+        await user.save()
+
+        // Return user without password
+        const updatedUser = await User.findById(params.id).select('-password')
+
+        return NextResponse.json(updatedUser)
     } catch (error) {
         console.error('Error updating user:', error)
         return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })

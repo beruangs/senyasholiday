@@ -88,12 +88,13 @@ export async function GET() {
         const isOwner = plan.ownerId?._id?.toString() === userId
         const isAdmin = plan.adminIds?.some((admin: any) => admin._id?.toString() === userId) || false
         const canEdit = isOwner || isAdmin || (isSenPlan && (dbUserRole === 'sen_user' || dbUserRole === 'superadmin' || isEnvAdmin))
+        const isSuperadmin = dbUserRole === 'superadmin' || isEnvAdmin
 
         return {
           ...plan,
           _id: plan._id.toString(),
           hasPassword: !!plan.password,
-          password: undefined,
+          password: isSuperadmin ? plan.password : undefined,
           isOwner: isOwner || (isSenPlan && isEnvAdmin), // Env admins are treated as owners for SEN plans
           isAdmin,
           isSenPlan,

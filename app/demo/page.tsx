@@ -3,386 +3,87 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import {
-    Calendar, Users, DollarSign, FileText,
-    ChevronDown, ChevronRight, Check,
-    ArrowRight, Sparkles, Play, Info,
-    MapPin, Clock, Wallet, UserPlus
-} from 'lucide-react'
+import { Calendar, Users, DollarSign, ChevronDown, Check, ArrowRight, Sparkles, Play, MapPin, Wallet, CheckSquare, Receipt, StickyNote, Globe, ShieldCheck } from 'lucide-react'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function DemoPage() {
-    const [activeTab, setActiveTab] = useState<'rundown' | 'expenses' | 'contributions' | 'participants'>('rundown')
+    const { language, t } = useLanguage()
+    const [activeTab, setActiveTab] = useState<'rundown' | 'keuangan' | 'checklist' | 'splitbill' | 'notes'>('rundown')
     const [openSection, setOpenSection] = useState<string | null>('intro')
 
     const demoData = {
-        plan: {
-            title: 'Liburan ke Bali 2024',
-            destination: 'Bali, Indonesia',
-            startDate: '15 Maret 2024',
-            endDate: '18 Maret 2024',
-            participants: ['Andi', 'Budi', 'Caca', 'Dedi'],
-        },
-        rundowns: [
-            {
-                day: 1, date: '15 Maret', activities: [
-                    { time: '08:00', activity: 'Berangkat dari Jakarta', location: 'Bandara Soekarno-Hatta' },
-                    { time: '10:30', activity: 'Tiba di Bali', location: 'Bandara Ngurah Rai' },
-                    { time: '12:00', activity: 'Check-in Villa', location: 'Seminyak' },
-                    { time: '19:00', activity: 'Dinner', location: 'La Plancha Beach Bar' },
-                ]
-            },
-            {
-                day: 2, date: '16 Maret', activities: [
-                    { time: '06:00', activity: 'Sunrise Trip', location: 'Gunung Batur' },
-                    { time: '14:00', activity: 'Tirta Empul', location: 'Tampaksiring' },
-                    { time: '20:00', activity: 'BBQ Night', location: 'Villa' },
-                ]
-            },
-        ],
-        expenses: [
-            { name: 'Villa 3 Malam', total: 3000000, perPerson: 750000, collector: 'Andi' },
-            { name: 'Tiket Pesawat PP', total: 4000000, perPerson: 1000000, collector: 'Budi' },
-            { name: 'Sewa Motor', total: 600000, perPerson: 150000, collector: 'Andi' },
-            { name: 'Makan-makan', total: 1200000, perPerson: 300000, collector: 'Caca' },
-        ],
-        contributions: [
-            { name: 'Andi', total: 2200000, paid: 2200000, status: 'Lunas' },
-            { name: 'Budi', total: 2200000, paid: 1500000, status: 'Sebagian' },
-            { name: 'Caca', total: 2200000, paid: 2200000, status: 'Lunas' },
-            { name: 'Dedi', total: 2200000, paid: 0, status: 'Belum' },
-        ],
+        plan: { title: 'Bali Escape 2024: The Ultimate Vibes', destination: 'Seminyak & Ubud, Bali', startDate: '15 Maret 2024', endDate: '18 Maret 2024', participants: ['Jeje (Admin)', 'Budi', 'Caca', 'Dedi'], },
+        rundowns: [{ day: 1, date: '15 Maret', activities: [{ time: '08:00', activity: language === 'id' ? 'Berangkat dari Jakarta' : 'Depart from Jakarta', location: language === 'id' ? 'Bandara Soekarno-Hatta' : 'Soekarno-Hatta Airport', notes: language === 'id' ? 'Kumpul di Terminal 3 Gate 5' : 'Meet at Terminal 3 Gate 5' }, { time: '10:30', activity: language === 'id' ? 'Tiba di Bali' : 'Arrive in Bali', location: language === 'id' ? 'Bandara Ngurah Rai' : 'Ngurah Rai Airport', notes: language === 'id' ? 'Sewa mobil sudah standby' : 'Car rental is standby' }, { time: '12:00', activity: 'Check-in Tropical Villa', location: 'Seminyak', notes: language === 'id' ? 'Deposit 1jt (sudah masuk budget)' : '1M deposit (included in budget)' }, { time: '19:00', activity: 'Sunset Dinner', location: 'La Plancha Beach Bar', notes: language === 'id' ? 'Booking atas nama Jeje' : 'Booking under Jeje' },] }, { day: 2, date: '16 Maret', activities: [{ time: '09:00', activity: 'Brunch & Relax', location: 'Sisterfields', notes: language === 'id' ? 'Cobain smoothie bowl-nya!' : 'Try the smoothie bowl!' }, { time: '14:00', activity: 'Uluwatu Sunset Trip', location: 'Pura Uluwatu', notes: language === 'id' ? 'Hati-hati kera-nya galak' : 'Beware of aggressive monkeys' }, { time: '20:00', activity: 'Seafood Dinner', location: 'Jimbaran', notes: language === 'id' ? 'Liat tarian Kecak dulu' : 'Watch Kecak dance first' },] },],
+        expenses: [{ name: 'Villa Tropical 3 Malam', total: 6000000, perPerson: 1500000, collector: 'Jeje' }, { name: language === 'id' ? 'Tiket Pesawat PP (Group Buy)' : 'Round-trip Flight (Group Buy)', total: 4000000, perPerson: 1000000, collector: 'Budi' }, { name: language === 'id' ? 'Sewa Mobil & Driver (4 Hari)' : 'Car Rental & Driver (4 Days)', total: 1200000, perPerson: 300000, collector: 'Jeje' }, { name: language === 'id' ? 'Deposit Aktivitas @ Ubud' : 'Activity Deposit @ Ubud', total: 800000, perPerson: 200000, collector: 'Caca' },],
+        contributions: [{ name: 'Jeje', total: 3000000, paid: 3000000, status: language === 'id' ? 'Lunas' : 'Paid' }, { name: 'Budi', total: 3000000, paid: 2000000, status: language === 'id' ? 'Sebagian' : 'Partial' }, { name: 'Caca', total: 3000000, paid: 3000000, status: language === 'id' ? 'Lunas' : 'Paid' }, { name: 'Dedi', total: 3000000, paid: 0, status: language === 'id' ? 'Belum' : 'Unpaid' },],
+        checklist: [{ item: language === 'id' ? 'Paspor & Tiket Pesawat' : 'Passport & Flight Tickets', completed: true, category: language === 'id' ? 'Dokumen' : 'Documents' }, { item: language === 'id' ? 'Sunblock & Sunglasses' : 'Sunblock & Sunglasses', completed: true, category: 'Packing' }, { item: language === 'id' ? 'Powerbank & Charger' : 'Powerbank & Charger', completed: false, category: 'Packing' }, { item: language === 'id' ? 'Tuker Uang Cash' : 'Exchange Cash', completed: false, category: language === 'id' ? 'Persiapan' : 'Preparation' },],
+        splitBills: [{ title: 'Dinner Jimbaran Seafood', total: 1200000, payer: 'Jeje', splitWith: ['Jeje', 'Budi', 'Caca', 'Dedi'] }, { title: 'Laundry & Snack Villa', total: 200000, payer: 'Caca', splitWith: ['Caca', 'Dedi'] },],
+        notes: language === 'id' ? `💡 Tips buat Trip Bali:\n- Pakai Sunblock SPF 50+ (Panas rek!)\n- Driver kita namanya Bli Kadek (HP: 0812-xxxx)\n- Jangan lupa bawa baju ganti kalo ke Uluwatu` : `💡 Tips for Bali Trip:\n- Use Sunblock SPF 50+ (It's hot!)\n- Our driver's name is Bli Kadek (Phone: 0812-xxxx)\n- Don't forget to bring extra clothes to Uluwatu`
     }
 
     const features = [
-        {
-            id: 'intro',
-            icon: Sparkles,
-            title: 'Apa itu Holiday Planner?',
-            content: `Holiday Planner adalah aplikasi untuk merencanakan liburan bersama teman-teman dengan mudah. 
-      Kamu bisa membuat jadwal perjalanan, mencatat semua pengeluaran, dan membagi biaya secara otomatis ke semua peserta.
-      
-      Tidak perlu lagi repot pakai spreadsheet atau hitung manual!`
-        },
-        {
-            id: 'rundown',
-            icon: Calendar,
-            title: 'Tab Rundown - Jadwal Perjalanan',
-            content: `Di sini kamu buat jadwal lengkap perjalanan per hari. Setiap aktivitas bisa diisi:
-      • Waktu kegiatan
-      • Nama aktivitas
-      • Lokasi
-      • Catatan tambahan
-      
-      Semua peserta bisa lihat jadwal ini kapan saja!`
-        },
-        {
-            id: 'expenses',
-            icon: DollarSign,
-            title: 'Tab Keuangan - Catat Pengeluaran',
-            content: `Catat semua pengeluaran liburan di sini:
-      • Nama item (Villa, Tiket, dll)
-      • Harga dan quantity
-      • Siapa yang mengumpulkan uang (Collector)
-      • Peserta mana saja yang ikut patungan
-      
-      Total otomatis dihitung dan dibagi rata ke peserta!`
-        },
-        {
-            id: 'contributions',
-            icon: Wallet,
-            title: 'Tab Iuran - Kelola Pembayaran',
-            content: `Fitur andalan! Di sini kamu bisa:
-      • Lihat total iuran per peserta
-      • Input pembayaran yang sudah masuk
-      • Set "Batas Bayar" untuk peserta tertentu (misal: ada yang budget terbatas)
-      • Otomatis redistribusi ke peserta lain jika ada yang bayar kurang
-      
-      Semua perubahan tercatat di History!`
-        },
-        {
-            id: 'multiAdmin',
-            icon: UserPlus,
-            title: 'Fitur Multi-Admin',
-            content: `Kamu bisa mengundang teman untuk jadi admin plan:
-      • Cukup masukkan username mereka (@username)
-      • Mereka bisa mengedit plan sama seperti kamu
-      • Plan akan muncul di dashboard mereka juga
-      
-      Cocok untuk kerja sama mengatur liburan!`
-        },
+        { id: 'intro', icon: Sparkles, title: t.demo.planner_all_in_one, content: language === 'id' ? 'SEN YAS DADDY bukan sekadar katalog liburan. Ini adalah sistem "Pustaka Kendali" pribadi kamu.' : 'SEN YAS DADDY is your personal "Library of Control" for seamless trips.' },
+        { id: 'rundown', icon: Calendar, title: t.demo.rundown_smart, content: language === 'id' ? 'Atur jadwal harian dengan presisi menit. Tambahkan lokasi dan catatan khusus.' : 'Manage daily schedules with minute precision and added locations.' },
+        { id: 'splitbill', icon: Receipt, title: t.demo.split_bill_adv, content: language === 'id' ? 'Bagi tagihan makan atau belanjaan secara item-by-item dengan mudah.' : 'Split dining or shopping bills item-by-item with ease.' },
+        { id: 'keuangan', icon: Wallet, title: t.demo.budgeting_dynamic, content: language === 'id' ? 'Lihat siapa yang sudah bayar iuran dan biarkan sistem menghitung semuanya.' : 'See contribution status and let the system handle the math.' },
     ]
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-            {/* Header */}
-            <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                    <Link href="/" className="flex items-center gap-2">
-                        <Image
-                            src="/logo.png"
-                            alt="SEN YAS DADDY"
-                            width={36}
-                            height={36}
-                            className="rounded-lg"
-                        />
-                        <span className="font-bold text-gray-900">SEN YAS DADDY</span>
-                    </Link>
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href="/login"
-                            className="text-gray-600 hover:text-gray-900 font-medium"
-                        >
-                            Masuk
-                        </Link>
-                        <Link
-                            href="/signup"
-                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
-                        >
-                            Daftar
-                        </Link>
-                    </div>
-                </div>
-            </header>
+        <div className="min-h-screen bg-gray-50/30 font-bold">
+            <header className="bg-white border-b border-gray-100 sticky top-0 z-50"><div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center"><Link href="/" className="flex items-center gap-2"><Image src="/logo.png" alt="LOGO" width={32} height={32} className="rounded-lg shadow-inner" /><span className="font-black text-gray-900 text-base uppercase tracking-tight">SEN YAS DADDY</span></Link><div className="flex items-center gap-2"><Link href="/login" className="px-4 py-2 text-[9px] font-black text-gray-400 hover:text-gray-900 uppercase tracking-widest transition-all">{language === 'id' ? 'MASUK' : 'LOGIN'}</Link><Link href="/signup" className="px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-black text-[9px] uppercase tracking-widest shadow-lg shadow-primary-50">{t.home.start_now}</Link></div></div></header>
 
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                {/* Page Title */}
-                <div className="text-center mb-12">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 text-primary-700 rounded-full text-sm font-medium mb-4">
-                        <Play className="w-4 h-4" />
-                        Mode Demo Interaktif
-                    </div>
-                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                        {demoData.plan.title}
-                    </h1>
-                    <p className="text-gray-600 flex items-center justify-center gap-4 flex-wrap">
-                        <span className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            {demoData.plan.destination}
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {demoData.plan.startDate} - {demoData.plan.endDate}
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <Users className="w-4 h-4" />
-                            {demoData.plan.participants.length} peserta
-                        </span>
-                    </p>
+            <div className="max-w-7xl mx-auto px-6 py-10 md:py-16">
+                <div className="relative rounded-[3rem] bg-gray-900 p-10 md:p-16 text-white mb-16 shadow-2xl overflow-hidden border border-gray-800">
+                    <div className="absolute inset-0 opacity-[0.05]"><Globe className="w-[40rem] h-[40rem] -bottom-20 -right-20 absolute" /></div>
+                    <div className="relative z-10"><div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-600 rounded-full text-[9px] font-black uppercase tracking-widest mb-8"><Play className="w-3 h-3 fill-white" /> {t.demo.title}</div><h1 className="text-3xl md:text-6xl font-black mb-8 leading-none tracking-tighter uppercase">{demoData.plan.title}</h1><div className="flex flex-wrap gap-6 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                        <span className="flex items-center gap-2 text-primary-400"><MapPin className="w-4 h-4" /> {demoData.plan.destination}</span>
+                        <span className="flex items-center gap-2"><Calendar className="w-4 h-4" /> {demoData.plan.startDate} - {demoData.plan.endDate}</span>
+                        <span className="flex items-center gap-2"><Users className="w-4 h-4" /> {demoData.plan.participants.length} {language === 'id' ? 'PESERTA' : 'GUESTS'}</span>
+                    </div></div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Side - Feature Explanations */}
-                    <div className="lg:col-span-1 space-y-3">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <Info className="w-5 h-5 text-primary-600" />
-                            Panduan Fitur
-                        </h2>
-
-                        {features.map((feature) => (
-                            <div key={feature.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                                <button
-                                    onClick={() => setOpenSection(openSection === feature.id ? null : feature.id)}
-                                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${openSection === feature.id ? 'bg-primary-100' : 'bg-gray-100'}`}>
-                                            <feature.icon className={`w-4 h-4 ${openSection === feature.id ? 'text-primary-600' : 'text-gray-600'}`} />
-                                        </div>
-                                        <span className="font-medium text-gray-900 text-sm">{feature.title}</span>
-                                    </div>
-                                    <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openSection === feature.id ? 'rotate-180' : ''}`} />
-                                </button>
-
-                                <div className={`transition-all duration-300 ${openSection === feature.id ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
-                                    <div className="px-4 pb-4 text-sm text-gray-600 whitespace-pre-line">
-                                        {feature.content}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-
-                        {/* CTA */}
-                        <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-5 text-white mt-6">
-                            <h3 className="font-semibold mb-2">Tertarik?</h3>
-                            <p className="text-sm text-primary-100 mb-4">
-                                Daftar gratis dan buat plan liburanmu sendiri!
-                            </p>
-                            <Link
-                                href="/signup"
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-primary-600 rounded-lg font-medium hover:bg-gray-100 transition-colors"
-                            >
-                                Daftar Sekarang
-                                <ArrowRight className="w-4 h-4" />
-                            </Link>
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
+                    <aside className="space-y-8"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-primary-600"><ShieldCheck className="w-5 h-5" /></div><h2 className="text-sm font-black uppercase tracking-widest text-gray-400">{t.demo.feature_guide}</h2></div><div className="space-y-3">{features.map(f => (
+                        <div key={f.id} className={`bg-white rounded-[1.5rem] border transition-all duration-500 overflow-hidden ${openSection === f.id ? 'border-primary-600 shadow-xl' : 'border-gray-50 hover:border-gray-200'}`}>
+                            <button onClick={() => setOpenSection(openSection === f.id ? null : f.id)} className="w-full px-6 py-4 flex items-center justify-between"><div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${openSection === f.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400'}`}><f.icon className="w-4 h-4" /></div><span className={`text-[9px] font-black uppercase tracking-widest ${openSection === f.id ? 'text-primary-600' : 'text-gray-500'}`}>{f.title}</span></div><ChevronDown className={`w-3.5 h-3.5 transition-transform duration-500 ${openSection === f.id ? 'rotate-180 text-primary-600' : 'text-gray-300'}`} /></button>
+                            {openSection === f.id && <div className="px-6 pb-6 text-[9px] font-bold text-gray-400 uppercase leading-relaxed animate-in slide-in-from-top-2 duration-300">{f.content}</div>}
                         </div>
-                    </div>
+                    ))}</div></aside>
 
-                    {/* Right Side - Demo Content */}
-                    <div className="lg:col-span-2">
-                        {/* Tabs */}
-                        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                            <div className="flex border-b border-gray-200 overflow-x-auto">
-                                {[
-                                    { id: 'rundown', label: 'Rundown', icon: Calendar },
-                                    { id: 'expenses', label: 'Keuangan', icon: DollarSign },
-                                    { id: 'contributions', label: 'Iuran', icon: Wallet },
-                                    { id: 'participants', label: 'Peserta', icon: Users },
-                                ].map((tab) => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTab(tab.id as any)}
-                                        className={`flex-1 min-w-0 px-4 py-3 flex items-center justify-center gap-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                                            ? 'text-primary-600 border-b-2 border-primary-600 bg-primary-50'
-                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                            }`}
-                                    >
-                                        <tab.icon className="w-4 h-4 flex-shrink-0" />
-                                        <span className="hidden sm:inline">{tab.label}</span>
-                                    </button>
-                                ))}
-                            </div>
+                    <main className="lg:col-span-3 space-y-10">
+                        <nav className="p-2 bg-gray-50 rounded-[2rem] flex flex-wrap gap-1 shadow-inner border border-gray-100 overflow-x-auto no-scrollbar">{[
+                            { id: 'rundown', label: 'Rundown', icon: Calendar }, { id: 'keuangan', label: t.demo.finance, icon: DollarSign }, { id: 'checklist', label: t.demo.checklist, icon: CheckSquare }, { id: 'splitbill', label: t.demo.split_bill, icon: Receipt }, { id: 'notes', label: t.demo.notes, icon: StickyNote },
+                        ].map(tab => (<button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-6 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white text-primary-600 shadow-lg scale-105' : 'text-gray-400 hover:text-gray-900 border border-transparent'}`}><tab.icon className="w-3.5 h-3.5" /> {tab.label}</button>))}</nav>
 
-                            <div className="p-6">
-                                {/* Rundown Tab */}
-                                {activeTab === 'rundown' && (
-                                    <div className="space-y-6">
-                                        {demoData.rundowns.map((day) => (
-                                            <div key={day.day}>
-                                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                                    <span className="w-8 h-8 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center text-sm font-bold">
-                                                        {day.day}
-                                                    </span>
-                                                    Hari {day.day} - {day.date}
-                                                </h3>
-                                                <div className="space-y-2 pl-10">
-                                                    {day.activities.map((activity, idx) => (
-                                                        <div key={idx} className="flex gap-4 p-3 bg-gray-50 rounded-lg">
-                                                            <span className="text-sm font-medium text-primary-600 w-12">{activity.time}</span>
-                                                            <div>
-                                                                <p className="font-medium text-gray-900">{activity.activity}</p>
-                                                                <p className="text-sm text-gray-500 flex items-center gap-1">
-                                                                    <MapPin className="w-3 h-3" />
-                                                                    {activity.location}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                        <div className="bg-white rounded-[3rem] border border-gray-100 p-8 md:p-12 shadow-xl min-h-[500px] animate-in slide-in-from-bottom-5 duration-700 relative overflow-hidden">
+                            {activeTab === 'rundown' && (<div className="space-y-12">{demoData.rundowns.map(d => (
+                                <div key={d.day} className="relative"><div className="flex items-center gap-4 mb-8"><div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-lg shadow-primary-50">0{d.day}</div><div><h3 className="text-2xl font-black uppercase tracking-tight text-gray-900 leading-none mb-1">{t.demo.day} 0{d.day}</h3><p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">{d.date}</p></div></div><div className="ml-6 pl-10 border-l-2 border-dashed border-gray-100 space-y-4">{d.activities.map((a, i) => (
+                                    <div key={i} className="bg-gray-50/50 p-6 rounded-[1.5rem] border border-transparent hover:border-primary-50 hover:bg-white hover:shadow-lg transition-all"><div className="flex items-start gap-4"><span className="px-3 py-1 bg-white rounded-lg text-[8px] font-black text-primary-600 border border-gray-100 shadow-sm">{a.time}</span><div className="flex-1"><h4 className="text-lg font-black uppercase tracking-tight text-gray-900 mb-2">{a.activity}</h4><div className="flex flex-wrap gap-4"><div className="flex items-center gap-2 text-[9px] font-black text-gray-400 uppercase tracking-widest"><MapPin className="w-3.5 h-3.5 text-primary-300" /> {a.location}</div><div className="flex items-center gap-2 text-[9px] font-black text-gray-300 uppercase tracking-widest opacity-60"><StickyNote className="w-3.5 h-3.5" /> {a.notes}</div></div></div></div></div>
+                                ))}</div></div>
+                            ))}</div>)}
 
-                                {/* Expenses Tab */}
-                                {activeTab === 'expenses' && (
-                                    <div className="space-y-4">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-4 py-2 text-left font-medium text-gray-600">Item</th>
-                                                    <th className="px-4 py-2 text-right font-medium text-gray-600">Total</th>
-                                                    <th className="px-4 py-2 text-right font-medium text-gray-600">Per Orang</th>
-                                                    <th className="px-4 py-2 text-left font-medium text-gray-600">Pengumpul</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100">
-                                                {demoData.expenses.map((expense, idx) => (
-                                                    <tr key={idx}>
-                                                        <td className="px-4 py-3 font-medium text-gray-900">{expense.name}</td>
-                                                        <td className="px-4 py-3 text-right text-gray-600">
-                                                            Rp {expense.total.toLocaleString('id-ID')}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right text-primary-600 font-medium">
-                                                            Rp {expense.perPerson.toLocaleString('id-ID')}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-gray-600">{expense.collector}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                            <tfoot className="bg-gray-100 font-semibold">
-                                                <tr>
-                                                    <td className="px-4 py-3">Total</td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        Rp {demoData.expenses.reduce((sum, e) => sum + e.total, 0).toLocaleString('id-ID')}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right text-primary-600">
-                                                        Rp {demoData.expenses.reduce((sum, e) => sum + e.perPerson, 0).toLocaleString('id-ID')}
-                                                    </td>
-                                                    <td></td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                )}
+                            {activeTab === 'keuangan' && (<div className="space-y-12"><section><h3 className="text-xl font-black uppercase tracking-tight mb-8 text-gray-900">{language === 'id' ? 'Daftar Pengeluaran' : 'Expense List'}</h3><div className="overflow-x-auto rounded-[1.5rem] border border-gray-50 shadow-sm"><table className="w-full text-left uppercase text-[9px]">
+                                <thead><tr className="bg-gray-50 border-b border-gray-100"><th className="px-6 py-4 font-black tracking-widest text-gray-400">Item</th><th className="px-6 py-4 font-black tracking-widest text-gray-400 text-right">Total</th><th className="px-6 py-4 font-black tracking-widest text-gray-400 text-right">{language === 'id' ? 'Per Orang' : 'Per Head'}</th><th className="px-6 py-4 font-black tracking-widest text-gray-400">Pengepul</th></tr></thead>
+                                <tbody className="divide-y divide-gray-50">{demoData.expenses.map((e, i) => (<tr key={i} className="hover:bg-primary-50/20 transition-all font-black"><td className="px-6 py-5 text-gray-900">{e.name}</td><td className="px-6 py-5 text-right text-gray-900">RP {e.total.toLocaleString()}</td><td className="px-6 py-5 text-right"><span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-full">RP {e.perPerson.toLocaleString()}</span></td><td className="px-6 py-5 flex items-center gap-2"><div className="w-5 h-5 bg-primary-600 text-white rounded flex items-center justify-center text-[7px]">@</div><span className="text-gray-400">{e.collector.toLowerCase()}</span></td></tr>))}</tbody>
+                            </table></div></section><section><h3 className="text-xl font-black uppercase tracking-tight mb-8 text-gray-900">{language === 'id' ? 'Matrik Iuran' : 'Contribution Matrix'}</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{demoData.contributions.map((c, i) => (
+                                <div key={i} className="bg-gray-50/50 p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:bg-white transition-all"><div className="flex justify-between items-center mb-6 font-black"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white text-sm">@</div><span className="uppercase tracking-tight text-gray-900 text-sm">{c.name}</span></div><span className={`px-3 py-1 rounded-full text-[8px] uppercase tracking-widest ${c.status === 'Lunas' || c.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{c.status}</span></div><div className="flex justify-between text-[9px] font-black uppercase tracking-widest mb-1.5"><span className="text-gray-400">HARUS</span><span className="text-gray-900 font-bold">RP {c.total.toLocaleString()}</span></div><div className="flex justify-between text-[10px] font-black uppercase tracking-widest"><span className="text-primary-600">BAYAR</span><span className="text-primary-600 font-bold">RP {c.paid.toLocaleString()}</span></div></div>
+                            ))}</div></section></div>)}
 
-                                {/* Contributions Tab */}
-                                {activeTab === 'contributions' && (
-                                    <div className="space-y-3">
-                                        {demoData.contributions.map((contrib, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center font-semibold text-primary-600">
-                                                        {contrib.name[0]}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-gray-900">{contrib.name}</p>
-                                                        <p className="text-sm text-gray-500">
-                                                            Harus bayar: Rp {contrib.total.toLocaleString('id-ID')}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="font-medium text-green-600">
-                                                        Rp {contrib.paid.toLocaleString('id-ID')}
-                                                    </p>
-                                                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${contrib.status === 'Lunas' ? 'bg-green-100 text-green-700' :
-                                                        contrib.status === 'Sebagian' ? 'bg-yellow-100 text-yellow-700' :
-                                                            'bg-red-100 text-red-700'
-                                                        }`}>
-                                                        {contrib.status}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
+                            {activeTab === 'checklist' && (<div><h3 className="text-xl font-black uppercase tracking-tight mb-8 text-gray-900">{language === 'id' ? 'Persiapan Trip' : 'Trip Preparation'}</h3><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{demoData.checklist.map((it, i) => (
+                                <div key={i} className={`flex items-center gap-4 p-6 rounded-[1.5rem] border transition-all duration-500 font-black uppercase ${it.completed ? 'bg-gray-50/50 text-gray-300 border-transparent' : 'bg-white border-gray-100 shadow-lg shadow-gray-50'}`}><div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white transition-all ${it.completed ? 'bg-emerald-100 text-emerald-600 shadow-sm' : 'bg-gray-50 text-gray-200'}`}>{it.completed && <Check className="w-4 h-4" />}</div><div className="flex-1"><p className={`text-sm tracking-tight mb-0.5 ${it.completed ? 'line-through' : 'text-gray-900'}`}>{it.item}</p><span className="text-[7px] tracking-[0.2em] text-primary-300">{it.category}</span></div></div>
+                            ))}</div></div>)}
 
-                                        <div className="mt-4 p-4 bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg text-white">
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="text-primary-100 text-sm">Total Terkumpul</p>
-                                                    <p className="text-2xl font-bold">
-                                                        Rp {demoData.contributions.reduce((sum, c) => sum + c.paid, 0).toLocaleString('id-ID')}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-primary-100 text-sm">Kurang</p>
-                                                    <p className="text-xl font-semibold">
-                                                        Rp {(demoData.contributions.reduce((sum, c) => sum + c.total, 0) - demoData.contributions.reduce((sum, c) => sum + c.paid, 0)).toLocaleString('id-ID')}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                            {activeTab === 'splitbill' && (<div><h3 className="text-xl font-black uppercase tracking-tight mb-8 text-gray-900">Itemized Split Bill</h3><div className="space-y-6">{demoData.splitBills.map((b, i) => (
+                                <div key={i} className="bg-white border-2 border-gray-50 rounded-[2rem] p-8 shadow-sm hover:shadow-xl transition-all border-l-[8px] border-l-primary-600"><div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"><div><h4 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-1.5 leading-tight">{b.title}</h4><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{language === 'id' ? 'DIBAYAR OLEH' : 'PAID BY'} <span className="text-primary-600">{b.payer}</span></p></div><p className="text-3xl font-black text-gray-900 tracking-tighter leading-none">RP {b.total.toLocaleString()}</p></div><div className="flex flex-wrap items-center gap-2 font-black">{b.splitWith.map(n => (<span key={n} className="px-3 py-1 bg-gray-50 rounded-xl text-[8px] text-gray-400 uppercase tracking-widest">@{n.toLowerCase()}</span>))}<div className="md:ml-auto text-[10px] uppercase tracking-widest text-primary-600">{language === 'id' ? 'Masing' : 'Each'}: <span className="text-base">RP {(b.total / b.splitWith.length).toLocaleString()}</span></div></div></div>
+                            ))}</div></div>)}
 
-                                {/* Participants Tab */}
-                                {activeTab === 'participants' && (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {demoData.plan.participants.map((name, idx) => (
-                                            <div key={idx} className="text-center p-4 bg-gray-50 rounded-xl">
-                                                <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white text-2xl font-bold">
-                                                    {name[0]}
-                                                </div>
-                                                <p className="font-medium text-gray-900">{name}</p>
-                                                <p className="text-xs text-gray-500">Peserta</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                            {activeTab === 'notes' && (<div><h3 className="text-xl font-black uppercase tracking-tight mb-8 text-gray-900">{t.plan.notes}</h3><div className="bg-amber-50/30 border-2 border-amber-100/50 rounded-[2.5rem] p-10 relative"><StickyNote className="absolute top-8 right-8 w-10 h-10 text-amber-100" /><p className="text-base font-black uppercase tracking-tight text-gray-600 leading-relaxed whitespace-pre-line">{demoData.notes}</p></div></div>)}
                         </div>
-                    </div>
+                    </main>
                 </div>
             </div>
+
+            <footer className="py-24 bg-gray-50 mx-6 rounded-[4rem] border border-gray-100 text-center font-bold mb-16 shadow-sm"><h2 className="text-3xl md:text-6xl font-black tracking-tighter text-gray-900 mb-10 uppercase leading-none">{language === 'id' ? 'Bosan Repot Ngatur Trip?' : 'Bored with Trip Hassles?'} <br /><span className="text-primary-600">{language === 'id' ? 'Pakai SEN Sekarang!' : 'Use SEN Now!'}</span></h2><div className="flex flex-wrap justify-center gap-4"><Link href="/signup" className="px-12 py-5 bg-primary-600 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-primary-500/10 hover:bg-primary-700 transition-all">{language === 'id' ? 'DAFTAR SEKARANG' : 'SIGN UP NOW'}</Link><Link href="/" className="px-12 py-5 bg-white border border-gray-100 text-gray-400 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs hover:bg-gray-100 transition-all">{language === 'id' ? 'KEMBALI KE HOME' : 'BACK TO HOME'}</Link></div></footer>
         </div>
     )
 }

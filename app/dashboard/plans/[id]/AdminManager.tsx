@@ -1,433 +1,91 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { UserPlus, X, Crown, User, Check, Loader2, AtSign, Trash2, Clock, XCircle } from 'lucide-react'
+import { UserPlus, X, Crown, User, Check, Loader2, AtSign, Trash2, Clock, XCircle, Shield } from 'lucide-react'
 import { toast } from 'sonner'
-import ConfirmModal from '@/components/ConfirmModal'
+import { useLanguage } from '@/context/LanguageContext'
 
-interface Admin {
-    _id: string
-    username: string
-    name: string
-    status?: 'confirmed' | 'pending'
-}
-
-interface AdminManagerProps {
-    planId: string
-    isOwner: boolean
-    isSenPlan?: boolean
-    userRole?: string
-}
+interface Admin { _id: string; username: string; name: string; status?: 'confirmed' | 'pending'; }
+interface AdminManagerProps { planId: string; isOwner: boolean; isSenPlan?: boolean; userRole?: string; }
 
 export default function AdminManager({ planId, isOwner, isSenPlan, userRole }: AdminManagerProps) {
-    const [owner, setOwner] = useState<Admin | null>(null)
-    const [admins, setAdmins] = useState<Admin[]>([])
-    const [pendingAdmins, setPendingAdmins] = useState<Admin[]>([])
-    const [loading, setLoading] = useState(true)
-
-    // Add admin form
-    const [showAddForm, setShowAddForm] = useState(false)
-    const [usernameInput, setUsernameInput] = useState('')
-    const [checking, setChecking] = useState(false)
-    const [userFound, setUserFound] = useState<Admin | null>(null)
-    const [checkError, setCheckError] = useState('')
-    const [adding, setAdding] = useState(false)
-
-    // Remove confirmation modal
-    const [removeConfirm, setRemoveConfirm] = useState<{
-        isOpen: boolean
-        adminId: string
-        adminName: string
-        type: 'admin' | 'pending'
-    }>({ isOpen: false, adminId: '', adminName: '', type: 'admin' })
-    const [removing, setRemoving] = useState(false)
+    const { language, t } = useLanguage()
+    const [owner, setOwner] = useState<Admin | null>(null); const [admins, setAdmins] = useState<Admin[]>([]); const [pendingAdmins, setPendingAdmins] = useState<Admin[]>([]); const [loading, setLoading] = useState(true)
+    const [showAddForm, setShowAddForm] = useState(false); const [usernameInput, setUsernameInput] = useState(''); const [checking, setChecking] = useState(false); const [userFound, setUserFound] = useState<Admin | null>(null); const [checkError, setCheckError] = useState('')
+    const [adding, setAdding] = useState(false); const [removingId, setRemovingId] = useState<string | null>(null)
 
     const canManage = isOwner || (isSenPlan && userRole === 'superadmin')
-
-    useEffect(() => {
-        fetchAdmins()
-    }, [planId])
+    useEffect(() => { fetchAdmins() }, [planId])
 
     const fetchAdmins = async () => {
         try {
             const res = await fetch(`/api/plans/${planId}/admins`)
-            if (res.ok) {
-                const data = await res.json()
-                setOwner(data.owner)
-                setAdmins(data.admins || [])
-                setPendingAdmins(data.pendingAdmins || [])
-            }
-        } catch {
-            toast.error('Gagal memuat data admin')
-        } finally {
-            setLoading(false)
-        }
+            if (res.ok) { const d = await res.json(); setOwner(d.owner); setAdmins(d.admins || []); setPendingAdmins(d.pendingAdmins || []); }
+        } catch { toast.error(t.common.failed) } finally { setLoading(false) }
     }
 
-    // Check username with debounce
     useEffect(() => {
-        const cleanUsername = usernameInput.trim().toLowerCase().replace(/^@/, '')
-
-        if (cleanUsername.length < 3) {
-            setUserFound(null)
-            setCheckError('')
-            return
-        }
-
-        setChecking(true)
-        setCheckError('')
-        setUserFound(null)
-
+        const clean = usernameInput.trim().toLowerCase().replace(/^@/, '')
+        if (clean.length < 3) { setUserFound(null); setCheckError(''); return; }
+        setChecking(true); setCheckError(''); setUserFound(null);
         const timeout = setTimeout(async () => {
             try {
-                const res = await fetch(`/api/plans/admin-invite?username=${cleanUsername}`)
+                const res = await fetch(`/api/plans/admin-invite?username=${clean}`)
                 const data = await res.json()
-
                 if (data.exists) {
-                    if (data.error) {
-                        setCheckError(data.error)
-                        setUserFound(null)
-                    }
-                    // Check if already owner
-                    else if (owner && data.user.username === owner.username) {
-                        setCheckError('Ini adalah owner plan ini')
-                        setUserFound(null)
-                    }
-                    // Check if already admin
-                    else if (admins.some(a => a.username === data.user.username)) {
-                        setCheckError('User ini sudah menjadi editor')
-                        setUserFound(null)
-                    }
-                    // Check if already pending
-                    else if (pendingAdmins.some(a => a.username === data.user.username)) {
-                        setCheckError('Undangan sudah dikirim, menunggu konfirmasi')
-                        setUserFound(null)
-                    }
-                    else {
-                        setUserFound(data.user)
-                    }
-                } else {
-                    setCheckError('User tidak ditemukan')
-                }
-            } catch {
-                setCheckError('Gagal memeriksa username')
-            } finally {
-                setChecking(false)
-            }
+                    if (data.error) setCheckError(data.error);
+                    else if (owner && data.user.username === owner.username) setCheckError(language === 'id' ? 'Ini Owner' : 'Owner');
+                    else if (admins.some(a => a.username === data.user.username) || pendingAdmins.some(a => a.username === data.user.username)) setCheckError(language === 'id' ? 'Sudah Ada' : 'Exists');
+                    else setUserFound(data.user);
+                } else setCheckError(language === 'id' ? 'Tidak Ada' : 'Not Found');
+            } catch { setCheckError('Error') } finally { setChecking(false) }
         }, 500)
-
         return () => clearTimeout(timeout)
-    }, [usernameInput, owner, admins, pendingAdmins])
+    }, [usernameInput])
 
-    const handleAddAdmin = async () => {
-        if (!userFound) return
-
-        setAdding(true)
+    const handleAdd = async () => {
+        if (!userFound) return; setAdding(true);
         try {
-            const res = await fetch('/api/plans/admin-invite', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ planId, username: userFound.username }),
-            })
-
-            const data = await res.json()
-
-            if (res.ok) {
-                toast.success(`Undangan dikirim ke ${userFound.name}!`)
-                setUsernameInput('')
-                setUserFound(null)
-                setShowAddForm(false)
-                fetchAdmins()
-            } else {
-                toast.error(data.error || 'Gagal mengirim undangan')
-            }
-        } catch {
-            toast.error('Terjadi kesalahan')
-        } finally {
-            setAdding(false)
-        }
+            const res = await fetch('/api/plans/admin-invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId, username: userFound.username }), })
+            if (res.ok) { toast.success(t.common.success); setUsernameInput(''); setUserFound(null); setShowAddForm(false); fetchAdmins(); }
+        } catch { toast.error(t.common.failed) } finally { setAdding(false) }
     }
 
-    const openRemoveConfirm = (adminId: string, adminName: string, type: 'admin' | 'pending') => {
-        setRemoveConfirm({ isOpen: true, adminId, adminName, type })
-    }
-
-    const handleRemoveAdmin = async () => {
-        const { adminId, adminName, type } = removeConfirm
-        setRemoving(true)
-
+    const handleRemove = async (adminId: string, type: 'admin' | 'pending') => {
+        if (!confirm(t.common.confirm_delete)) return; setRemovingId(adminId)
         try {
-            const res = await fetch(
-                `/api/plans/admin-invite?planId=${planId}&userId=${adminId}&type=${type}`,
-                { method: 'DELETE' }
-            )
-
-            if (res.ok) {
-                toast.success(type === 'pending'
-                    ? `Undangan ke ${adminName} dibatalkan`
-                    : `${adminName} dihapus dari editor`
-                )
-                fetchAdmins()
-                setRemoveConfirm({ isOpen: false, adminId: '', adminName: '', type: 'admin' })
-            } else {
-                toast.error('Gagal menghapus')
-            }
-        } catch {
-            toast.error('Terjadi kesalahan')
-        } finally {
-            setRemoving(false)
-        }
+            const res = await fetch(`/api/plans/admin-invite?planId=${planId}&userId=${adminId}&type=${type}`, { method: 'DELETE' })
+            if (res.ok) { toast.success(t.common.success); fetchAdmins(); }
+        } catch { toast.error(t.common.failed) } finally { setRemovingId(null) }
     }
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
-            </div>
-        )
-    }
+    if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-6 w-6 text-primary-600" /></div>
 
     return (
-        <>
-            <ConfirmModal
-                isOpen={removeConfirm.isOpen}
-                onClose={() => setRemoveConfirm({ isOpen: false, adminId: '', adminName: '', type: 'admin' })}
-                onConfirm={handleRemoveAdmin}
-                title={removeConfirm.type === 'pending' ? 'Batalkan Undangan?' : 'Hapus Editor?'}
-                message={removeConfirm.type === 'pending'
-                    ? `Batalkan undangan untuk "${removeConfirm.adminName}"?`
-                    : `Hapus "${removeConfirm.adminName}" dari daftar editor?\n\nMereka tidak akan bisa lagi mengedit plan ini.`
-                }
-                confirmText={removeConfirm.type === 'pending' ? 'Ya, Batalkan' : 'Ya, Hapus'}
-                cancelText="Batal"
-                variant="danger"
-                loading={removing}
-            />
+        <div className="space-y-8 font-bold">
+            <div className="flex justify-between items-center bg-gray-50/50 p-4 rounded-2xl border border-gray-100"><h3 className="text-lg font-black uppercase tracking-tight font-bold">{language === 'id' ? 'TIM EDITOR' : 'EDITOR TEAM'}</h3>{canManage && !showAddForm && <button onClick={() => setShowAddForm(true)} className="px-5 py-2 bg-primary-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg shadow-primary-50 active:scale-95 transition-all">INVITE</button>}</div>
 
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">Pengelola Plan</h3>
-                    {canManage && !showAddForm && (
-                        <button
-                            onClick={() => setShowAddForm(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-                        >
-                            <UserPlus className="w-4 h-4" />
-                            Undang Editor
-                        </button>
-                    )}
+            {showAddForm && (
+                <div className="bg-white rounded-[1.5rem] p-6 border border-primary-100 shadow-xl space-y-5 animate-in slide-in-from-top-4 duration-300">
+                    <div className="flex justify-between items-center"><span className="text-[9px] font-black uppercase text-gray-400">Invite by Username</span><button onClick={() => setShowAddForm(false)} className="p-1 hover:bg-gray-50 rounded-lg transition-all"><X className="w-4 h-4 text-gray-300" /></button></div>
+                    <div className="relative group"><AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300 group-focus-within:text-primary-600 transition-all font-bold" /><input type="text" value={usernameInput} autoFocus onChange={e => setUsernameInput(e.target.value)} placeholder="USERNAME" className="w-full pl-10 pr-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm uppercase focus:bg-white focus:border-primary-500 transition-all" /></div>
+                    {userFound && (<div className="flex justify-between items-center p-4 bg-primary-50/50 rounded-xl border border-primary-100"><div className="flex items-center gap-3"><div className="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center text-white text-[10px] font-black uppercase">{userFound.name[0]}</div><div><p className="text-xs font-black uppercase text-gray-900">{userFound.name}</p><p className="text-[9px] text-primary-400 font-bold">@{userFound.username}</p></div></div><button onClick={handleAdd} disabled={adding} className="px-4 py-2 bg-primary-600 text-white rounded-lg font-black text-[9px] uppercase shadow-md transition-all active:scale-90">{adding ? '...' : 'SEND'}</button></div>)}
+                    {checkError && <p className="text-[9px] text-rose-500 uppercase font-black tracking-widest">{checkError}</p>}
+                    {checking && <p className="text-[9px] text-primary-400 uppercase font-black tracking-widest animate-pulse">Checking...</p>}
                 </div>
+            )}
 
-                {/* Add Admin Form */}
-                {showAddForm && canManage && (
-                    <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-gray-900">Undang Editor Baru</h4>
-                            <button
-                                onClick={() => {
-                                    setShowAddForm(false)
-                                    setUsernameInput('')
-                                    setUserFound(null)
-                                    setCheckError('')
-                                }}
-                                className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
-                            >
-                                <X className="w-4 h-4 text-gray-500" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Username
-                                </label>
-                                <div className="relative">
-                                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        value={usernameInput}
-                                        onChange={(e) => setUsernameInput(e.target.value.toLowerCase())}
-                                        placeholder="username_teman"
-                                        className={`w-full pl-10 pr-12 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary-500 transition-colors ${userFound ? 'border-green-500' :
-                                                checkError ? 'border-red-500' :
-                                                    'border-gray-300'
-                                            }`}
-                                    />
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        {checking && <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />}
-                                        {!checking && userFound && <Check className="w-4 h-4 text-green-500" />}
-                                        {!checking && checkError && <X className="w-4 h-4 text-red-500" />}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* User Found Preview */}
-                            {userFound && (
-                                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-semibold">
-                                            {userFound.name[0].toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900">{userFound.name}</p>
-                                            <p className="text-sm text-gray-500">@{userFound.username}</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={handleAddAdmin}
-                                        disabled={adding}
-                                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50"
-                                    >
-                                        {adding ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <UserPlus className="w-4 h-4" />
-                                        )}
-                                        Kirim Undangan
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Error */}
-                            {checkError && !checking && (
-                                <p className="text-sm text-red-600">{checkError}</p>
-                            )}
-
-                            <p className="text-xs text-gray-500">
-                                User yang diundang akan mendapat notifikasi dan bisa menerima atau menolak undangan.
-                            </p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Owner Card */}
-                {owner && (
-                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                {owner.name[0].toUpperCase()}
-                            </div>
-                            <div>
-                                <p className="font-medium text-gray-900">{owner.name}</p>
-                                <p className="text-sm text-gray-500">@{owner.username}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
-                            <Crown className="w-4 h-4" />
-                            Owner
-                        </div>
-                    </div>
-                )}
-
-                {/* SEN Plan Info */}
-                {isSenPlan && !owner && (
-                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-primary-50 to-pink-50 border border-primary-200 rounded-xl">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-primary-400 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                S
-                            </div>
-                            <div>
-                                <p className="font-medium text-gray-900">SEN Yas Daddy</p>
-                                <p className="text-sm text-gray-500">Plan Komunitas</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
-                            <Crown className="w-4 h-4" />
-                            Superadmin
-                        </div>
-                    </div>
-                )}
-
-                {/* Pending Invitations */}
-                {pendingAdmins.length > 0 && (
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-amber-500" />
-                            Menunggu Konfirmasi ({pendingAdmins.length})
-                        </h4>
-                        {pendingAdmins.map((admin) => (
-                            <div
-                                key={admin._id}
-                                className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-xl"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-gradient-to-br from-amber-300 to-amber-400 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                        {admin.name[0].toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900">{admin.name}</p>
-                                        <p className="text-sm text-gray-500">@{admin.username}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
-                                        <Clock className="w-4 h-4" />
-                                        Pending
-                                    </div>
-                                    {canManage && (
-                                        <button
-                                            onClick={() => openRemoveConfirm(admin._id, admin.name, 'pending')}
-                                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                                            title="Batalkan undangan"
-                                        >
-                                            <XCircle className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Confirmed Admins List */}
-                {admins.length > 0 && (
-                    <div className="space-y-3">
-                        <h4 className="text-sm font-medium text-gray-700">Editor ({admins.length})</h4>
-                        {admins.map((admin) => (
-                            <div
-                                key={admin._id}
-                                className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                        {admin.name[0].toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900">{admin.name}</p>
-                                        <p className="text-sm text-gray-500">@{admin.username}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                                        <Check className="w-4 h-4" />
-                                        Editor
-                                    </div>
-                                    {canManage && (
-                                        <button
-                                            onClick={() => openRemoveConfirm(admin._id, admin.name, 'admin')}
-                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Hapus editor"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Empty State */}
-                {admins.length === 0 && pendingAdmins.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                        <User className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                        <p>Belum ada editor lain</p>
-                        {canManage && (
-                            <p className="text-sm mt-1">Undang teman untuk mengelola plan bersama</p>
-                        )}
-                    </div>
-                )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="p-5 bg-white border border-gray-100 rounded-[1.2rem] flex items-center gap-4 shadow-sm relative overflow-hidden group hover:border-amber-100 hover:shadow-md transition-all">
+                    <div className="absolute right-0 top-0 p-3 opacity-5 group-hover:scale-110 transition-all"><Crown className="w-8 h-8 text-amber-600" /></div>
+                    <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 font-black text-lg uppercase shadow-sm">O</div>
+                    <div><p className="text-xs font-black uppercase text-gray-900 leading-none mb-1">{owner?.name}</p><p className="text-[8px] text-gray-400 font-bold">@{owner?.username}</p></div>
+                    <span className="ml-auto px-2.5 py-1 bg-amber-600 text-white rounded-full text-[6px] font-black uppercase shadow-sm">OWNER</span>
+                </div>
+                {admins.map(a => (<div key={a._id} className="p-5 bg-white border border-gray-100 rounded-[1.2rem] flex items-center gap-4 shadow-sm hover:border-primary-100 hover:shadow-md transition-all"><div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 font-black text-lg uppercase">{a.name[0]}</div><div><p className="text-xs font-black uppercase text-gray-900 leading-none mb-1">{a.name}</p><p className="text-[8px] text-gray-400 font-bold">@{a.username}</p></div><div className="ml-auto flex items-center gap-1.5"><span className="px-2.5 py-1 bg-gray-50 text-gray-400 rounded-full text-[6px] font-black uppercase">EDITOR</span>{canManage && <button onClick={() => handleRemove(a._id, 'admin')} className="p-2 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"><Trash2 className="w-3.5 h-3.5" /></button>}</div></div>))}
+                {pendingAdmins.map(a => (<div key={a._id} className="p-5 bg-gray-50/50 border border-gray-100 rounded-[1.2rem] flex items-center gap-4 relative opacity-70 group hover:opacity-100 transition-all"><div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-300 font-black text-lg uppercase">{a.name[0]}</div><div><p className="text-xs font-black uppercase text-gray-900 leading-none mb-1">{a.name}</p><p className="text-[7px] text-primary-400 font-black tracking-widest mt-0.5">PENDING</p></div><div className="ml-auto">{canManage && <button onClick={() => handleRemove(a._id, 'pending')} className="p-2 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"><XCircle className="w-3.5 h-3.5" /></button>}</div></div>))}
             </div>
-        </>
+            {admins.length === 0 && pendingAdmins.length === 0 && <div className="text-center py-10 bg-gray-50/30 rounded-[1.5rem] border border-dashed border-gray-200 font-black uppercase text-gray-300 text-[9px] tracking-[0.3em]">No collaborators yet</div>}
+        </div>
     )
 }

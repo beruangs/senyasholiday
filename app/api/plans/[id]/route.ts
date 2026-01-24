@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import dbConnect from '@/lib/mongodb'
-import { HolidayPlan, Rundown, ExpenseCategory, ExpenseItem, Participant, Contribution, SplitPayment, PaymentHistory, User } from '@/models'
+import { HolidayPlan, Rundown, ExpenseCategory, ExpenseItem, Participant, Contribution, SplitPayment, SplitBill, PaymentHistory, User } from '@/models'
 import mongoose from 'mongoose'
 
 // Helper to check if ID is a valid MongoDB ObjectId
@@ -172,6 +172,7 @@ export async function DELETE(
       Participant.deleteMany({ holidayPlanId: params.id }),
       Contribution.deleteMany({ holidayPlanId: params.id }),
       SplitPayment.deleteMany({ holidayPlanId: params.id }),
+      SplitBill.deleteMany({ holidayPlanId: params.id }),
       PaymentHistory.deleteMany({ holidayPlanId: params.id }),
     ])
 

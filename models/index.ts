@@ -20,6 +20,7 @@ const userSchema = new Schema({
   role: { type: String, enum: ['user', 'sen_user', 'superadmin'], default: 'user' },
   createdAt: { type: Date, default: Date.now },
   lastLoginAt: Date,
+  language: { type: String, enum: ['id', 'en'], default: 'id' },
 })
 
 // Hash password before saving
@@ -125,7 +126,34 @@ const contributionSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 })
 
-// Split Payment Schema
+// Split Bill Schema - for itemized bill splitting
+const splitBillSchema = new Schema({
+  holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
+  title: { type: String, required: true },
+  payerId: { type: Schema.Types.ObjectId, ref: 'Participant', required: true },
+  date: { type: Date, default: Date.now },
+  totalAmount: { type: Number, required: true },
+  taxPercent: { type: Number, default: 0 },
+  servicePercent: { type: Number, default: 0 },
+  roundedAmount: { type: Number, default: 0 },
+  items: [{
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    quantity: { type: Number, default: 1 },
+    involvedParticipants: [{ type: Schema.Types.ObjectId, ref: 'Participant' }]
+  }],
+  participantPayments: [{
+    participantId: { type: Schema.Types.ObjectId, ref: 'Participant' },
+    shareAmount: { type: Number, required: true },
+    paidAmount: { type: Number, default: 0 },
+    isPaid: { type: Boolean, default: false },
+    paidAt: Date
+  }],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+})
+
+// Split Payment Schema - legacy
 const splitPaymentSchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
   expenseItemId: { type: Schema.Types.ObjectId, ref: 'ExpenseItem', required: true },
@@ -147,10 +175,24 @@ const checklistSchema = new Schema({
   category: { type: String, default: 'packing' },
   item: { type: String, required: true },
   isCompleted: { type: Boolean, default: false },
-  assignedTo: { type: Schema.Types.ObjectId, ref: 'Participant' },
-  order: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+})
+
+// System Settings Schema - for global flags like maintenance mode
+const systemSettingSchema = new Schema({
+  key: { type: String, required: true, unique: true },
+  value: Schema.Types.Mixed,
+  description: String,
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  updatedAt: { type: Date, default: Date.now },
+})
+
+// Impersonation Token Schema - for secure "Login as User" feature
+const impersonationTokenSchema = new Schema({
+  token: { type: String, required: true, unique: true },
+  targetUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  adminId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now, expires: 300 }, // Expires in 5 minutes
 })
 
 // Notification Schema - for admin invitations and other notifications
@@ -204,8 +246,11 @@ export const ExpenseCategory = mongoose.models.ExpenseCategory || mongoose.model
 export const ExpenseItem = mongoose.models.ExpenseItem || mongoose.model('ExpenseItem', expenseItemSchema)
 export const Participant = mongoose.models.Participant || mongoose.model('Participant', participantSchema)
 export const Contribution = mongoose.models.Contribution || mongoose.model('Contribution', contributionSchema)
+export const SplitBill = mongoose.models.SplitBill || mongoose.model('SplitBill', splitBillSchema)
 export const SplitPayment = mongoose.models.SplitPayment || mongoose.model('SplitPayment', splitPaymentSchema)
 export const Note = mongoose.models.Note || mongoose.model('Note', noteSchema)
 export const PaymentHistory = mongoose.models.PaymentHistory || mongoose.model('PaymentHistory', paymentHistorySchema)
 export const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema)
 export const Checklist = mongoose.models.Checklist || mongoose.model('Checklist', checklistSchema)
+export const SystemSetting = mongoose.models.SystemSetting || mongoose.model('SystemSetting', systemSettingSchema)
+export const ImpersonationToken = mongoose.models.ImpersonationToken || mongoose.model('ImpersonationToken', impersonationTokenSchema)

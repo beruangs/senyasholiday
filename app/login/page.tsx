@@ -6,140 +6,43 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { LogIn, AtSign, Lock, Loader2 } from 'lucide-react'
+import { LogIn, AtSign, Lock, Loader2, Globe } from 'lucide-react'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const router = useRouter(); const { t } = useLanguage(); const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [loading, setLoading] = useState(false); const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
+    e.preventDefault(); setLoading(true); setError('')
     try {
-      const result = await signIn('credentials', {
-        username: username.trim().toLowerCase().replace(/^@/, ''),
-        password,
-        redirect: false,
-      })
-
-      if (result?.error) {
-        setError('Username atau password salah')
-      } else {
-        toast.success('Login berhasil!')
-        router.push('/dashboard')
-      }
-    } catch {
-      setError('Terjadi kesalahan')
-    } finally {
-      setLoading(false)
-    }
+      const result = await signIn('credentials', { username: username.trim().toLowerCase().replace(/^@/, ''), password, redirect: false })
+      if (result?.error) setError(t.auth.auth_failed)
+      else { toast.success(t.auth.login_success); router.push('/dashboard') }
+    } catch { setError(t.auth.error_occurred) } finally { setLoading(false) }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="relative inline-block mb-4">
-            <div className="absolute inset-0 bg-primary-200 rounded-2xl blur-xl opacity-50"></div>
-            <Image
-              src="/logo.png"
-              alt="SEN YAS DADDY"
-              width={80}
-              height={80}
-              className="rounded-2xl relative shadow-lg"
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Selamat Datang!</h1>
-          <p className="text-gray-600 mt-1">Masuk ke akun kamu</p>
+    <div className="min-h-screen bg-white flex items-center justify-center p-6 font-bold relative overflow-hidden">
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none transition-opacity duration-1000"><Globe className="w-[100rem] h-[100rem] absolute -bottom-40 -right-40" /></div>
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="text-center mb-12 animate-in slide-in-from-top-4 duration-700">
+          <div className="flex justify-center mb-10"><Image src="/logo.png" alt="LOGO" width={100} height={100} className="rounded-[2rem] shadow-2xl p-1 bg-white border border-gray-100 transition-all hover:scale-105" /></div>
+          <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tighter leading-none mb-4">{t.auth.login_title}</h1>
+          <p className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">{t.auth.login_subtitle}</p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Username
-              </label>
-              <div className="relative">
-                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                  placeholder="username_kamu"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                  placeholder="Password kamu"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-700 hover:to-primary-800 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Masuk...
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-5 h-5" />
-                  Masuk
-                </>
-              )}
-            </button>
+        <div className="bg-white rounded-[3.5rem] p-12 border border-gray-100 shadow-2xl animate-in zoom-in-95 duration-500">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-3"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.auth.username}</label><div className="relative group"><AtSign className="absolute left-6 h-4 w-4 text-gray-300 top-1/2 -translate-y-1/2 group-focus-within:text-primary-600 transition-all" /><input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full pl-14 pr-8 py-5 bg-gray-50 border border-gray-100 rounded-3xl outline-none font-black text-gray-900 focus:bg-white focus:border-primary-500 transition-all uppercase tracking-tight" placeholder="USERNAME" required /></div></div>
+            <div className="space-y-3"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.auth.password}</label><div className="relative group"><Lock className="absolute left-6 h-4 w-4 text-gray-300 top-1/2 -translate-y-1/2 group-focus-within:text-primary-600 transition-all" /><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full pl-14 pr-8 py-5 bg-gray-50 border border-gray-100 rounded-3xl outline-none font-black text-gray-900 focus:bg-white focus:border-primary-500 transition-all uppercase tracking-tight" placeholder="••••••••" required /></div></div>
+            {error && <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl text-[10px] font-black uppercase text-rose-600 tracking-widest">{error}</div>}
+            <button type="submit" disabled={loading} className="w-full py-6 bg-primary-600 text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-primary-100 hover:bg-primary-700 transition-all flex items-center justify-center gap-4">{loading ? <Loader2 className="animate-spin h-5 w-5" /> : <LogIn className="h-5 w-5" />} {t.common.login}</button>
           </form>
-
-          {/* Signup Link */}
-          <div className="mt-6 text-center text-sm text-gray-600">
-            Belum punya akun?{' '}
-            <Link href="/signup" className="text-primary-600 hover:text-primary-700 font-semibold">
-              Daftar sekarang
-            </Link>
-          </div>
+          <div className="mt-12 text-center border-t border-gray-50 pt-8"><Link href="/signup" className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-primary-600 transition-all">{t.auth.no_account}</Link></div>
         </div>
 
-        {/* Back to Home */}
-        <div className="text-center mt-6">
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
-            ← Kembali ke Beranda
-          </Link>
-        </div>
+        <div className="text-center mt-12"><Link href="/" className="text-[10px] font-black text-gray-300 uppercase tracking-[0.5em] hover:text-gray-900 transition-all">← {t.auth.back_to_home}</Link></div>
       </div>
     </div>
   )

@@ -5,287 +5,65 @@ import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { User, Lock, AtSign, Check, X, Loader2 } from 'lucide-react'
+import { User, Lock, AtSign, Check, X, Loader2, Globe } from 'lucide-react'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function SignupPage() {
-    const router = useRouter()
-    const [formData, setFormData] = useState({
-        username: '',
-        password: '',
-        confirmPassword: '',
-        name: '',
-    })
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
-    const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
-    const [usernameDebounce, setUsernameDebounce] = useState<NodeJS.Timeout | null>(null)
+    const router = useRouter(); const { language, t } = useLanguage()
+    const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '', name: '', }); const [loading, setLoading] = useState(false); const [error, setError] = useState(''); const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle'); const [usernameDebounce, setUsernameDebounce] = useState<NodeJS.Timeout | null>(null)
 
-    // Check username availability with debounce
     useEffect(() => {
-        if (usernameDebounce) {
-            clearTimeout(usernameDebounce)
-        }
-
-        const cleanUsername = formData.username.trim().toLowerCase().replace(/^@/, '')
-
-        if (cleanUsername.length < 3) {
-            setUsernameStatus('idle')
-            return
-        }
-
-        if (!/^[a-z0-9_]+$/.test(cleanUsername)) {
-            setUsernameStatus('invalid')
-            return
-        }
-
+        if (usernameDebounce) clearTimeout(usernameDebounce)
+        const clean = formData.username.trim().toLowerCase().replace(/^@/, '')
+        if (clean.length < 3) { setUsernameStatus('idle'); return; }
+        if (!/^[a-z0-9_]+$/.test(clean)) { setUsernameStatus('invalid'); return; }
         setUsernameStatus('checking')
-
-        const timeout = setTimeout(async () => {
-            try {
-                const res = await fetch(`/api/users/check-username?username=${cleanUsername}`)
-                const data = await res.json()
-
-                if (data.available) {
-                    setUsernameStatus('available')
-                } else {
-                    setUsernameStatus('taken')
-                }
-            } catch {
-                setUsernameStatus('idle')
-            }
-        }, 500)
-
-        setUsernameDebounce(timeout)
-
-        return () => {
-            if (timeout) clearTimeout(timeout)
-        }
+        const t = setTimeout(async () => { try { const r = await fetch(`/api/users/check-username?username=${clean}`); const d = await r.json(); setUsernameStatus(d.available ? 'available' : 'taken'); } catch { setUsernameStatus('idle') } }, 500)
+        setUsernameDebounce(t); return () => clearTimeout(t)
     }, [formData.username])
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError('')
-
-        // Validation
-        if (formData.password !== formData.confirmPassword) {
-            setError('Password tidak sama')
-            return
-        }
-
-        if (formData.password.length < 6) {
-            setError('Password minimal 6 karakter')
-            return
-        }
-
-        if (usernameStatus !== 'available') {
-            setError('Username tidak tersedia')
-            return
-        }
-
+        e.preventDefault(); setError('')
+        if (formData.password !== formData.confirmPassword) { setError(language === 'id' ? 'Password tidak sama' : 'Passwords mismatch'); return; }
+        if (formData.password.length < 6) { setError(language === 'id' ? 'Password minimal 6 karakter' : 'Min 6 chars'); return; }
+        if (usernameStatus !== 'available') { setError(language === 'id' ? 'Username tidak tersedia' : 'Unavailable'); return; }
         setLoading(true)
-
         try {
-            const res = await fetch('/api/auth/signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: formData.username.trim().toLowerCase().replace(/^@/, ''),
-                    password: formData.password,
-                    name: formData.name,
-                }),
-            })
-
-            const data = await res.json()
-
-            if (!res.ok) {
-                setError(data.error || 'Gagal mendaftar')
-                setLoading(false)
-                return
-            }
-
-            // Auto login after signup
-            const loginResult = await signIn('credentials', {
-                username: formData.username.trim().toLowerCase().replace(/^@/, ''),
-                password: formData.password,
-                redirect: false,
-            })
-
-            if (loginResult?.ok) {
-                router.push('/dashboard')
-            } else {
-                router.push('/login')
-            }
-        } catch {
-            setError('Terjadi kesalahan. Coba lagi.')
-            setLoading(false)
-        }
+            const r = await fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: formData.username.trim().toLowerCase().replace(/^@/, ''), password: formData.password, name: formData.name, }), })
+            if (!r.ok) { setError(await r.json().then(d => d.error) || t.auth.error_occurred); setLoading(false); return; }
+            await signIn('credentials', { username: formData.username.trim(), password: formData.password, redirect: true, callbackUrl: '/dashboard' })
+        } catch { setError(t.auth.error_occurred); setLoading(false); }
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-                {/* Logo/Header */}
-                <div className="text-center mb-8">
-                    <div className="relative inline-block mb-4">
-                        <div className="absolute inset-0 bg-primary-200 rounded-2xl blur-xl opacity-50"></div>
-                        <Image
-                            src="/logo.png"
-                            alt="SEN YAS DADDY"
-                            width={80}
-                            height={80}
-                            className="rounded-2xl relative shadow-lg"
-                        />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900">Buat Akun Baru</h1>
-                    <p className="text-gray-600 mt-1">Daftar untuk mulai merencanakan liburan</p>
+        <div className="min-h-screen bg-white flex items-center justify-center p-6 font-bold relative overflow-hidden">
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none"><Globe className="w-[100rem] h-[100rem] absolute -bottom-40 -right-40" /></div>
+            <div className="w-full max-w-md relative z-10">
+                <div className="text-center mb-12 animate-in slide-in-from-top-4 duration-700">
+                    <div className="flex justify-center mb-8"><Image src="/logo.png" alt="LOGO" width={100} height={100} className="rounded-[2rem] shadow-2xl p-1 bg-white border border-gray-100 transition-all hover:scale-105" /></div>
+                    <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tighter leading-none mb-4">{t.auth.signup_title}</h1>
+                    <p className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">{t.auth.signup_subtitle}</p>
                 </div>
 
-                {/* Form Card */}
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Name */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Nama Lengkap
-                            </label>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                                    placeholder="Nama kamu"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {/* Username */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Username
-                            </label>
-                            <div className="relative">
-                                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={formData.username}
-                                    onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase() })}
-                                    className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-colors ${usernameStatus === 'available' ? 'border-green-500 focus:border-green-500' :
-                                        usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-red-500 focus:border-red-500' :
-                                            'border-gray-300 focus:border-primary-500'
-                                        }`}
-                                    placeholder="username_kamu"
-                                    required
-                                />
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                    {usernameStatus === 'checking' && (
-                                        <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-                                    )}
-                                    {usernameStatus === 'available' && (
-                                        <Check className="w-5 h-5 text-green-500" />
-                                    )}
-                                    {(usernameStatus === 'taken' || usernameStatus === 'invalid') && (
-                                        <X className="w-5 h-5 text-red-500" />
-                                    )}
-                                </div>
-                            </div>
-                            <p className="mt-1 text-xs text-gray-500">
-                                Huruf kecil, angka, dan underscore saja
-                            </p>
-                            {usernameStatus === 'taken' && (
-                                <p className="mt-1 text-xs text-red-600">Username sudah digunakan</p>
-                            )}
-                            {usernameStatus === 'invalid' && (
-                                <p className="mt-1 text-xs text-red-600">Username tidak valid</p>
-                            )}
-                            {usernameStatus === 'available' && (
-                                <p className="mt-1 text-xs text-green-600">Username tersedia! ✓</p>
-                            )}
-                        </div>
-
-                        {/* Password */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Password
-                            </label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="password"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                                    placeholder="Minimal 6 karakter"
-                                    required
-                                    minLength={6}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Confirm Password */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Konfirmasi Password
-                            </label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="password"
-                                    value={formData.confirmPassword}
-                                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                    className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 transition-colors ${formData.confirmPassword && formData.password !== formData.confirmPassword
-                                        ? 'border-red-500'
-                                        : 'border-gray-300 focus:border-primary-500'
-                                        }`}
-                                    placeholder="Ulangi password"
-                                    required
-                                />
-                            </div>
-                            {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                                <p className="mt-1 text-xs text-red-600">Password tidak sama</p>
-                            )}
-                        </div>
-
-                        {/* Error Message */}
-                        {error && (
-                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-                                {error}
-                            </div>
-                        )}
-
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            disabled={loading || usernameStatus !== 'available'}
-                            className="w-full py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-700 hover:to-primary-800 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Mendaftar...
-                                </>
-                            ) : (
-                                'Daftar Sekarang'
-                            )}
-                        </button>
+                <div className="bg-white rounded-[3.5rem] p-12 border border-gray-100 shadow-2xl animate-in zoom-in-95 duration-500">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <InputBox label={t.auth.full_name} val={formData.name} setVal={v => setFormData({ ...formData, name: v })} icon={<User className="w-4 h-4" />} placeholder="FULL NAME" />
+                        <div className="space-y-3"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.auth.username}</label><div className="relative group"><AtSign className="absolute left-6 h-4 w-4 text-gray-300 top-1/2 -translate-y-1/2 group-focus-within:text-primary-600 transition-all" /><input type="text" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} className={`w-full pl-14 pr-12 py-5 bg-gray-50 border rounded-3xl outline-none font-black text-gray-900 focus:bg-white transition-all uppercase tracking-tight ${usernameStatus === 'available' ? 'border-emerald-500 bg-emerald-50/20' : usernameStatus === 'taken' ? 'border-rose-500 bg-rose-50/20' : 'border-gray-100'}`} placeholder="USERNAME" required /><div className="absolute right-6 top-1/2 -translate-y-1/2">{usernameStatus === 'checking' ? <Loader2 className="w-4 h-4 text-primary-400 animate-spin" /> : usernameStatus === 'available' ? <Check className="w-4 h-4 text-emerald-500" /> : usernameStatus === 'taken' ? <X className="w-4 h-4 text-rose-500" /> : null}</div></div></div>
+                        <InputBox label={t.auth.password} val={formData.password} setVal={v => setFormData({ ...formData, password: v })} icon={<Lock className="w-4 h-4" />} placeholder="••••••••" type="password" />
+                        <InputBox label={t.auth.confirm_password} val={formData.confirmPassword} setVal={v => setFormData({ ...formData, confirmPassword: v })} icon={<Lock className="w-4 h-4" />} placeholder="••••••••" type="password" error={formData.confirmPassword && formData.password !== formData.confirmPassword} />
+                        {error && <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl text-[10px] font-black uppercase text-rose-600 tracking-widest">{error}</div>}
+                        <button type="submit" disabled={loading || usernameStatus !== 'available'} className="w-full py-6 bg-primary-600 text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-primary-100 hover:bg-primary-700 transition-all flex items-center justify-center gap-4 disabled:opacity-50">{loading ? <Loader2 className="animate-spin h-5 w-5" /> : null} {t.common.signup}</button>
                     </form>
-
-                    {/* Login Link */}
-                    <div className="mt-6 text-center text-sm text-gray-600">
-                        Sudah punya akun?{' '}
-                        <Link href="/login" className="text-primary-600 hover:text-primary-700 font-semibold">
-                            Masuk di sini
-                        </Link>
-                    </div>
+                    <div className="mt-10 text-center border-t border-gray-50 pt-8"><Link href="/login" className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-primary-600 transition-all">{t.auth.have_account}</Link></div>
                 </div>
-
-                {/* Footer */}
-                <p className="text-center text-sm text-gray-500 mt-6">
-                    Dengan mendaftar, kamu setuju dengan ketentuan layanan kami
-                </p>
+                <div className="text-center mt-12 font-bold"><Link href="/" className="text-[10px] font-black text-gray-300 uppercase tracking-[0.5em] hover:text-gray-900 transition-all">← {t.auth.back_to_home}</Link></div>
             </div>
         </div>
+    )
+}
+
+function InputBox({ label, val, setVal, icon, placeholder, type = 'text', error }: any) {
+    return (
+        <div className="space-y-3"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</label><div className="relative group">{icon && <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary-600 transition-all">{icon}</div>}<input type={type} value={val} onChange={e => setVal(e.target.value)} className={`w-full ${icon ? 'pl-14' : 'px-8'} pr-8 py-5 bg-gray-50 border rounded-3xl outline-none font-black text-gray-900 focus:bg-white focus:border-primary-500 transition-all uppercase tracking-tight ${error ? 'border-rose-500' : 'border-gray-100'}`} placeholder={placeholder} required /></div></div>
     )
 }

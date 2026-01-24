@@ -4,274 +4,87 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Settings, User, AtSign, Shield, ArrowLeft, Eye, EyeOff, Save, Loader2 } from 'lucide-react'
+import { Settings, User, AtSign, Shield, ArrowLeft, Eye, EyeOff, Save, Loader2, Globe } from 'lucide-react'
 import { toast } from 'sonner'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function SettingsPage() {
-    const { data: session, status } = useSession()
-    const router = useRouter()
-    const [showPassword, setShowPassword] = useState(false)
-    const [userProfile, setUserProfile] = useState<any>(null)
-    const [loading, setLoading] = useState(false)
-    const [profileLoading, setProfileLoading] = useState(true)
-    const [formData, setFormData] = useState({
-        name: '',
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-    })
+    const { data: session, status } = useSession(); const router = useRouter(); const { language, setLanguage, t } = useLanguage()
+    const [showPassword, setShowPassword] = useState(false); const [userProfile, setUserProfile] = useState<any>(null); const [loading, setLoading] = useState(false); const [profileLoading, setProfileLoading] = useState(true)
+    const [formData, setFormData] = useState({ name: '', currentPassword: '', newPassword: '', confirmPassword: '', })
 
     useEffect(() => {
-        if (status === 'unauthenticated') {
-            router.push('/login')
-        } else if (session?.user) {
-            setFormData(prev => ({
-                ...prev,
-                name: session.user.name || '',
-            }))
-            fetchUserProfile()
-        }
-    }, [status, session, router])
+        if (status === 'unauthenticated') router.push('/login'); else if (session?.user) { setFormData(prev => ({ ...prev, name: session.user.name || '', })); fetchUserProfile(); }
+    }, [status, session])
 
-    const fetchUserProfile = async () => {
-        try {
-            const res = await fetch('/api/user/profile')
-            if (res.ok) {
-                const data = await res.json()
-                setUserProfile(data)
-            }
-        } catch (error) {
-            console.error('Error fetching profile:', error)
-        } finally {
-            setProfileLoading(false)
-        }
-    }
+    const fetchUserProfile = async () => { try { const res = await fetch('/api/user/profile'); if (res.ok) { const d = await res.json(); setUserProfile(d); if (d.language) setLanguage(d.language); } } catch { } finally { setProfileLoading(false) } }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-
-        if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
-            toast.error('Password baru tidak cocok')
-            return
-        }
-
+        if (formData.newPassword && formData.newPassword !== formData.confirmPassword) { toast.error(language === 'id' ? 'Password baru tidak cocok' : 'Passwords mismatch'); return; }
         setLoading(true)
         try {
-            const res = await fetch('/api/user/settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: formData.name,
-                    currentPassword: formData.currentPassword || undefined,
-                    newPassword: formData.newPassword || undefined,
-                }),
-            })
-
-            if (res.ok) {
-                toast.success('Pengaturan berhasil disimpan')
-                setFormData(prev => ({
-                    ...prev,
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: '',
-                }))
-            } else {
-                const data = await res.json()
-                toast.error(data.error || 'Gagal menyimpan pengaturan')
-            }
-        } catch (error) {
-            toast.error('Terjadi kesalahan')
-        } finally {
-            setLoading(false)
-        }
+            const res = await fetch('/api/user/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: formData.name, currentPassword: formData.currentPassword || undefined, newPassword: formData.newPassword || undefined, }), })
+            if (res.ok) { toast.success(t.common.success); setFormData(p => ({ ...p, currentPassword: '', newPassword: '', confirmPassword: '' })); } else { toast.error(t.common.failed) }
+        } catch { toast.error(t.common.failed) } finally { setLoading(false) }
     }
 
-    if (status === 'loading') {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 animate-spin text-primary-600 mx-auto" />
-                    <p className="mt-4 text-gray-600">Memuat...</p>
-                </div>
-            </div>
-        )
-    }
+    if (status === 'loading' || profileLoading) return <div className="min-h-screen bg-white flex items-center justify-center font-bold"><Loader2 className="w-10 h-10 animate-spin text-primary-600" /></div>
 
-    const username = userProfile?.username || (session?.user as any)?.username || session?.user?.email?.split('@')[0]
-    const userRole = userProfile?.role || (session?.user as any)?.role || 'user'
-    const isEnvAdmin = userProfile?.isEnvAdmin ?? session?.user?.id?.startsWith('env-')
+    const username = userProfile?.username || (session?.user as any)?.username; const userRole = userProfile?.role || 'user'
+    const isEnvAdmin = userProfile?.isEnvAdmin ?? false
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100">
-            <div className="max-w-2xl mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="mb-8">
-                    <Link
-                        href="/dashboard"
-                        className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Kembali ke Dashboard
-                    </Link>
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                        <Settings className="w-8 h-8 text-primary-600" />
-                        Pengaturan Akun
-                    </h1>
-                </div>
-
-                {/* Account Info Card */}
-                <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <User className="w-5 h-5 text-gray-500" />
-                        Informasi Akun
-                    </h2>
-
-                    <div className="space-y-4">
-                        {/* Username */}
-                        <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                            <div className="flex items-center gap-3">
-                                <AtSign className="w-5 h-5 text-gray-400" />
-                                <span className="text-gray-600">Username</span>
-                            </div>
-                            <span className="font-medium text-gray-900">@{username}</span>
-                        </div>
-
-                        {/* Role */}
-                        <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                            <div className="flex items-center gap-3">
-                                <Shield className="w-5 h-5 text-gray-400" />
-                                <span className="text-gray-600">Role</span>
-                            </div>
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${userRole === 'superadmin'
-                                ? 'bg-amber-100 text-amber-700'
-                                : userRole === 'sen_user'
-                                    ? 'bg-primary-100 text-primary-700'
-                                    : 'bg-gray-100 text-gray-700'
-                                }`}>
-                                {userRole === 'superadmin' ? 'Superadmin' :
-                                    userRole === 'sen_user' ? 'SEN User' : 'User'}
-                            </span>
-                        </div>
-
-                        {/* Account Type */}
-                        <div className="flex items-center justify-between py-3">
-                            <div className="flex items-center gap-3">
-                                <User className="w-5 h-5 text-gray-400" />
-                                <span className="text-gray-600">Tipe Akun</span>
-                            </div>
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${isEnvAdmin
-                                ? 'bg-purple-100 text-purple-700'
-                                : 'bg-green-100 text-green-700'
-                                }`}>
-                                {isEnvAdmin ? 'Environment Admin' : 'Database User'}
-                            </span>
-                        </div>
+        <div className="min-h-screen bg-white font-bold">
+            <div className="max-w-3xl mx-auto px-6 py-12">
+                <div className="mb-12">
+                    <Link href="/dashboard" className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-8 font-black uppercase text-[10px] tracking-widest group transition-all"><ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> {t.common.back}</Link>
+                    <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 bg-primary-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shadow-primary-100"><Settings className="w-7 h-7" /></div>
+                        <div><h1 className="text-4xl font-black uppercase tracking-tight">{t.settings.title}</h1><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'id' ? 'MANAJEMEN AKUN' : 'ACCOUNT MANAGEMENT'}</p></div>
                     </div>
                 </div>
 
-                {/* Edit Profile Form - Only for database users */}
+                <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm p-10 mb-8 font-bold">
+                    <h2 className="text-xl font-black uppercase tracking-tight mb-8 flex items-center gap-3"><User className="w-6 h-6 text-primary-600" /> {t.settings.account_info}</h2>
+                    <div className="space-y-6">
+                        <InfoRow icon={<AtSign />} label={t.settings.username} val={`@${username}`} />
+                        <InfoRow icon={<Shield />} label={t.settings.role} val={userRole.toUpperCase()} color={userRole === 'superadmin' ? 'text-amber-500 bg-amber-50' : 'text-primary-600 bg-primary-50'} />
+                        <div className="flex items-center justify-between py-2"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-gray-50 rounded-[1.2rem] flex items-center justify-center text-gray-400"><Globe className="w-5 h-5" /></div><span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t.settings.language_setting}</span></div><div className="flex p-1 bg-gray-50 rounded-2xl"><button onClick={() => setLanguage('id')} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${language === 'id' ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400'}`}>ID</button><button onClick={() => setLanguage('en')} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${language === 'en' ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400'}`}>EN</button></div></div>
+                    </div>
+                </div>
+
                 {!isEnvAdmin && (
-                    <div className="bg-white rounded-2xl shadow-sm p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                            Edit Profil
-                        </h2>
-
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            {/* Name */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Nama
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                    placeholder="Nama kamu"
-                                />
-                            </div>
-
-                            {/* Password Change Section */}
-                            <div className="pt-4 border-t border-gray-200">
-                                <h3 className="text-sm font-medium text-gray-700 mb-4">
-                                    Ubah Password (opsional)
-                                </h3>
-
+                    <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm p-10 font-bold">
+                        <h2 className="text-xl font-black uppercase mb-10">{t.settings.edit_profile}</h2>
+                        <form onSubmit={handleSubmit} className="space-y-8">
+                            <FormInput label={t.settings.name} val={formData.name} setVal={v => setFormData({ ...formData, name: v })} />
+                            <div className="pt-8 border-t border-gray-50 space-y-6"><h3 className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">{t.settings.change_password}</h3>
                                 <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm text-gray-600 mb-2">
-                                            Password Saat Ini
-                                        </label>
-                                        <div className="relative">
-                                            <input
-                                                type={showPassword ? 'text' : 'password'}
-                                                value={formData.currentPassword}
-                                                onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
-                                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                                placeholder="••••••••"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                            >
-                                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm text-gray-600 mb-2">
-                                            Password Baru
-                                        </label>
-                                        <input
-                                            type={showPassword ? 'text' : 'password'}
-                                            value={formData.newPassword}
-                                            onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                            placeholder="••••••••"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm text-gray-600 mb-2">
-                                            Konfirmasi Password Baru
-                                        </label>
-                                        <input
-                                            type={showPassword ? 'text' : 'password'}
-                                            value={formData.confirmPassword}
-                                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                            placeholder="••••••••"
-                                        />
-                                    </div>
+                                    <div className="relative"><FormInput label={t.settings.current_password} val={formData.currentPassword} setVal={v => setFormData({ ...formData, currentPassword: v })} type={showPassword ? 'text' : 'password'} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-[55%] text-gray-300 hover:text-primary-600 transition-all">{showPassword ? <EyeOff /> : <Eye />}</button></div>
+                                    <FormInput label={t.settings.new_password} val={formData.newPassword} setVal={v => setFormData({ ...formData, newPassword: v })} type={showPassword ? 'text' : 'password'} />
+                                    <FormInput label={t.settings.confirm_password} val={formData.confirmPassword} setVal={v => setFormData({ ...formData, confirmPassword: v })} type={showPassword ? 'text' : 'password'} />
                                 </div>
                             </div>
-
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full flex items-center justify-center gap-2 py-3 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                {loading ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                    <Save className="w-5 h-5" />
-                                )}
-                                Simpan Perubahan
-                            </button>
+                            <button type="submit" disabled={loading} className="w-full py-6 bg-primary-600 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-2xl shadow-primary-100 hover:bg-primary-700 transition-all flex items-center justify-center gap-4">{loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />} {t.settings.save_changes}</button>
                         </form>
                     </div>
                 )}
 
-                {/* Env Admin Note */}
-                {isEnvAdmin && (
-                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-sm text-purple-800">
-                        <strong>Catatan:</strong> Akun Environment Admin tidak dapat diubah dari halaman ini.
-                        Pengaturan dikelola melalui environment variables di server.
-                    </div>
-                )}
+                {isEnvAdmin && (<div className="mt-8 p-8 bg-indigo-50 border border-indigo-100 rounded-[2.5rem] flex items-start gap-5"><Shield className="w-6 h-6 text-indigo-500 shrink-0" /><div className="space-y-2"><p className="text-[10px] font-black text-indigo-800 uppercase tracking-widest">SYSTEM ACCOUNT</p><p className="text-[11px] font-bold text-indigo-900/60 uppercase leading-relaxed">{language === 'id' ? 'Akun admin lingkungan tidak dapat diubah di sini.' : 'Environment admin account cannot be modified here.'}</p></div></div>)}
             </div>
         </div>
+    )
+}
+
+function InfoRow({ icon, label, val, color = 'text-gray-900' }: any) {
+    return (
+        <div className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-gray-50 rounded-[1.2rem] flex items-center justify-center text-gray-400">{icon}</div><span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</span></div><span className={`px-4 py-1.5 rounded-xl font-black text-xs ${color}`}>{val}</span></div>
+    )
+}
+
+function FormInput({ label, val, setVal, type = 'text' }: any) {
+    return (
+        <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</label><input type={type} value={val} onChange={e => setVal(e.target.value)} className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-[1.8rem] outline-none font-black text-gray-900 focus:bg-white focus:border-primary-500 transition-all uppercase tracking-tight" /></div>
     )
 }

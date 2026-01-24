@@ -62,7 +62,7 @@ export async function DELETE(req: NextRequest) {
     const planId = participant.holidayPlanId
 
     // Find all contributions for this participant
-    const contributionsToDelete = await Contribution.find({ 
+    const contributionsToDelete = await Contribution.find({
       participantId: participantId,
       holidayPlanId: planId
     })
@@ -106,12 +106,43 @@ export async function DELETE(req: NextRequest) {
     // Delete the participant
     await Participant.findByIdAndDelete(participantId)
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       message: `Peserta berhasil dihapus. Iuran peserta lain telah disesuaikan otomatis.`
     })
   } catch (error) {
     console.error('Error deleting participant:', error)
     return NextResponse.json({ error: 'Failed to delete participant' }, { status: 500 })
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    await dbConnect()
+    const { id, name } = await req.json()
+
+    if (!id || !name) {
+      return NextResponse.json({ error: 'ID and name are required' }, { status: 400 })
+    }
+
+    const updatedParticipant = await Participant.findByIdAndUpdate(
+      id,
+      { name },
+      { new: true }
+    )
+
+    if (!updatedParticipant) {
+      return NextResponse.json({ error: 'Participant not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(updatedParticipant)
+  } catch (error) {
+    console.error('Error updating participant:', error)
+    return NextResponse.json({ error: 'Failed to update participant' }, { status: 500 })
   }
 }

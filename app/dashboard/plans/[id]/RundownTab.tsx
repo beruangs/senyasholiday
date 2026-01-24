@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, Calendar as CalendarIcon, Edit2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
-import { id } from 'date-fns/locale'
+import { id, enUS } from 'date-fns/locale'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Rundown {
   _id?: string
@@ -15,7 +16,8 @@ interface Rundown {
   notes: string
 }
 
-export default function RundownTab({ planId }: { planId: string }) {
+export default function RundownTab({ planId, isCompleted }: { planId: string; isCompleted?: boolean }) {
+  const { language, t } = useLanguage()
   const [rundowns, setRundowns] = useState<Rundown[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -40,7 +42,7 @@ export default function RundownTab({ planId }: { planId: string }) {
         setRundowns(data)
       }
     } catch (error) {
-      toast.error('Gagal memuat rundown')
+      toast.error(t.dashboard.loading_data)
     } finally {
       setLoading(false)
     }
@@ -48,47 +50,35 @@ export default function RundownTab({ planId }: { planId: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     try {
       if (editingId) {
-        // Update existing rundown
         const res = await fetch('/api/rundowns', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            _id: editingId,
-            holidayPlanId: planId,
-            ...formData,
-          }),
+          body: JSON.stringify({ _id: editingId, holidayPlanId: planId, ...formData }),
         })
-
         if (res.ok) {
-          toast.success('Rundown berhasil diperbarui')
+          toast.success(`${t.plan.rundown} ${t.plan.update_success}`)
           setShowForm(false)
           setEditingId(null)
           setFormData({ date: '', time: '', activity: '', location: '', notes: '' })
           fetchRundowns()
         }
       } else {
-        // Create new rundown
         const res = await fetch('/api/rundowns', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            holidayPlanId: planId,
-            ...formData,
-          }),
+          body: JSON.stringify({ holidayPlanId: planId, ...formData }),
         })
-
         if (res.ok) {
-          toast.success('Rundown berhasil ditambahkan')
+          toast.success(`${t.plan.rundown} ${t.plan.add_success}`)
           setShowForm(false)
           setFormData({ date: '', time: '', activity: '', location: '', notes: '' })
           fetchRundowns()
         }
       }
     } catch (error) {
-      toast.error(editingId ? 'Gagal memperbarui rundown' : 'Gagal menambahkan rundown')
+      toast.error(t.common.loading)
     }
   }
 
@@ -105,214 +95,136 @@ export default function RundownTab({ planId }: { planId: string }) {
   }
 
   const deleteRundown = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus rundown ini?')) return
-
+    if (!confirm(t.common.confirm_delete)) return
     try {
-      const res = await fetch(`/api/rundowns?id=${id}`, {
-        method: 'DELETE',
-      })
-
+      const res = await fetch(`/api/rundowns?id=${id}`, { method: 'DELETE' })
       if (res.ok) {
-        toast.success('Rundown berhasil dihapus')
+        toast.success(`${t.plan.rundown} ${t.plan.delete_success}`)
         fetchRundowns()
       }
-    } catch (error) {
-      toast.error('Gagal menghapus rundown')
-    }
+    } catch (error) { toast.error(t.common.loading); }
   }
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>
+    return <div className="text-center py-10"><CalendarIcon className="w-8 h-8 animate-pulse text-gray-200 mx-auto" /></div>
   }
 
-  // Group rundowns by date
   const groupedRundowns = rundowns.reduce((acc: any, rundown) => {
-    const date = rundown.date
-    if (!acc[date]) acc[date] = []
-    acc[date].push(rundown)
+    const date = rundown.date; if (!acc[date]) acc[date] = []; acc[date].push(rundown); return acc
+  }, {})
+
+  const sortedGroupedRundowns = Object.keys(groupedRundowns).reduce((acc: any, date) => {
+    acc[date] = groupedRundowns[date].sort((a: Rundown, b: Rundown) => (a.time || '').localeCompare(b.time || ''))
     return acc
   }, {})
 
-  // Sort rundowns within each date by time
-  const sortedGroupedRundowns = Object.keys(groupedRundowns).reduce((acc: any, date) => {
-    acc[date] = groupedRundowns[date].sort((a: Rundown, b: Rundown) => {
-      // If both have time, sort by time
-      if (a.time && b.time) {
-        return a.time.localeCompare(b.time)
-      }
-      // If only one has time, put it first
-      if (a.time) return -1
-      if (b.time) return 1
-      return 0
-    })
-    return acc
-  }, {})
+  const dateLocale = language === 'id' ? id : enUS
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-900">Rundown Acara</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">Tambah Rundown</span>
-          <span className="sm:hidden text-sm">Tambah</span>
-        </button>
+    <div className="space-y-8 font-bold">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary-50">
+            <CalendarIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">{t.plan.rundown}</h2>
+            <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em]">{language === 'id' ? 'MANAJEMEN AGENDA' : 'AGENDA MANAGEMENT'}</p>
+          </div>
+        </div>
+        {!isCompleted && (
+          <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-5 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-black text-[10px] uppercase tracking-widest group">
+            <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
+            <span>{t.common.add}</span>
+          </button>
+        )}
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-6 space-y-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">
-              {editingId ? 'Edit Rundown' : 'Tambah Rundown Baru'}
-            </h3>
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="p-2 text-gray-600 hover:bg-gray-200 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tanggal <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-              />
-            </div>
+        <div className="bg-gray-50 rounded-[1.5rem] p-6 sm:p-8 border border-gray-100 font-bold relative animate-in slide-in-from-top-4 duration-300">
+          <button onClick={cancelEdit} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><X className="w-4 h-4" /></button>
+          <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-6">{editingId ? t.plan.edit_rundown : t.plan.add_rundown}</h3>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Waktu</label>
-              <input
-                type="time"
-                value={formData.time}
-                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-              />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t.plan.date} <span className="text-red-500">*</span></label>
+                <input type="date" required value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full px-5 py-3 bg-white border border-gray-100 rounded-xl outline-none font-bold text-sm" />
+              </div>
+              <div>
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t.plan.time}</label>
+                <input type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="w-full px-5 py-3 bg-white border border-gray-100 rounded-xl outline-none font-bold text-sm" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t.plan.activity} <span className="text-red-500">*</span></label>
+                <input type="text" required value={formData.activity} onChange={(e) => setFormData({ ...formData, activity: e.target.value })} className="w-full px-5 py-3 bg-white border border-gray-100 rounded-xl outline-none font-bold text-sm" placeholder={language === 'id' ? 'Contoh: Perjalanan ke Bandara' : 'e.g. Travel to Airport'} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t.plan.location}</label>
+                <input type="text" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="w-full px-5 py-3 bg-white border border-gray-100 rounded-xl outline-none font-bold text-sm" placeholder={language === 'id' ? 'Contoh: Bandara Soekarno Hatta' : 'e.g. Heathrow Airport'} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t.plan.notes}</label>
+                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-5 py-3 bg-white border border-gray-100 rounded-xl outline-none resize-none font-bold text-sm" rows={3} placeholder="..." />
+              </div>
             </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Aktivitas <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.activity}
-                onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                placeholder="Contoh: Perjalanan menuju pantai"
-              />
+            <div className="flex gap-3 pt-2">
+              <button type="submit" className="flex-1 py-3 bg-primary-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary-50">{t.common.save}</button>
+              <button type="button" onClick={cancelEdit} className="flex-1 py-3 bg-white border border-gray-100 text-gray-400 rounded-xl font-black text-[10px] uppercase tracking-widest">{t.common.cancel}</button>
             </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Lokasi</label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                placeholder="Contoh: Pantai Parangtritis"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
-                rows={3}
-                placeholder="Catatan tambahan..."
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-            >
-              {editingId ? 'Perbarui' : 'Simpan'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       )}
 
       {rundowns.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <CalendarIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Belum ada rundown. Tambahkan jadwal acara sekarang!</p>
+        <div className="text-center py-16 bg-gray-50 rounded-[2rem] border border-dashed border-gray-200">
+          <CalendarIcon className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+          <p className="text-gray-400 font-black uppercase text-[9px] tracking-widest">{t.plan.no_rundown_desc}</p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {Object.keys(sortedGroupedRundowns)
-            .sort()
-            .map((date) => (
-              <div key={date} className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-primary-50 px-6 py-3 border-b border-primary-100">
-                  <h3 className="font-semibold text-primary-900">
-                    {format(new Date(date), 'EEEE, d MMMM yyyy', { locale: id })}
+        <div className="space-y-10">
+          {Object.keys(sortedGroupedRundowns).sort().map((date) => (
+            <div key={date} className="relative">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="px-4 py-1.5 bg-primary-50 rounded-lg border border-primary-100">
+                  <h3 className="text-[10px] font-black text-primary-600 uppercase tracking-widest font-bold">
+                    {format(new Date(date), 'EEEE, d MMM yyyy', { locale: dateLocale })}
                   </h3>
                 </div>
-                <div className="divide-y divide-gray-200">
-                  {sortedGroupedRundowns[date].map((rundown: Rundown) => (
-                    <div key={rundown._id} className="p-6 hover:bg-gray-50">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          {rundown.time && (
-                            <span className="text-sm font-medium text-primary-600 mb-1 block">
-                              {rundown.time}
-                            </span>
-                          )}
-                          <h4 className="font-semibold text-gray-900 mb-2">{rundown.activity}</h4>
-                          {rundown.location && (
-                            <p className="text-sm text-gray-600 mb-1">📍 {rundown.location}</p>
-                          )}
-                          {rundown.notes && (
-                            <p className="text-sm text-gray-600 mt-2">{rundown.notes}</p>
-                          )}
-                        </div>
-                        <div className="ml-4 flex gap-2">
-                          <button
-                            onClick={() => startEdit(rundown)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => deleteRundown(rundown._id!)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+              </div>
+              <div className="space-y-3 ml-3 sm:ml-6 pl-6 sm:pl-10 border-l-2 border-dashed border-gray-100">
+                {sortedGroupedRundowns[date].map((rundown: Rundown) => (
+                  <div key={rundown._id} className="group bg-white border border-gray-100 hover:border-primary-50 hover:shadow-lg p-5 rounded-[1.5rem] transition-all duration-300 relative">
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      <div className="flex-1">
+                        {rundown.time && (
+                          <span className="text-[8px] font-black text-primary-600 px-2 py-0.5 bg-primary-50 rounded-lg mb-2 inline-block uppercase tracking-widest">
+                            {rundown.time}
+                          </span>
+                        )}
+                        <h4 className="text-base font-black text-gray-900 mb-1 uppercase tracking-tight">{rundown.activity}</h4>
+                        <div className="flex flex-wrap gap-3 text-[9px] font-bold text-gray-400">
+                          {rundown.location && <span className="flex items-center gap-1.5 uppercase tracking-tighter"><MapPinIcon className="w-3 h-3 text-primary-400" /> {rundown.location}</span>}
+                          {rundown.notes && <span className="flex items-center gap-1.5 uppercase tracking-tighter opacity-60"><NotesIcon className="w-3 h-3" /> {rundown.notes}</span>}
                         </div>
                       </div>
+                      {!isCompleted && (
+                        <div className="flex gap-1.5">
+                          <button onClick={() => startEdit(rundown)} className="p-2 bg-gray-50 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => deleteRundown(rundown._id!)} className="p-2 bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       )}
     </div>
   )
 }
+
+function MapPinIcon({ className }: { className?: string }) { return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg> }
+function NotesIcon({ className }: { className?: string }) { return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> }

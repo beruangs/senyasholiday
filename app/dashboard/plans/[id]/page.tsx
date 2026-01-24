@@ -1,861 +1,198 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, notFound } from 'next/navigation'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
-import { ArrowLeft, Calendar, DollarSign, Users, Share2, Settings, Eye, EyeOff, Edit2, Save, X, CheckCircle, FileText, Upload, Image as ImageIcon, CreditCard, ClipboardCheck, ArrowUpRight } from 'lucide-react'
-import { usePageTitle, pageTitle } from '@/lib/usePageTitle'
+import { ArrowLeft, Calendar, DollarSign, Users, Share2, Settings, Edit2, Save, X, CheckCircle, FileText, Upload, Image as ImageIcon, ClipboardCheck, Download, Loader2, MapPin, Trash2, Import, Shield } from 'lucide-react'
 import RundownTab from './RundownTab'
 import ExpensesTab from './ExpensesTab'
 import ParticipantsTab from './ParticipantsTab'
-import ContributionsTab from './ContributionsTab'
 import RincianTab from './RincianTab'
 import NoteTab from './NoteTab'
-import AdminManager from './AdminManager'
 import ChecklistTab from './ChecklistTab'
+import SplitBillTab from './SplitBillTab'
+import AdminManager from './AdminManager'
+import { useLanguage } from '@/context/LanguageContext'
 
-type Tab = 'info' | 'rundown' | 'expenses' | 'participants' | 'contributions' | 'rincian' | 'note' | 'checklist'
+type Tab = 'info' | 'rundown' | 'expenses' | 'participants' | 'rincian' | 'note' | 'checklist' | 'splitbill'
 
 export default function PlanDetailPage() {
-  const params = useParams()
-  const planId = params.id as string
-  const [activeTab, setActiveTab] = useState<Tab>('info')
-  const [plan, setPlan] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [showPassword, setShowPassword] = useState(false)
-  const [editingPassword, setEditingPassword] = useState(false)
-  const [newPassword, setNewPassword] = useState('')
-  const [completingEvent, setCompletingEvent] = useState(false)
+  const params = useParams(); const planId = params.id as string; const { language, t } = useLanguage(); const { data: session } = useSession()
+  const [activeTab, setActiveTab] = useState<Tab>('rundown'); const [plan, setPlan] = useState<any>(null); const [loading, setLoading] = useState(true)
+  const [editingPassword, setEditingPassword] = useState(false); const [newPassword, setNewPassword] = useState(''); const [isCompleting, setIsCompleting] = useState(false); const [showCompleteModal, setShowCompleteModal] = useState(false); const [showReopenModal, setShowReopenModal] = useState(false)
+  const [editingInfo, setEditingInfo] = useState(false); const [editForm, setEditForm] = useState({ title: '', destination: '', startDate: '', endDate: '', description: '' }); const [bannerPreview, setBannerPreview] = useState<string | null>(null); const [logoPreview, setLogoPreview] = useState<string | null>(null); const [uploading, setUploading] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false); const [showImportModal, setShowImportModal] = useState(false); const [exportData, setExportData] = useState<string>(''); const [importText, setImportText] = useState(''); const [isImporting, setIsImporting] = useState(false)
 
-  // Set page title when plan loads
-  usePageTitle(plan ? pageTitle.dashboardPlan(plan.title) : 'Dashboard | Loading...')
-
-  // Edit Info states
-  const [editingInfo, setEditingInfo] = useState(false)
-  const [editForm, setEditForm] = useState({
-    title: '',
-    destination: '',
-    startDate: '',
-    endDate: '',
-    description: ''
-  })
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null)
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
-  const [uploadingBanner, setUploadingBanner] = useState(false)
-  const [uploadingLogo, setUploadingLogo] = useState(false)
-
-  useEffect(() => {
-    fetchPlan()
-  }, [planId])
+  useEffect(() => { fetchPlan() }, [planId])
 
   const fetchPlan = async () => {
     try {
       const res = await fetch(`/api/plans/${planId}`)
       if (res.ok) {
-        const data = await res.json()
-        setPlan(data)
-        setNewPassword(data.password || '')
-        // Initialize edit form with current data
-        setEditForm({
-          title: data.title || '',
-          destination: data.destination || '',
-          startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '',
-          endDate: data.endDate ? new Date(data.endDate).toISOString().split('T')[0] : '',
-          description: data.description || ''
-        })
-        // Set image previews
-        setBannerPreview(data.bannerImage || null)
-        setLogoPreview(data.logoImage || null)
+        const d = await res.json(); setPlan(d); setNewPassword(d.password || '');
+        setEditForm({ title: d.title || '', destination: d.destination || '', startDate: d.startDate ? new Date(d.startDate).toISOString().split('T')[0] : '', endDate: d.endDate ? new Date(d.endDate).toISOString().split('T')[0] : '', description: d.description || '' });
+        setBannerPreview(d.bannerImage || null); setLogoPreview(d.logoImage || null);
       }
-    } catch (error) {
-      toast.error('Gagal memuat data')
-    } finally {
-      setLoading(false)
-    }
+    } catch { toast.error(t.dashboard.loading_data) } finally { setLoading(false) }
   }
 
   const handleUpdatePassword = async () => {
     try {
-      const res = await fetch(`/api/plans/${planId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword }),
-      })
+      const res = await fetch(`/api/plans/${planId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: newPassword }), })
+      if (res.ok) { toast.success(t.common.success); setEditingPassword(false); fetchPlan(); }
+    } catch { toast.error(t.common.failed) }
+  }
 
-      if (res.ok) {
-        toast.success('Password berhasil diupdate!')
-        setEditingPassword(false)
-        fetchPlan()
-      } else {
-        toast.error('Gagal update password')
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan')
-    }
+  const handleExport = async () => {
+    try {
+      const res = await fetch(`/api/plans/${planId}/export`)
+      if (res.ok) { setExportData(btoa(JSON.stringify(await res.json()))); setShowExportModal(true); }
+    } catch { toast.error(t.common.failed) }
+  }
+
+  const handleImport = async () => {
+    if (!importText.trim()) return; setIsImporting(true)
+    try {
+      const res = await fetch(`/api/plans/${planId}/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(JSON.parse(atob(importText.trim()))) })
+      if (res.ok) { toast.success(t.common.success); setShowImportModal(false); window.location.reload(); }
+    } catch { toast.error(t.plan.invalid_format) } finally { setIsImporting(false) }
   }
 
   const handleUpdateInfo = async () => {
-    // Validation
-    if (!editForm.title.trim()) {
-      toast.error('Judul tidak boleh kosong')
-      return
-    }
-    if (!editForm.destination.trim()) {
-      toast.error('Destinasi tidak boleh kosong')
-      return
-    }
-    if (!editForm.startDate || !editForm.endDate) {
-      toast.error('Tanggal mulai dan selesai harus diisi')
-      return
-    }
-    if (new Date(editForm.startDate) > new Date(editForm.endDate)) {
-      toast.error('Tanggal mulai tidak boleh lebih dari tanggal selesai')
-      return
-    }
-
+    if (!editForm.title.trim() || !editForm.destination.trim()) return;
     try {
-      const res = await fetch(`/api/plans/${planId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editForm.title.trim(),
-          destination: editForm.destination.trim(),
-          startDate: new Date(editForm.startDate),
-          endDate: new Date(editForm.endDate),
-          description: editForm.description.trim()
-        }),
-      })
-
-      if (res.ok) {
-        toast.success('Info acara berhasil diupdate!')
-        setEditingInfo(false)
-        fetchPlan()
-      } else {
-        toast.error('Gagal update info')
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan')
-    }
+      const res = await fetch(`/api/plans/${planId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...editForm, startDate: new Date(editForm.startDate), endDate: new Date(editForm.endDate) }), })
+      if (res.ok) { toast.success(t.common.success); setEditingInfo(false); fetchPlan(); }
+    } catch { toast.error(t.common.failed) }
   }
 
-  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('File harus berupa gambar')
-      return
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Ukuran file maksimal 2MB')
-      return
-    }
-
-    setUploadingBanner(true)
-
+  const handleImageUpload = async (file: File, type: 'banner' | 'logo') => {
+    if (!file.type.startsWith('image/')) return; setUploading(true)
     try {
-      // Convert to base64
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        const base64String = reader.result as string
-
-        // Update to API
-        const res = await fetch(`/api/plans/${planId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bannerImage: base64String }),
-        })
-
-        if (res.ok) {
-          toast.success('Banner berhasil diupload! 🎨')
-          setBannerPreview(base64String)
-          fetchPlan()
-        } else {
-          toast.error('Gagal upload banner')
-        }
-        setUploadingBanner(false)
-      }
-      reader.onerror = () => {
-        toast.error('Gagal membaca file')
-        setUploadingBanner(false)
-      }
-      reader.readAsDataURL(file)
-    } catch (error) {
-      toast.error('Terjadi kesalahan')
-      setUploadingBanner(false)
-    }
+      const reader = new FileReader(); reader.onloadend = async () => {
+        const res = await fetch(`/api/plans/${planId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [type === 'banner' ? 'bannerImage' : 'logoImage']: reader.result as string }), })
+        if (res.ok) { toast.success(t.common.success); fetchPlan(); } setUploading(false)
+      }; reader.readAsDataURL(file)
+    } catch { setUploading(false); toast.error(t.common.failed); }
   }
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('File harus berupa gambar')
-      return
-    }
-
-    // Validate file size (max 1MB)
-    if (file.size > 1 * 1024 * 1024) {
-      toast.error('Ukuran file maksimal 1MB')
-      return
-    }
-
-    setUploadingLogo(true)
-
+  const updateStatus = async (status: string) => {
+    setIsCompleting(true)
     try {
-      // Convert to base64
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        const base64String = reader.result as string
-
-        // Update to API
-        const res = await fetch(`/api/plans/${planId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ logoImage: base64String }),
-        })
-
-        if (res.ok) {
-          toast.success('Logo berhasil diupload! 🎨')
-          setLogoPreview(base64String)
-          fetchPlan()
-        } else {
-          toast.error('Gagal upload logo')
-        }
-        setUploadingLogo(false)
-      }
-      reader.onerror = () => {
-        toast.error('Gagal membaca file')
-        setUploadingLogo(false)
-      }
-      reader.readAsDataURL(file)
-    } catch (error) {
-      toast.error('Terjadi kesalahan')
-      setUploadingLogo(false)
-    }
+      const res = await fetch(`/api/plans/${planId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, completedAt: status === 'completed' ? new Date() : null }), })
+      if (res.ok) { toast.success(t.common.success); fetchPlan(); setShowCompleteModal(false); setShowReopenModal(false); }
+    } catch { toast.error(t.common.failed) } finally { setIsCompleting(false) }
   }
 
-  const handleRemoveBanner = async () => {
-    if (!confirm('Hapus banner dan kembali ke default?')) return
-
+  const handleDeleteImage = async (type: 'banner' | 'logo') => {
+    if (!confirm(t.common.confirm_delete)) return; setUploading(true)
     try {
-      const res = await fetch(`/api/plans/${planId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bannerImage: null }),
-      })
-
-      if (res.ok) {
-        toast.success('Banner dihapus, kembali ke default')
-        setBannerPreview(null)
-        fetchPlan()
-      } else {
-        toast.error('Gagal menghapus banner')
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan')
-    }
+      const res = await fetch(`/api/plans/${planId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [type === 'banner' ? 'bannerImage' : 'logoImage']: null }), })
+      if (res.ok) { toast.success(t.common.success); fetchPlan(); }
+    } catch { toast.error(t.common.failed) } finally { setUploading(false) }
   }
 
-  const handleRemoveLogo = async () => {
-    if (!confirm('Hapus logo dan kembali ke default?')) return
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center font-bold"><Loader2 className="animate-spin h-8 w-8 text-primary-600" /></div>
+  if (!plan) return notFound();
 
-    try {
-      const res = await fetch(`/api/plans/${planId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logoImage: null }),
-      })
-
-      if (res.ok) {
-        toast.success('Logo dihapus, kembali ke default')
-        setLogoPreview(null)
-        fetchPlan()
-      } else {
-        toast.error('Gagal menghapus logo')
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan')
-    }
-  }
-
-  const copyShareLink = () => {
-    const link = `${window.location.origin}/plan/${planId}`
-    navigator.clipboard.writeText(link)
-    toast.success('Link berhasil disalin!')
-  }
-
-  const handleCompleteEvent = async () => {
-    if (!confirm('Yakin ingin menyelesaikan acara ini? Tab Rincian akan muncul dan data tidak bisa diubah lagi.')) {
-      return
-    }
-
-    setCompletingEvent(true)
-    try {
-      const res = await fetch(`/api/plans/${planId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed', completedAt: new Date() }),
-      })
-
-      if (res.ok) {
-        toast.success('Acara berhasil diselesaikan! 🎉')
-        fetchPlan()
-        setActiveTab('rincian')
-      } else {
-        toast.error('Gagal menyelesaikan acara')
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan')
-    } finally {
-      setCompletingEvent(false)
-    }
-  }
-
-  // Countdown logic
-  const getDaysRemaining = () => {
-    if (!plan?.startDate) return null
-    const start = new Date(plan.startDate)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    const diff = start.getTime() - today.getTime()
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
-
-    if (days === 0) return 'Hari ini! 🚀'
-    if (days < 0) return null
-    return `${days} hari lagi`
-  }
-
-  const handlePrint = () => {
-    window.open(`/plan/${planId}?print=true`, '_blank')
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
-  }
+  const userRole = (session?.user as any)?.role
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-6 print:hidden"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          <span className="hidden sm:inline">Kembali ke Dashboard</span>
-          <span className="sm:hidden">Kembali</span>
-        </Link>
+    <div className="min-h-screen bg-gray-50/30 font-bold">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <Link href="/dashboard" className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-6 font-black uppercase text-[9px] tracking-widest group transition-all"><ArrowLeft className="w-3.5 h-3.5 mr-2 group-hover:-translate-x-1 transition-transform" /> {t.common.back}</Link>
 
-        {/* Header with Banner & Logo */}
-        <div className="mb-4 rounded-xl sm:rounded-2xl overflow-hidden shadow-lg print:hidden">
-          {/* Banner Section */}
-          <div className="relative h-24 sm:h-40 md:h-48 lg:h-56">
-            {plan?.bannerImage ? (
-              <img
-                src={plan.bannerImage}
-                alt="Banner"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary-500 to-primary-700" />
-            )}
-
-            {/* Logo Overlay - Compact for Mobile */}
-            <div className="absolute -bottom-6 left-4 sm:-bottom-8 sm:left-6 md:left-8">
-              <div className="w-12 h-12 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl overflow-hidden bg-white shadow-lg border-2 sm:border-4 border-white">
-                {plan?.logoImage ? (
-                  <img
-                    src={plan.logoImage}
-                    alt="Logo"
-                    className="w-full h-full object-contain p-0.5 sm:p-1"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-xs sm:text-xl md:text-2xl">SYD</span>
-                  </div>
-                )}
+        {/* Scaled Down Premium Header */}
+        <div className="mb-8 rounded-[2.5rem] overflow-hidden shadow-xl border border-gray-100 bg-white relative">
+          <div className="relative h-48 sm:h-64">
+            {plan.bannerImage ? <img src={plan.bannerImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-900" />}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+            <div className="absolute -bottom-10 left-8">
+              <div className="w-24 h-24 sm:w-36 sm:h-36 rounded-[2rem] sm:rounded-[2.5rem] bg-white p-2 shadow-2xl overflow-hidden border-4 border-white">
+                {plan.logoImage ? <img src={plan.logoImage} className="w-full h-full object-contain" /> : <div className="w-full h-full bg-primary-600 rounded-[1.2rem] sm:rounded-[1.8rem] flex items-center justify-center"><span className="text-white font-black text-2xl sm:text-4xl">SYD</span></div>}
               </div>
             </div>
           </div>
 
-          <div className="bg-white px-4 sm:px-6 md:px-8 pt-8 sm:pt-12">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 pb-4 sm:pb-8 border-b border-gray-100">
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-3xl lg:text-5xl font-black text-gray-900 tracking-tight mb-1 truncate">
-                  {plan?.title}
-                </h1>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                  <p className="text-sm sm:text-xl font-bold text-primary-600">{plan?.destination}</p>
-                  {plan?.status === 'completed' && (
-                    <span className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-100 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider inline-flex items-center">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Selesai
-                    </span>
-                  )}
-                </div>
-
-                {/* Dates & Countdown - Compact on Mobile */}
-                <div className="mt-2 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-sm font-bold text-gray-500">
-                  <div className="flex items-center px-2 py-1 bg-gray-50 rounded-lg">
-                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 text-primary-500" />
-                    <span>
-                      {new Date(plan?.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} — {new Date(plan?.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                  </div>
-
-                  {getDaysRemaining() && (
-                    <span className="px-2 py-1 bg-primary-50 text-primary-700 rounded-lg text-[10px] font-black uppercase tracking-tight animate-pulse border border-primary-100">
-                      {getDaysRemaining()}
-                    </span>
-                  )}
+          <div className="pt-16 px-8 pb-8">
+            <div className="flex flex-col lg:flex-row justify-between items-end gap-6">
+              <div className="flex-1 space-y-4">
+                <h1 className="text-3xl sm:text-5xl font-black text-gray-900 uppercase tracking-tight leading-none">{plan.title}</h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="px-4 py-1.5 bg-primary-50 text-primary-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><MapPin className="w-3.5 h-3.5" /> {plan.destination}</span>
+                  {plan.status === 'completed' && <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><CheckCircle className="w-3.5 h-3.5" /> {t.plan.trip_completed}</span>}
+                  <span className="px-4 py-1.5 bg-gray-50 text-gray-400 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><Calendar className="w-3.5 h-3.5" /> {new Date(plan.startDate).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short' })} - {new Date(plan.endDate).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                 </div>
               </div>
-
-              {/* Action Buttons - Neat Row */}
-              <div className="flex items-center gap-2 mt-2 md:mt-0">
-                <button
-                  onClick={handlePrint}
-                  title="Cetak Itinerary"
-                  className="p-2 sm:p-3 bg-white border-2 border-gray-100 text-gray-600 rounded-lg sm:rounded-xl hover:bg-gray-50 transition-all shadow-sm"
-                >
-                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
-                <button
-                  onClick={copyShareLink}
-                  title="Share Plan"
-                  className="p-2 sm:p-3 bg-white border-2 border-gray-100 text-gray-600 rounded-lg sm:rounded-xl hover:bg-gray-50 transition-all shadow-sm"
-                >
-                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
-                {plan?.status !== 'completed' && (
-                  <button
-                    onClick={handleCompleteEvent}
-                    disabled={completingEvent}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-green-600 text-white rounded-lg sm:rounded-xl hover:bg-green-700 transition-all font-black text-[10px] sm:text-sm shadow-lg shadow-green-100 disabled:opacity-50"
-                  >
-                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>{completingEvent ? '...' : 'Selesai'}</span>
-                  </button>
-                )}
+              <div className="flex items-center gap-2">
+                <button onClick={() => window.open(`/plan/${planId}?print=true`, '_blank')} className="p-3.5 bg-gray-50 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-2xl transition-all shadow-sm"><FileText className="w-5 h-5" /></button>
+                <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/plan/${planId}`); toast.success(t.plan.link_copied); }} className="p-3.5 bg-gray-50 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-2xl transition-all shadow-sm"><Share2 className="w-5 h-5" /></button>
+                {plan.status !== 'completed' ? <button onClick={() => setShowCompleteModal(true)} className="px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-3"><CheckCircle className="w-4 h-4" /> <span>{language === 'id' ? 'SELESAIKAN' : 'COMPLETE'}</span></button> : <button onClick={() => setShowReopenModal(true)} className="px-6 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary-100 hover:bg-primary-700 transition-all flex items-center gap-3"><Edit2 className="w-4 h-4" /> <span>{t.plan.yes_reopen}</span></button>}
               </div>
             </div>
 
-            {/* Integrated Tabs - More compact on Mobile */}
-            <div className="py-2 sm:py-4 overflow-x-auto no-scrollbar print:hidden">
-              <nav className="flex items-center gap-1">
-                {[
-                  { id: 'info', label: 'Info', icon: Settings },
-                  { id: 'rundown', label: 'Jadwal', icon: Calendar },
-                  { id: 'participants', label: 'Peserta', icon: Users },
-                  { id: 'expenses', label: 'Biaya', icon: DollarSign },
-                  { id: 'contributions', label: 'Iuran', icon: CreditCard },
-                  { id: 'note', label: 'Note', icon: FileText },
-                  { id: 'checklist', label: 'Check', icon: CheckCircle },
-                ].map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id as Tab)}
-                      className={`
-                        flex items-center gap-1.5 px-3 py-2 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black transition-all duration-300 whitespace-nowrap
-                        ${isActive
-                          ? 'bg-primary-50 text-primary-700 shadow-sm border border-primary-100 scale-105'
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isActive ? 'text-primary-600' : ''}`} />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-
-                {plan?.status === 'completed' && (
-                  <button
-                    onClick={() => setActiveTab('rincian')}
-                    className={`
-                      flex items-center gap-2 px-3 py-2 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black transition-all duration-300 whitespace-nowrap
-                      ${activeTab === 'rincian'
-                        ? 'bg-primary-50 text-primary-700 shadow-sm border border-primary-100 scale-105'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                      }
-                    `}
-                  >
-                    <ClipboardCheck className="w-4 h-4" />
-                    <span>Rincian</span>
-                  </button>
-                )}
-              </nav>
-            </div>
+            <div className="mt-10 overflow-x-auto no-scrollbar"><nav className="flex items-center gap-2 border-t border-gray-100 pt-6">{[
+              { id: 'info', label: 'INFO', icon: Settings }, { id: 'rundown', label: t.plan.rundown, icon: Calendar }, { id: 'participants', label: language === 'id' ? 'PESERTA' : 'GUESTS', icon: Users }, { id: 'expenses', label: t.plan.finance, icon: DollarSign }, { id: 'splitbill', label: t.plan.split_bill, icon: ClipboardCheck }, { id: 'note', label: t.plan.notes, icon: FileText }, { id: 'checklist', label: t.plan.checklist, icon: CheckCircle }
+            ].map(tab => (<button key={tab.id} onClick={() => setActiveTab(tab.id as Tab)} className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-primary-600 text-white shadow-lg shadow-primary-100 scale-105' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}><tab.icon className="w-3.5 h-3.5" /> {tab.label}</button>))}</nav></div>
           </div>
         </div>
 
-        {/* Tab Content Container - Reduced Mobile Padding */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl shadow-gray-200/50 p-4 sm:p-8 border border-gray-100 min-h-[400px] sm:min-h-[600px]">
-          {activeTab === 'info' && (
-            <div className="space-y-6">
-              {/* Edit Button */}
-              <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Informasi Acara</h3>
-                {!editingInfo && plan?.status !== 'completed' && (
-                  <button
-                    onClick={() => setEditingInfo(true)}
-                    className="flex items-center space-x-2 px-4 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Edit Info</span>
-                  </button>
-                )}
-              </div>
-
-              {editingInfo ? (
-                // Edit Mode
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Judul <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.title}
-                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                      placeholder="Nama acara liburan"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    />
+        <main className="bg-white rounded-[2.5rem] p-8 sm:p-12 border border-gray-100 shadow-sm min-h-[600px] font-bold animate-in fade-in duration-500">
+          {activeTab === 'info' && (<div className="space-y-20">
+            <section className="space-y-12">
+              <div className="flex justify-between items-center border-b border-gray-50 pb-8"><h2 className="text-2xl font-black uppercase tracking-tight">{t.plan.event_info}</h2>{!editingInfo && plan.status !== 'completed' && <button onClick={() => setEditingInfo(true)} className="px-6 py-3 bg-primary-50 text-primary-600 rounded-xl font-black uppercase text-[9px] tracking-widest">{t.plan.edit_info}</button>}</div>
+              {editingInfo ? (<div className="max-w-2xl space-y-8"><InputBox label="JUDUL TRIP" val={editForm.title} setVal={v => setEditForm({ ...editForm, title: v })} /><InputBox label="DESTINASI" val={editForm.destination} setVal={v => setEditForm({ ...editForm, destination: v })} /><div className="grid grid-cols-2 gap-6"><InputBox label="MULAI" val={editForm.startDate} setVal={v => setEditForm({ ...editForm, startDate: v })} type="date" /><InputBox label="SELESAI" val={editForm.endDate} setVal={v => setEditForm({ ...editForm, endDate: v })} type="date" /></div><div className="space-y-3"><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">DESKRIPSI</label><textarea rows={5} value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-gray-900 focus:bg-white transition-all uppercase resize-none" /></div><div className="flex gap-3 pt-4"><button onClick={handleUpdateInfo} className="flex-1 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary-50 transition-all">SAVE CHANGES</button><button onClick={() => setEditingInfo(false)} className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all">CANCEL</button></div></div>) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                  <div className="space-y-12">
+                    <div><label className="text-[9px] font-black text-gray-300 uppercase tracking-[0.3em] mb-3 block">Destination Name</label><p className="text-3xl font-black text-primary-600 uppercase tracking-tight leading-none">{plan.destination}</p></div>
+                    <div><label className="text-[9px] font-black text-gray-300 uppercase tracking-[0.3em] mb-3 block">Description</label><p className="text-base font-bold text-gray-400 uppercase leading-relaxed">{plan.description || 'No description provided.'}</p></div>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Destinasi <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.destination}
-                      onChange={(e) => setEditForm({ ...editForm, destination: e.target.value })}
-                      placeholder="Tujuan liburan"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tanggal Mulai <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={editForm.startDate}
-                        onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tanggal Selesai <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={editForm.endDate}
-                        onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Deskripsi
-                    </label>
-                    <textarea
-                      value={editForm.description}
-                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                      placeholder="Deskripsi atau catatan tambahan tentang acara ini"
-                      rows={4}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
-                    />
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
-                    <button
-                      onClick={handleUpdateInfo}
-                      className="flex items-center space-x-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                    >
-                      <Save className="w-4 h-4" />
-                      <span>Simpan Perubahan</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingInfo(false)
-                        // Reset form to current plan data
-                        setEditForm({
-                          title: plan?.title || '',
-                          destination: plan?.destination || '',
-                          startDate: plan?.startDate ? new Date(plan.startDate).toISOString().split('T')[0] : '',
-                          endDate: plan?.endDate ? new Date(plan.endDate).toISOString().split('T')[0] : '',
-                          description: plan?.description || ''
-                        })
-                      }}
-                      className="flex items-center space-x-2 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                      <span>Batal</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // View Mode
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Judul</label>
-                    <p className="text-gray-900 text-lg font-semibold">{plan?.title}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Destinasi</label>
-                    <p className="text-gray-900 text-lg">{plan?.destination}</p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
-                      <p className="text-gray-900">{new Date(plan?.startDate).toLocaleDateString('id-ID', {
-                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                      })}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Selesai</label>
-                      <p className="text-gray-900">{new Date(plan?.endDate).toLocaleDateString('id-ID', {
-                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                      })}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
-                    <p className="text-gray-900 whitespace-pre-wrap">{plan?.description || '-'}</p>
+                  <div className="space-y-12">
+                    <div className="p-8 bg-gray-50/50 rounded-3xl border border-gray-100 space-y-6"><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t.plan.share_link_password}</label>{editingPassword ? (<div className="flex gap-3"><input type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="flex-1 px-5 py-3 bg-white border border-gray-100 rounded-xl font-black outline-none" /><button onClick={handleUpdatePassword} className="px-6 bg-primary-600 text-white rounded-xl uppercase text-[9px] font-black shadow-md">SAVE</button><button onClick={() => setEditingPassword(false)} className="p-2.5 text-gray-400 hover:text-rose-500 transition-all"><X className="w-4 h-4" /></button></div>) : (<div className="flex justify-between items-center"><p className="text-xl font-black uppercase tracking-[0.2em]">{plan.password ? '••••••••' : 'PUBLIC'}</p><button onClick={() => setEditingPassword(true)} className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary-600 shadow-sm hover:scale-110 transition-all border border-gray-100"><Edit2 className="w-4 h-4" /></button></div>)}</div>
+                    <div className="p-8 bg-gray-50/50 rounded-3xl border border-gray-100 space-y-8"><h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest">BRANDING ASSETS</h4><div className="grid grid-cols-2 gap-6"><div><p className="text-[9px] font-black text-gray-900 uppercase mb-4">{t.plan.banner}</p><label className="block w-full h-28 bg-white rounded-2xl border-2 border-dashed border-gray-100 cursor-pointer overflow-hidden relative group transition-all hover:border-primary-200">{bannerPreview ? (<><img src={bannerPreview} className="w-full h-full object-cover group-hover:opacity-40 transition-all" /><button onClick={e => { e.preventDefault(); handleDeleteImage('banner'); }} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100"><Trash2 className="w-8 h-8 text-white bg-rose-600 p-2 rounded-xl" /></button></>) : (<div className="h-full flex flex-col items-center justify-center text-gray-300 gap-2"><Upload className="w-6 h-6" /><span className="text-[8px] font-black uppercase">UPLOAD</span></div>)}<input type="file" className="hidden" accept="image/*" onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'banner')} /></label></div><div><p className="text-[9px] font-black text-gray-900 uppercase mb-4">{t.plan.logo}</p><label className="block w-full h-28 bg-white rounded-2xl border-2 border-dashed border-gray-100 cursor-pointer overflow-hidden relative group transition-all hover:border-primary-200">{logoPreview ? (<><img src={logoPreview} className="w-full h-full object-contain p-4 group-hover:opacity-40 transition-all" /><button onClick={e => { e.preventDefault(); handleDeleteImage('logo'); }} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100"><Trash2 className="w-8 h-8 text-white bg-rose-600 p-2 rounded-xl" /></button></>) : (<div className="h-full flex flex-col items-center justify-center text-gray-300 gap-2"><ImageIcon className="w-6 h-6" /><span className="text-[8px] font-black uppercase">UPLOAD</span></div>)}<input type="file" className="hidden" accept="image/*" onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'logo')} /></label></div></div></div>
                   </div>
                 </div>
               )}
+            </section>
 
-              {/* Password Section */}
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Password Share Link</label>
-                  {!editingPassword && (
-                    <button
-                      onClick={() => {
-                        setEditingPassword(true)
-                        setNewPassword(plan?.password || '')
-                      }}
-                      className="flex items-center space-x-2 text-primary-600 hover:text-primary-700 text-sm"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      <span>Edit</span>
-                    </button>
-                  )}
-                </div>
+            {plan.canEdit && (
+              <section className="pt-24 border-t border-gray-50">
+                <AdminManager planId={planId} isOwner={plan.isOwner} isSenPlan={plan.isSenPlan} userRole={userRole} />
+              </section>
+            )}
 
-                {editingPassword ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Masukkan password (kosongkan jika publik)"
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={handleUpdatePassword}
-                        className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                      >
-                        <Save className="w-4 h-4" />
-                        <span>Simpan</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingPassword(false)
-                          setNewPassword(plan?.password || '')
-                        }}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Batal</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {plan?.password ? (
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono">
-                          {showPassword ? plan.password : '••••••••'}
-                        </div>
-                        <button
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                        >
-                          {showPassword ? <EyeOff className="w-5 h-5 text-gray-600" /> : <Eye className="w-5 h-5 text-gray-600" />}
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 italic">Plan ini tidak memiliki password (publik)</p>
-                    )}
-                    <div className="flex items-center space-x-2 mt-2">
-                      {plan?.password ? (
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">🔒 Terproteksi</span>
-                      ) : (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">🌍 Publik</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Banner & Logo Upload Section */}
-              <div className="border-t pt-6 space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Kustomisasi Tampilan</h3>
-
-                {/* Banner Upload */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Banner Image</label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Rekomendasi: Landscape 16:9 atau 21:9, maksimal 2MB
-                      </p>
-                    </div>
-                    {bannerPreview && (
-                      <button
-                        onClick={handleRemoveBanner}
-                        className="text-sm text-red-600 hover:text-red-700"
-                      >
-                        Hapus & Reset
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="relative">
-                    {/* Preview */}
-                    <div className="w-full h-32 md:h-48 rounded-lg overflow-hidden bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                      {bannerPreview ? (
-                        <img
-                          src={bannerPreview}
-                          alt="Banner"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="text-white text-center">
-                          <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm opacity-75">Default Gradient Banner</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Upload Button */}
-                    <label className="absolute bottom-3 right-3 cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleBannerUpload}
-                        className="hidden"
-                        disabled={uploadingBanner}
-                      />
-                      <div className="flex items-center space-x-2 px-4 py-2 bg-white border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors shadow-lg">
-                        <Upload className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          {uploadingBanner ? 'Uploading...' : 'Upload Banner'}
-                        </span>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Logo Upload */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Logo</label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Rekomendasi: Square 1:1, maksimal 1MB
-                      </p>
-                    </div>
-                    {logoPreview && (
-                      <button
-                        onClick={handleRemoveLogo}
-                        className="text-sm text-red-600 hover:text-red-700"
-                      >
-                        Hapus & Reset
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center space-x-4">
-                    {/* Preview */}
-                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center">
-                      {logoPreview ? (
-                        <img
-                          src={logoPreview}
-                          alt="Logo"
-                          className="w-full h-full object-contain p-2"
-                        />
-                      ) : (
-                        <div className="text-center">
-                          <ImageIcon className="w-8 h-8 mx-auto text-gray-400" />
-                          <p className="text-xs text-gray-500 mt-1">SYD Logo</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Upload Button */}
-                    <label className="cursor-pointer flex-1">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        className="hidden"
-                        disabled={uploadingLogo}
-                      />
-                      <div className="flex items-center justify-center space-x-2 px-4 py-3 bg-white border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors">
-                        <Upload className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                        </span>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Admin Manager Section */}
-              <div className="border-t pt-6">
-                <AdminManager planId={planId} isOwner={plan?.isOwner || false} />
-              </div>
-            </div>
+            <section className="pt-24 border-t border-gray-50 flex items-center gap-6 opacity-40 hover:opacity-100 transition-opacity"><h4 className="text-[9px] font-black text-gray-300 uppercase tracking-[0.4em]">{language === 'id' ? 'SYSTEM TOOLS' : 'ADVANCED'}</h4><div className="flex gap-3"><button onClick={handleExport} className="px-6 py-3 bg-gray-50 text-gray-400 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-gray-900 hover:text-white transition-all flex items-center gap-3"><Download className="w-3.5 h-3.5" /> {t.plan.export}</button><button onClick={() => setShowImportModal(true)} className="px-6 py-3 bg-gray-50 text-gray-400 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-primary-600 hover:text-white transition-all flex items-center gap-3"><Import className="w-3.5 h-3.5" /> {t.plan.import}</button></div></section>
+          </div>
           )}
-          {activeTab === 'rundown' && <RundownTab planId={planId} />}
-          {activeTab === 'participants' && <ParticipantsTab planId={planId} />}
-          {activeTab === 'expenses' && <ExpensesTab planId={planId} />}
-          {activeTab === 'contributions' && <ContributionsTab planId={planId} />}
-          {activeTab === 'note' && <NoteTab planId={planId} />}
-          {activeTab === 'rincian' && plan?.status === 'completed' && <RincianTab planId={planId} plan={plan} />}
-          {activeTab === 'checklist' && <ChecklistTab planId={planId} planTitle={plan.title} destination={plan.destination} />}
-        </div>
+
+          {activeTab === 'rundown' && <RundownTab planId={planId} isCompleted={plan.status === 'completed'} />}
+          {activeTab === 'expenses' && <ExpensesTab planId={planId} isCompleted={plan.status === 'completed'} />}
+          {activeTab === 'participants' && <ParticipantsTab planId={planId} isCompleted={plan.status === 'completed'} />}
+          {activeTab === 'rincian' && <RincianTab planId={planId} isCompleted={plan.status === 'completed'} />}
+          {activeTab === 'note' && <NoteTab planId={planId} isCompleted={plan.status === 'completed'} />}
+          {activeTab === 'checklist' && <ChecklistTab planId={planId} isCompleted={plan.status === 'completed'} />}
+          {activeTab === 'splitbill' && <SplitBillTab planId={planId} isCompleted={plan.status === 'completed'} />}
+        </main>
       </div>
+
+      {/* Modals Scaled Down */}
+      {showCompleteModal && (<Modal title={t.plan.complete_event} desc={t.plan.complete_desc} onConfirm={() => updateStatus('completed')} onCancel={() => setShowCompleteModal(false)} okText={t.plan.yes_complete} variant="emerald" loading={isCompleting} />)}
+      {showReopenModal && (<Modal title={t.plan.reopen_event} desc={t.plan.reopen_desc} onConfirm={() => updateStatus('active')} onCancel={() => setShowReopenModal(false)} okText={t.plan.yes_reopen} variant="primary" loading={isCompleting} />)}
+
+      {showExportModal && (<div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in"><div className="bg-white rounded-[2.5rem] p-10 w-full max-w-xl shadow-2xl relative border border-gray-100"><h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-3">{t.plan.export}</h3><p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest mb-8">{t.plan.export_desc}</p><div className="bg-gray-50 p-6 rounded-2xl font-mono text-[8px] break-all max-h-[250px] overflow-y-auto text-gray-400 mb-8 leading-relaxed uppercase border border-gray-100">{exportData}</div><div className="flex gap-3"><button onClick={() => { navigator.clipboard.writeText(exportData); toast.success(t.common.success); }} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-primary-50 hover:bg-primary-700 transition-all">COPY STRING</button><button onClick={() => setShowExportModal(false)} className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black uppercase text-[10px] transition-all">CLOSE</button></div></div></div>)}
+      {showImportModal && (<div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in"><div className="bg-white rounded-[2.5rem] p-10 w-full max-w-xl shadow-2xl relative border border-gray-100"><h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-3">{t.plan.import}</h3><p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest mb-8">{t.plan.import_desc}</p><textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6} className="w-full p-6 bg-gray-50 rounded-2xl font-mono text-[8px] outline-none border-2 border-transparent focus:border-primary-500 transition-all mb-8 uppercase" placeholder="PASTE DATA STRING HERE..." /><div className="flex gap-3"><button onClick={handleImport} disabled={isImporting} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-primary-50 hover:bg-primary-700 transition-all">{isImporting ? 'IMPORTING...' : 'RUN IMPORT'}</button><button onClick={() => setShowImportModal(false)} className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black uppercase text-[10px] transition-all">CANCEL</button></div></div></div>)}
+      <style jsx global>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
     </div>
   )
+}
+
+function InputBox({ label, val, setVal, type = 'text' }: any) {
+  return (<div className="space-y-3"><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{label}</label><input type={type} value={val} onChange={e => setVal(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-gray-900 focus:bg-white focus:border-primary-500 transition-all uppercase" /></div>)
+}
+
+function Modal({ title, desc, onConfirm, onCancel, okText, variant, loading }: any) {
+  const isEmerald = variant === 'emerald'
+  return (<div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in transition-all"><div className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl animate-in zoom-in-95 text-center border border-gray-50"><div className={`w-20 h-20 ${isEmerald ? 'bg-emerald-50 text-emerald-600' : 'bg-primary-50 text-primary-600'} rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner`}>{isEmerald ? <CheckCircle className="w-10 h-10" /> : <Edit2 className="w-10 h-10" />}</div><h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-3">{title}</h3><p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest mb-10 leading-relaxed">{desc}</p><div className="space-y-3"><button disabled={loading} onClick={onConfirm} className={`w-full py-4 ${isEmerald ? 'bg-emerald-600 shadow-emerald-50' : 'bg-primary-600 shadow-primary-50'} text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all active:scale-95`}>{loading ? 'WAIT...' : okText}</button><button onClick={onCancel} className="w-full py-4 text-gray-300 font-black uppercase text-[10px] tracking-widest hover:text-gray-600 transition-all">NOT NOW</button></div></div></div>)
 }
