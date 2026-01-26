@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, Calendar as CalendarIcon, Edit2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -29,6 +29,8 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
     location: '',
     notes: '',
   })
+
+  const formRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchRundowns()
@@ -72,9 +74,12 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
         })
         if (res.ok) {
           toast.success(`${t.plan.rundown} ${t.plan.add_success}`)
-          setShowForm(false)
-          setFormData({ date: '', time: '', activity: '', location: '', notes: '' })
+          // Don't reset date to make it easier to add multiple items for same date
+          const lastDate = formData.date
+          setFormData({ date: lastDate, time: '', activity: '', location: '', notes: '' })
           fetchRundowns()
+          // Optional: keep form open for continuous adding
+          // setShowForm(false) 
         }
       }
     } catch (error) {
@@ -84,8 +89,30 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
 
   const startEdit = (rundown: Rundown) => {
     setEditingId(rundown._id || null)
-    setFormData(rundown)
+    // Format date for HTML5 input (YYYY-MM-DD)
+    const formattedDate = rundown.date ? format(new Date(rundown.date), 'yyyy-MM-dd') : ''
+    setFormData({ ...rundown, date: formattedDate })
     setShowForm(true)
+    // Scroll to form with offset
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+  }
+
+  const startAddAtDate = (date: string) => {
+    const formattedDate = format(new Date(date), 'yyyy-MM-dd')
+    setFormData({
+      date: formattedDate,
+      time: '',
+      activity: '',
+      location: '',
+      notes: '',
+    })
+    setEditingId(null)
+    setShowForm(true)
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
   }
 
   const cancelEdit = () => {
@@ -110,7 +137,10 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
   }
 
   const groupedRundowns = rundowns.reduce((acc: any, rundown) => {
-    const date = rundown.date; if (!acc[date]) acc[date] = []; acc[date].push(rundown); return acc
+    const dateKey = format(new Date(rundown.date), 'yyyy-MM-dd')
+    if (!acc[dateKey]) acc[dateKey] = []
+    acc[dateKey].push(rundown)
+    return acc
   }, {})
 
   const sortedGroupedRundowns = Object.keys(groupedRundowns).reduce((acc: any, date) => {
@@ -133,7 +163,17 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
           </div>
         </div>
         {!isCompleted && (
-          <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-5 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-black text-[10px] uppercase tracking-widest group">
+          <button onClick={() => {
+            if (showForm && !editingId) setShowForm(false)
+            else {
+              setEditingId(null)
+              setFormData({ date: '', time: '', activity: '', location: '', notes: '' })
+              setShowForm(true)
+              setTimeout(() => {
+                formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }, 100)
+            }
+          }} className="flex items-center gap-2 px-5 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-black text-[10px] uppercase tracking-widest group">
             <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
             <span>{t.common.add}</span>
           </button>
@@ -141,7 +181,7 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
       </div>
 
       {showForm && (
-        <div className="bg-gray-50 rounded-[1.5rem] p-6 sm:p-8 border border-gray-100 font-bold relative animate-in slide-in-from-top-4 duration-300">
+        <div ref={formRef} className="bg-gray-50 rounded-[1.5rem] p-6 sm:p-8 border border-gray-100 font-bold relative animate-in slide-in-from-top-4 duration-300 scroll-mt-24">
           <button onClick={cancelEdit} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><X className="w-4 h-4" /></button>
           <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-6">{editingId ? t.plan.edit_rundown : t.plan.add_rundown}</h3>
 
@@ -185,12 +225,19 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
         <div className="space-y-10">
           {Object.keys(sortedGroupedRundowns).sort().map((date) => (
             <div key={date} className="relative">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="px-4 py-1.5 bg-primary-50 rounded-lg border border-primary-100">
-                  <h3 className="text-[10px] font-black text-primary-600 uppercase tracking-widest font-bold">
-                    {format(new Date(date), 'EEEE, d MMM yyyy', { locale: dateLocale })}
-                  </h3>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="px-4 py-1.5 bg-primary-50 rounded-lg border border-primary-100">
+                    <h3 className="text-[10px] font-black text-primary-600 uppercase tracking-widest font-bold">
+                      {format(new Date(date), 'EEEE, d MMM yyyy', { locale: dateLocale })}
+                    </h3>
+                  </div>
                 </div>
+                {!isCompleted && (
+                  <button onClick={() => startAddAtDate(date)} className="p-2 bg-primary-50 text-primary-600 hover:bg-primary-100 rounded-lg transition-all group" title={t.common.add}>
+                    <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
+                  </button>
+                )}
               </div>
               <div className="space-y-3 ml-3 sm:ml-6 pl-6 sm:pl-10 border-l-2 border-dashed border-gray-100">
                 {sortedGroupedRundowns[date].map((rundown: Rundown) => (

@@ -7,9 +7,11 @@ import Link from 'next/link'
 import { Settings, User, AtSign, Shield, ArrowLeft, Eye, EyeOff, Save, Loader2, Globe } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
+import { useTheme } from '@/context/ThemeContext'
+import { Palette } from 'lucide-react'
 
 export default function SettingsPage() {
-    const { data: session, status } = useSession(); const router = useRouter(); const { language, setLanguage, t } = useLanguage()
+    const { data: session, status } = useSession(); const router = useRouter(); const { language, setLanguage, t } = useLanguage(); const { theme, setTheme } = useTheme()
     const [showPassword, setShowPassword] = useState(false); const [userProfile, setUserProfile] = useState<any>(null); const [loading, setLoading] = useState(false); const [profileLoading, setProfileLoading] = useState(true)
     const [formData, setFormData] = useState({ name: '', currentPassword: '', newPassword: '', confirmPassword: '', })
 
@@ -17,7 +19,7 @@ export default function SettingsPage() {
         if (status === 'unauthenticated') router.push('/login'); else if (session?.user) { setFormData(prev => ({ ...prev, name: session.user.name || '', })); fetchUserProfile(); }
     }, [status, session])
 
-    const fetchUserProfile = async () => { try { const res = await fetch('/api/user/profile'); if (res.ok) { const d = await res.json(); setUserProfile(d); if (d.language) setLanguage(d.language); } } catch { } finally { setProfileLoading(false) } }
+    const fetchUserProfile = async () => { try { const res = await fetch('/api/user/profile'); if (res.ok) { const d = await res.json(); setUserProfile(d); if (d.language) setLanguage(d.language); if (d.theme) setTheme(d.theme); } } catch { } finally { setProfileLoading(false) } }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -50,7 +52,30 @@ export default function SettingsPage() {
                     <div className="space-y-6">
                         <InfoRow icon={<AtSign />} label={t.settings.username} val={`@${username}`} />
                         <InfoRow icon={<Shield />} label={t.settings.role} val={userRole.toUpperCase()} color={userRole === 'superadmin' ? 'text-amber-500 bg-amber-50' : 'text-primary-600 bg-primary-50'} />
-                        <div className="flex items-center justify-between py-2"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-gray-50 rounded-[1.2rem] flex items-center justify-center text-gray-400"><Globe className="w-5 h-5" /></div><span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t.settings.language_setting}</span></div><div className="flex p-1 bg-gray-50 rounded-2xl"><button onClick={() => setLanguage('id')} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${language === 'id' ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400'}`}>ID</button><button onClick={() => setLanguage('en')} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${language === 'en' ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400'}`}>EN</button></div></div>
+                        <div className="flex items-center justify-between py-2 border-b border-gray-50"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-gray-50 rounded-[1.2rem] flex items-center justify-center text-gray-400"><Globe className="w-5 h-5" /></div><span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t.settings.language_setting}</span></div><div className="flex px-1 py-1.5 bg-gray-50 rounded-2xl"><button onClick={() => setLanguage('id')} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${language === 'id' ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400'}`}>ID</button><button onClick={() => setLanguage('en')} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${language === 'en' ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400'}`}>EN</button></div></div>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-gray-50 rounded-[1.2rem] flex items-center justify-center text-gray-400">
+                                    <Palette className="w-5 h-5" />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t.settings.theme_setting}</span>
+                            </div>
+                            <div className="flex px-1 py-1.5 bg-gray-50 rounded-2xl overflow-x-auto no-scrollbar">
+                                {[
+                                    { id: 'light', label: t.settings.light },
+                                    { id: 'ash', label: t.settings.ash },
+                                    { id: 'dark', label: t.settings.dark }
+                                ].map((th) => (
+                                    <button
+                                        key={th.id}
+                                        onClick={() => setTheme(th.id as any)}
+                                        className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all whitespace-nowrap ${theme === th.id ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        {th.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 

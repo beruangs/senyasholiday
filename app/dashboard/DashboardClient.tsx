@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id, enUS } from 'date-fns/locale'
 import ConfirmModal from '@/components/ConfirmModal'
+import SuggestionButton from '@/components/SuggestionButton'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface HolidayPlan { _id: string; title: string; destination: string; startDate: string; endDate: string; description?: string; hasPassword: boolean; createdAt: string; isOwner: boolean; isAdmin: boolean; isSenPlan?: boolean; ownerId?: { username: string; name: string }; }
@@ -57,6 +58,7 @@ export default function DashboardClient({ session }: any) {
           )}
         </div>
       )}
+      <SuggestionButton page="Dashboard Main" />
     </div>
   )
 }

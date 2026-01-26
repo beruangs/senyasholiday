@@ -14,6 +14,7 @@ import NoteTab from './NoteTab'
 import ChecklistTab from './ChecklistTab'
 import SplitBillTab from './SplitBillTab'
 import AdminManager from './AdminManager'
+import SuggestionButton from '@/components/SuggestionButton'
 import { useLanguage } from '@/context/LanguageContext'
 
 type Tab = 'info' | 'rundown' | 'expenses' | 'participants' | 'rincian' | 'note' | 'checklist' | 'splitbill'
@@ -133,7 +134,7 @@ export default function PlanDetailPage() {
               </div>
             </div>
 
-            <div className="mt-10 overflow-x-auto no-scrollbar"><nav className="flex items-center gap-2 border-t border-gray-100 pt-6">{[
+            <div className="mt-10 overflow-x-auto no-scrollbar py-2"><nav className="flex items-center gap-2 border-t border-gray-100 pt-6 pb-6">{[
               { id: 'info', label: 'INFO', icon: Settings }, { id: 'rundown', label: t.plan.rundown, icon: Calendar }, { id: 'participants', label: language === 'id' ? 'PESERTA' : 'GUESTS', icon: Users }, { id: 'expenses', label: t.plan.finance, icon: DollarSign }, { id: 'splitbill', label: t.plan.split_bill, icon: ClipboardCheck }, { id: 'note', label: t.plan.notes, icon: FileText }, { id: 'checklist', label: t.plan.checklist, icon: CheckCircle }
             ].map(tab => (<button key={tab.id} onClick={() => setActiveTab(tab.id as Tab)} className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-primary-600 text-white shadow-lg shadow-primary-100 scale-105' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}><tab.icon className="w-3.5 h-3.5" /> {tab.label}</button>))}</nav></div>
           </div>
@@ -189,6 +190,7 @@ export default function PlanDetailPage() {
       {showExportModal && (<div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in"><div className="bg-white rounded-[2.5rem] p-10 w-full max-w-xl shadow-2xl relative border border-gray-100"><h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-3">{t.plan.export}</h3><p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest mb-8">{t.plan.export_desc}</p><div className="bg-gray-50 p-6 rounded-2xl font-mono text-[8px] break-all max-h-[250px] overflow-y-auto text-gray-400 mb-8 leading-relaxed uppercase border border-gray-100">{exportData}</div><div className="flex gap-3"><button onClick={() => { navigator.clipboard.writeText(exportData); toast.success(t.common.success); }} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-primary-50 hover:bg-primary-700 transition-all">COPY STRING</button><button onClick={() => setShowExportModal(false)} className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black uppercase text-[10px] transition-all">CLOSE</button></div></div></div>)}
       {showImportModal && (<div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in"><div className="bg-white rounded-[2.5rem] p-10 w-full max-w-xl shadow-2xl relative border border-gray-100"><h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-3">{t.plan.import}</h3><p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest mb-8">{t.plan.import_desc}</p><textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6} className="w-full p-6 bg-gray-50 rounded-2xl font-mono text-[8px] outline-none border-2 border-transparent focus:border-primary-500 transition-all mb-8 uppercase" placeholder="PASTE DATA STRING HERE..." /><div className="flex gap-3"><button onClick={handleImport} disabled={isImporting} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-primary-50 hover:bg-primary-700 transition-all">{isImporting ? 'IMPORTING...' : 'RUN IMPORT'}</button><button onClick={() => setShowImportModal(false)} className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black uppercase text-[10px] transition-all">CANCEL</button></div></div></div>)}
       <style jsx global>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+      <SuggestionButton page={`Dashboard Plan Manage - ${plan.title}`} />
     </div>
   )
 }

@@ -187,7 +187,7 @@ export default function SuperadminClient({ session }: any) {
                 </div>
             </div>
 
-            <div className="flex gap-2 p-1.5 sm:p-2 bg-gray-50/50 backdrop-blur-sm rounded-2xl sm:rounded-[2.5rem] w-full sm:w-fit border border-gray-100 animate-in fade-in duration-1000 overflow-x-auto no-scrollbar">
+            <div className="flex gap-2 p-1.5 sm:p-2 bg-gray-50/50 backdrop-blur-sm rounded-2xl sm:rounded-[2.5rem] w-full sm:w-fit border border-gray-100 animate-in fade-in duration-1000 overflow-x-auto no-scrollbar py-2">
                 {[
                     { id: 'users', label: 'USERS', icon: Users },
                     { id: 'plans', label: 'ALL PLANS', icon: Calendar },

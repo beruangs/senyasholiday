@@ -51,7 +51,7 @@ export default function DemoPage() {
                     ))}</div></aside>
 
                     <main className="lg:col-span-3 space-y-10">
-                        <nav className="p-2 bg-gray-50 rounded-[2rem] flex flex-wrap gap-1 shadow-inner border border-gray-100 overflow-x-auto no-scrollbar">{[
+                        <nav className="px-2 py-3 bg-gray-50 rounded-[2rem] flex flex-wrap gap-1 shadow-inner border border-gray-100 overflow-x-auto no-scrollbar">{[
                             { id: 'rundown', label: 'Rundown', icon: Calendar }, { id: 'keuangan', label: t.demo.finance, icon: DollarSign }, { id: 'checklist', label: t.demo.checklist, icon: CheckSquare }, { id: 'splitbill', label: t.demo.split_bill, icon: Receipt }, { id: 'notes', label: t.demo.notes, icon: StickyNote },
                         ].map(tab => (<button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-6 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white text-primary-600 shadow-lg scale-105' : 'text-gray-400 hover:text-gray-900 border border-transparent'}`}><tab.icon className="w-3.5 h-3.5" /> {tab.label}</button>))}</nav>
 

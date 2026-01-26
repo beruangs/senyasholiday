@@ -154,6 +154,10 @@ export const dictionaries = {
             save_changes: "Simpan Perubahan",
             language_setting: "Pengaturan Bahasa",
             select_language: "Pilih Bahasa",
+            theme_setting: "Tema Website",
+            light: "Light",
+            ash: "Ash",
+            dark: "Dark",
             env_admin_note: "Akun Environment Admin tidak dapat diubah dari halaman ini.",
             password_mismatch: "Password baru tidak cocok"
         },
@@ -394,6 +398,10 @@ export const dictionaries = {
             save_changes: "Save Changes",
             language_setting: "Language Settings",
             select_language: "Select Language",
+            theme_setting: "Website Theme",
+            light: "Light",
+            ash: "Ash",
+            dark: "Dark",
             env_admin_note: "Environment Admin account cannot be modified from this page.",
             password_mismatch: "New passwords do not match"
         },

@@ -18,11 +18,16 @@ export async function PUT(req: NextRequest) {
 
         await dbConnect()
         const body = await req.json()
-        const { name, currentPassword, newPassword } = body
+        const { name, currentPassword, newPassword, theme } = body
 
         const user = await User.findById(session.user.id)
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        }
+
+        // Update theme if provided
+        if (theme && ['light', 'ash', 'dark'].includes(theme)) {
+            user.theme = theme
         }
 
         // Update name if provided

@@ -180,18 +180,18 @@ export default function PublicPlanPage() {
           <div className="relative h-40 sm:h-64">
             {plan.bannerImage ? <img src={plan.bannerImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-900" />}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-            <div className="absolute -bottom-8 sm:-bottom-10 left-4 sm:left-8">
+            <div className="absolute -bottom-8 sm:-bottom-10 left-1/2 -translate-x-1/2">
               <div className="w-20 h-20 sm:w-36 sm:h-36 rounded-[1.2rem] sm:rounded-[2.5rem] bg-white p-2 shadow-2xl overflow-hidden border-4 border-white">
                 {plan.logoImage ? <img src={plan.logoImage} className="w-full h-full object-contain" /> : <div className="w-full h-full bg-primary-600 rounded-[0.8rem] sm:rounded-[1.8rem] flex items-center justify-center"><span className="text-white font-black text-xl sm:text-4xl">SYD</span></div>}
               </div>
             </div>
           </div>
 
-          <div className="pt-14 sm:pt-16 px-4 sm:px-8 pb-6 sm:pb-8">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+          <div className="pt-14 sm:pt-16 px-4 sm:px-8 pb-6 sm:pb-8 text-center">
+            <div className="flex flex-col items-center gap-6">
               <div className="flex-1 space-y-4 w-full">
                 <h1 className="text-2xl sm:text-5xl font-black text-gray-900 uppercase tracking-tight leading-none break-words">{plan.title}</h1>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap justify-center items-center gap-3">
                   <span className="px-4 py-1.5 bg-primary-50 text-primary-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><MapPin className="w-3.5 h-3.5" /> {plan.destination}</span>
                   {plan.status === 'completed' && <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><CheckSquare className="w-3.5 h-3.5" /> {t.plan.trip_completed}</span>}
                   <span className="px-4 py-1.5 bg-gray-50 text-gray-400 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><Calendar className="w-3.5 h-3.5" /> {format(new Date(plan.startDate), 'dd MMM', { locale: dateLocale })} - {format(new Date(plan.endDate), 'dd MMM yyyy', { locale: dateLocale })}</span>
@@ -199,8 +199,8 @@ export default function PublicPlanPage() {
               </div>
             </div>
 
-            <div className="mt-10 overflow-x-auto no-scrollbar -mx-4 sm:mx-0">
-              <nav className="flex items-center justify-start sm:justify-center gap-2 border-t border-gray-100 pt-6 min-w-max px-4 sm:px-0">
+            <div className="mt-10 overflow-x-auto no-scrollbar -mx-4 sm:mx-0 py-2">
+              <nav className="flex items-center justify-start sm:justify-center gap-2 border-t border-gray-100 pt-6 pb-6 min-w-max px-4 sm:px-0">
                 {[
                   { id: 'info', label: t.plan.about_trip || 'Info', icon: Globe },
                   { id: 'rundown', label: t.plan.rundown, icon: Calendar },
@@ -539,6 +539,7 @@ export default function PublicPlanPage() {
         .no-scrollbar::-webkit-scrollbar { display: none; } 
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
+      <SuggestionButton page={`Shared Link Content - ${plan.title}`} />
     </div>
   )
 }

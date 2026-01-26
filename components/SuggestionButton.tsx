@@ -18,7 +18,7 @@ export default function SuggestionButton({ page = 'Unknown' }: { page?: string }
 
   return (
     <>
-      <button onClick={() => setIsOpen(true)} className="fixed bottom-6 right-6 sm:bottom-10 sm:right-10 z-[500] p-4 sm:p-5 bg-primary-600 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group border-4 border-white"><Lightbulb className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform" /></button>
+      <button onClick={() => setIsOpen(true)} className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-[500] p-3 sm:p-3.5 bg-primary-600 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group border-4 border-white"><Lightbulb className="w-4 h-4 sm:w-5 h-5 group-hover:rotate-12 transition-transform" /></button>
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[2000] flex items-center justify-center p-6 font-bold animate-in fade-in">

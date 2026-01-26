@@ -21,6 +21,7 @@ const userSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
   lastLoginAt: Date,
   language: { type: String, enum: ['id', 'en'], default: 'id' },
+  theme: { type: String, enum: ['light', 'ash', 'dark'], default: 'light' },
 })
 
 // Hash password before saving
