@@ -48,7 +48,11 @@ export async function GET(
             ExpenseCategory.find({ holidayPlanId: id }).sort({ order: 1 }).lean(),
             ExpenseItem.find({ holidayPlanId: id }).populate('categoryId').sort({ createdAt: 1 }).lean(),
             Contribution.find({ holidayPlanId: id }).populate('participantId').lean(),
-            SplitBill.find({ holidayPlanId: id }).populate('payerId').populate('participantPayments.participantId').lean(),
+            SplitBill.find({ holidayPlanId: id })
+                .populate('payerId', 'name')
+                .populate('participantPayments.participantId', 'name')
+                .populate('items.involvedParticipants', 'name')
+                .lean(),
             Note.findOne({ holidayPlanId: id }).lean(),
             Checklist.find({ holidayPlanId: id }).sort({ updatedAt: -1 }).lean()
         ])

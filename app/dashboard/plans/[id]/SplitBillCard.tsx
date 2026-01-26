@@ -12,9 +12,10 @@ interface SplitBillCardProps {
     readOnly?: boolean
     t: any
     language: string
+    participants?: any[]
 }
 
-export default function SplitBillCard({ bill, onEdit, onDelete, onPaymentUpdate, readOnly, t, language }: SplitBillCardProps) {
+export default function SplitBillCard({ bill, onEdit, onDelete, onPaymentUpdate, readOnly, t, language, participants = [] }: SplitBillCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [showReceipt, setShowReceipt] = useState(false)
 
@@ -106,7 +107,7 @@ export default function SplitBillCard({ bill, onEdit, onDelete, onPaymentUpdate,
                     </div>
                 </div>
             )}
-            {showReceipt && <DigitalReceipt bill={bill} onClose={() => setShowReceipt(false)} language={language} />}
+            {showReceipt && <DigitalReceipt bill={bill} onClose={() => setShowReceipt(false)} language={language} participants={participants} />}
         </div>
     )
 }

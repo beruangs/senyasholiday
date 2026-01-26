@@ -307,7 +307,7 @@ export default function PublicPlanPage() {
 
           <div className="bg-white rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-12 shadow-xl border border-gray-100 min-h-[500px] transition-all mx-0 print:border-none print:shadow-none print:p-0">
             {/* II. PESERTA & DELEGASI */}
-            <div className={`${activeTab === 'info' ? 'block' : 'hidden print:block'} space-y-12 print:break-before-page pt-20`}>
+            <div className={`${activeTab === 'info' ? 'block' : 'hidden print:block'} space-y-8 print:break-before-page pt-2`}>
               <div className="hidden print:flex items-center gap-6 mb-16">
                 <span className="w-14 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center font-black text-2xl">02</span>
                 <div>
@@ -369,7 +369,7 @@ export default function PublicPlanPage() {
             </div>
 
             {/* III. RUNDOWN */}
-            <div className={`${activeTab === 'rundown' ? 'block' : 'hidden print:block'} space-y-12 print:break-before-page pt-20`}>
+            <div className={`${activeTab === 'rundown' ? 'block' : 'hidden print:block'} space-y-8 print:break-before-page pt-2`}>
               <div className="hidden print:flex items-center gap-6 mb-16">
                 <span className="w-14 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center font-black text-2xl">03</span>
                 <div>
@@ -412,7 +412,7 @@ export default function PublicPlanPage() {
             </div>
 
             {/* IV. KEUANGAN & AUDIT */}
-            <div className={`${activeTab === 'keuangan' ? 'block' : 'hidden print:block'} space-y-12 print:break-before-page pt-20`}>
+            <div className={`${activeTab === 'keuangan' ? 'block' : 'hidden print:block'} space-y-8 print:break-before-page pt-2`}>
               <div className="hidden print:flex items-center gap-6 mb-16">
                 <span className="w-14 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center font-black text-2xl">04</span>
                 <div>
@@ -423,31 +423,31 @@ export default function PublicPlanPage() {
 
               <section className="space-y-6">
                 <p className="text-[12px] font-black text-gray-400 uppercase tracking-[0.3em] border-l-8 border-primary-600 pl-6">A. Rincian Pengeluaran</p>
-                <div className="overflow-hidden rounded-[2rem] border-2 border-gray-900 shadow-sm bg-white">
-                  <table className="w-full text-left uppercase text-[10px]">
+                <div className="overflow-x-auto rounded-[2rem] border-2 border-gray-900 shadow-sm bg-white no-scrollbar">
+                  <table className="w-full text-left uppercase text-[10px] min-w-[500px] md:min-w-0">
                     <thead className="bg-gray-900 text-white">
                       <tr>
-                        <th className="px-10 py-6 font-black tracking-widest">Deskripsi Item</th>
-                        <th className="px-10 py-6 font-black tracking-widest">Kategori</th>
-                        <th className="px-10 py-6 font-black tracking-widest text-right">Total Biaya</th>
+                        <th className="px-6 md:px-10 py-6 font-black tracking-widest">Deskripsi Item</th>
+                        <th className="px-4 md:px-10 py-6 font-black tracking-widest">Kategori</th>
+                        <th className="px-6 md:px-10 py-6 font-black tracking-widest text-right">Total Biaya</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-gray-100">
                       {expenses.map((expense: any) => (
                         <tr key={expense._id} className="print:break-inside-avoid">
-                          <td className="px-10 py-6">
+                          <td className="px-6 md:px-10 py-6">
                             <p className="font-black text-gray-900 text-sm mb-1">{expense.itemName}</p>
                             <p className="text-[9px] text-gray-400 font-bold italic normal-case">{expense.detail || 'Tidak ada catatan tambahan'}</p>
                           </td>
-                          <td className="px-10 py-6"><span className="px-3 py-1 bg-gray-100 text-gray-500 rounded font-black uppercase text-[8px]">{expense.categoryId?.name || 'UMUM'}</span></td>
-                          <td className="px-10 py-6 text-right font-black text-gray-900 text-sm">{formatCurrency(expense.total)}</td>
+                          <td className="px-4 md:px-10 py-6"><span className="px-3 py-1 bg-gray-100 text-gray-500 rounded font-black uppercase text-[8px]">{expense.categoryId?.name || 'UMUM'}</span></td>
+                          <td className="px-6 md:px-10 py-6 text-right font-black text-gray-900 text-sm">{formatCurrency(expense.total)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="bg-gray-100 text-gray-900 font-black border-t-2 border-gray-900">
                       <tr>
-                        <td colSpan={2} className="px-10 py-8 text-right tracking-[0.2em] font-black uppercase text-sm text-gray-400">Total Realisasi Anggaran</td>
-                        <td className="px-10 py-8 text-right text-2xl border-l border-gray-200">{formatCurrency(grandTotal)}</td>
+                        <td colSpan={2} className="px-6 md:px-10 py-8 text-right tracking-[0.1em] md:tracking-[0.2em] font-black uppercase text-[10px] md:text-sm text-gray-400">Total Realisasi Anggaran</td>
+                        <td className="px-6 md:px-10 py-8 text-right text-lg md:text-2xl border-l border-gray-200">{formatCurrency(grandTotal)}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -497,7 +497,7 @@ export default function PublicPlanPage() {
             </div>
 
             {/* IVb. SPLIT BILLS */}
-            <div className={`${activeTab === 'splitbill' ? 'block' : 'hidden print:block'} space-y-12 print:break-before-page pt-20`}>
+            <div className={`${activeTab === 'splitbill' ? 'block' : 'hidden print:block'} space-y-8 print:break-before-page pt-2`}>
               <div className="hidden print:flex items-center gap-6 mb-16">
                 <span className="w-14 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center font-black text-2xl">04b</span>
                 <div>
@@ -546,7 +546,7 @@ export default function PublicPlanPage() {
             </div>
 
             {/* V. EVALUASI KESIAPAN */}
-            <div className={`${activeTab === 'checklist' ? 'block' : 'hidden print:block'} space-y-12 print:break-before-page pt-20`}>
+            <div className={`${activeTab === 'checklist' ? 'block' : 'hidden print:block'} space-y-8 print:break-before-page pt-2`}>
               <div className="hidden print:flex items-center gap-6 mb-16">
                 <span className="w-14 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center font-black text-2xl">05</span>
                 <div>
@@ -569,7 +569,7 @@ export default function PublicPlanPage() {
             </div>
 
             {/* VI. CATATAN TAMBAHAN */}
-            <div className={`${activeTab === 'note' ? 'block' : 'hidden print:block'} space-y-12 print:break-before-page pt-20`}>
+            <div className={`${activeTab === 'note' ? 'block' : 'hidden print:block'} space-y-8 print:break-before-page pt-2`}>
               <div className="hidden print:flex items-center gap-6 mb-16">
                 <span className="w-14 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center font-black text-2xl">06</span>
                 <div>
@@ -578,10 +578,10 @@ export default function PublicPlanPage() {
                 </div>
               </div>
 
-              <div className="bg-white border-4 border-gray-100 rounded-[3rem] p-16 min-h-[400px] text-lg leading-relaxed text-gray-700 font-medium italic relative overflow-hidden">
+              <div className="bg-white border-4 border-gray-100 rounded-[3rem] p-8 md:p-16 min-h-[400px] relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-10 opacity-5"><FileText className="w-40 h-40" /></div>
                 {note ? (
-                  <div className="prose prose-lg max-w-none prose-p:font-bold prose-p:text-gray-600 prose-li:font-bold" dangerouslySetInnerHTML={{ __html: note }} />
+                  <div className="prose prose-lg max-w-none prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tight prose-headings:text-gray-900 prose-p:font-bold prose-p:text-gray-600 prose-li:font-bold prose-strong:text-primary-600" dangerouslySetInnerHTML={{ __html: note }} />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-center py-20">
                     <p className="text-gray-300 font-black uppercase tracking-widest">Tidak ada catatan tambahan yang dilampirkan dalam dokumen ini.</p>
@@ -616,7 +616,7 @@ export default function PublicPlanPage() {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
       <SuggestionButton page={`Shared Link Content - ${plan.title}`} />
-      {selectedBill && <DigitalReceipt bill={selectedBill} onClose={() => setSelectedBill(null)} language={language} />}
+      {selectedBill && <DigitalReceipt bill={selectedBill} onClose={() => setSelectedBill(null)} language={language} participants={participants} />}
     </div>
   )
 }

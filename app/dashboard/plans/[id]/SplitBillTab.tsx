@@ -109,7 +109,7 @@ export default function SplitBillTab({ planId, isCompleted }: SplitBillTabProps)
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {splitBills.map((bill) => (
-                        <SplitBillCard key={bill._id} bill={bill} onEdit={() => handleEdit(bill)} onDelete={() => handleDelete(bill._id)} onPaymentUpdate={(pId: string, amount: number, paid: boolean) => handlePaymentUpdate(bill._id, pId, amount, paid)} readOnly={isCompleted} t={t} language={language} />
+                        <SplitBillCard key={bill._id} bill={bill} onEdit={() => handleEdit(bill)} onDelete={() => handleDelete(bill._id)} onPaymentUpdate={(pId: string, amount: number, paid: boolean) => handlePaymentUpdate(bill._id, pId, amount, paid)} readOnly={isCompleted} t={t} language={language} participants={participants} />
                     ))}
                 </div>
             )}
