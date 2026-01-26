@@ -159,22 +159,35 @@ export default function ContributionsTab({ planId, readOnly }: { planId: string;
                     </tr>)
                   })}</tbody>
                 </table></div>
-                <div className="p-6 bg-primary-600 rounded-[1.5rem] text-white shadow-lg shadow-primary-50 relative overflow-hidden"><div className="absolute right-0 bottom-0 opacity-10"><Wallet className="w-32 h-32" /></div><div className="relative z-10 flex justify-between items-end"><div><p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-1.5">Total Group</p><div className="flex gap-8"><div><span className="text-[7px] font-black uppercase tracking-widest opacity-60">Paid</span><p className="text-xl font-black">{formatCurrency(group.totalPaid)}</p></div><div className="w-px h-8 bg-white/20" /><div><span className="text-[7px] font-black uppercase tracking-widest opacity-60">Due</span><p className="text-xl font-black">{formatCurrency(group.totalKurang)}</p></div></div></div>{group.totalKurang === 0 && <div className="px-4 py-2 bg-white/20 rounded-xl flex items-center gap-2"><CheckCircle className="w-5 h-5 text-emerald-300" /><span className="text-[9px] font-black uppercase tracking-widest">SETTLED</span></div>}</div></div>
+                <div className="p-4 sm:p-6 bg-primary-600 rounded-[1.2rem] sm:rounded-[1.5rem] text-white shadow-lg shadow-primary-50 relative overflow-hidden">
+                  <div className="absolute right-0 bottom-0 opacity-10"><Wallet className="w-24 sm:w-32 h-24 sm:h-32" /></div>
+                  <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest opacity-60 mb-2">Total Project Fund</p>
+                      <div className="flex gap-6 sm:gap-8">
+                        <div><span className="text-[7px] font-black uppercase tracking-widest opacity-60 block mb-0.5">Paid</span><p className="text-lg sm:text-xl font-black">{formatCurrency(group.totalPaid)}</p></div>
+                        <div className="w-px h-8 bg-white/20" />
+                        <div><span className="text-[7px] font-black uppercase tracking-widest opacity-60 block mb-0.5">Due</span><p className="text-lg sm:text-xl font-black">{formatCurrency(group.totalKurang)}</p></div>
+                      </div>
+                    </div>
+                    {group.totalKurang === 0 && <div className="px-3 py-1.5 bg-white/20 rounded-xl flex items-center gap-2"><CheckCircle className="w-4 h-4 text-emerald-300" /><span className="text-[8px] font-black uppercase tracking-widest">SETTLED</span></div>}
+                  </div>
+                </div>
               </div>
             )}
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-[2rem] p-8 border border-primary-50 shadow-xl shadow-primary-50 flex flex-col lg:flex-row justify-between items-center gap-8">
-        <div className="flex items-center gap-8 w-full lg:w-auto">
-          <div><span className="text-[8px] font-black uppercase text-gray-300 tracking-widest mb-1 block">Grand Total</span><span className="text-2xl font-black text-gray-900">{formatCurrency(totalStats.s)}</span></div>
+      <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-10 border border-primary-50 shadow-xl shadow-primary-50 flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6 sm:gap-8">
+        <div className="flex items-center justify-between sm:justify-start gap-8 w-full lg:w-auto">
+          <div><span className="text-[8px] font-black uppercase text-gray-300 tracking-widest mb-1 block">Grand Total</span><span className="text-lg sm:text-2xl font-black text-gray-900 leading-none">{formatCurrency(totalStats.s)}</span></div>
           <div className="w-px h-10 bg-gray-100 hidden sm:block" />
-          <div><span className="text-[8px] font-black uppercase text-gray-300 tracking-widest mb-1 block">Collected</span><span className="text-2xl font-black text-emerald-600">{formatCurrency(totalStats.p)}</span></div>
+          <div><span className="text-[8px] font-black uppercase text-gray-300 tracking-widest mb-1 block">Collected</span><span className="text-lg sm:text-2xl font-black text-emerald-600 leading-none">{formatCurrency(totalStats.p)}</span></div>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-6 w-full lg:w-auto">
-          <div className="text-center lg:text-right flex-1"><span className="text-[8px] font-black uppercase text-rose-300 tracking-widest mb-1 block">Remaining Balance</span><span className="text-4xl font-black text-rose-600 tracking-tight">{formatCurrency(totalStats.k)}</span></div>
-          <div className="px-6 py-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3"><AlertTriangle className="w-4 h-4 text-rose-600" /><span className="text-[9px] font-black text-rose-700 uppercase tracking-widest">{collections.length} COLLECTORS</span></div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-6 w-full lg:w-auto border-t sm:border-t-0 pt-6 sm:pt-0">
+          <div className="text-left sm:text-right flex-1"><span className="text-[8px] font-black uppercase text-rose-300 tracking-widest mb-1 block">Remaining Balance</span><span className="text-2xl sm:text-4xl font-black text-rose-600 tracking-tight leading-none">{formatCurrency(totalStats.k)}</span></div>
+          <div className="px-5 py-3.5 bg-rose-50 border border-rose-100 rounded-xl flex items-center justify-center gap-3"><AlertTriangle className="w-4 h-4 text-rose-600" /><span className="text-[9px] font-black text-rose-700 uppercase tracking-widest leading-none">{collections.length} COLLECTORS</span></div>
         </div>
       </div>
 
