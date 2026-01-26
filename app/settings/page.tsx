@@ -13,7 +13,7 @@ import { Palette } from 'lucide-react'
 export default function SettingsPage() {
     const { data: session, status } = useSession(); const router = useRouter(); const { language, setLanguage, t } = useLanguage(); const { theme, setTheme } = useTheme()
     const [showPassword, setShowPassword] = useState(false); const [userProfile, setUserProfile] = useState<any>(null); const [loading, setLoading] = useState(false); const [profileLoading, setProfileLoading] = useState(true)
-    const [formData, setFormData] = useState({ name: '', currentPassword: '', newPassword: '', confirmPassword: '', })
+    const [formData, setFormData] = useState({ name: '', newPassword: '', confirmPassword: '', })
 
     useEffect(() => {
         if (status === 'unauthenticated') router.push('/login'); else if (session?.user) { setFormData(prev => ({ ...prev, name: session.user.name || '', })); fetchUserProfile(); }
@@ -26,8 +26,8 @@ export default function SettingsPage() {
         if (formData.newPassword && formData.newPassword !== formData.confirmPassword) { toast.error(language === 'id' ? 'Password baru tidak cocok' : 'Passwords mismatch'); return; }
         setLoading(true)
         try {
-            const res = await fetch('/api/user/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: formData.name, currentPassword: formData.currentPassword || undefined, newPassword: formData.newPassword || undefined, }), })
-            if (res.ok) { toast.success(t.common.success); setFormData(p => ({ ...p, currentPassword: '', newPassword: '', confirmPassword: '' })); } else { toast.error(t.common.failed) }
+            const res = await fetch('/api/user/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: formData.name, newPassword: formData.newPassword || undefined, }), })
+            if (res.ok) { toast.success(t.common.success); setFormData(p => ({ ...p, newPassword: '', confirmPassword: '' })); } else { toast.error(t.common.failed) }
         } catch { toast.error(t.common.failed) } finally { setLoading(false) }
     }
 
@@ -86,8 +86,10 @@ export default function SettingsPage() {
                             <FormInput label={t.settings.name} val={formData.name} setVal={(v: any) => setFormData({ ...formData, name: v })} />
                             <div className="pt-8 border-t border-gray-50 space-y-6"><h3 className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">{t.settings.change_password}</h3>
                                 <div className="space-y-4">
-                                    <div className="relative"><FormInput label={t.settings.current_password} val={formData.currentPassword} setVal={(v: any) => setFormData({ ...formData, currentPassword: v })} type={showPassword ? 'text' : 'password'} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-[55%] text-gray-300 hover:text-primary-600 transition-all">{showPassword ? <EyeOff /> : <Eye />}</button></div>
-                                    <FormInput label={t.settings.new_password} val={formData.newPassword} setVal={(v: any) => setFormData({ ...formData, newPassword: v })} type={showPassword ? 'text' : 'password'} />
+                                    <div className="relative">
+                                        <FormInput label={t.settings.new_password} val={formData.newPassword} setVal={(v: any) => setFormData({ ...formData, newPassword: v })} type={showPassword ? 'text' : 'password'} />
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-[55%] text-gray-300 hover:text-primary-600 transition-all">{showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</button>
+                                    </div>
                                     <FormInput label={t.settings.confirm_password} val={formData.confirmPassword} setVal={(v: any) => setFormData({ ...formData, confirmPassword: v })} type={showPassword ? 'text' : 'password'} />
                                 </div>
                             </div>
@@ -110,6 +112,6 @@ function InfoRow({ icon, label, val, color = 'text-gray-900' }: any) {
 
 function FormInput({ label, val, setVal, type = 'text' }: any) {
     return (
-        <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</label><input type={type} value={val} onChange={e => setVal(e.target.value)} className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-[1.8rem] outline-none font-black text-gray-900 focus:bg-white focus:border-primary-500 transition-all uppercase tracking-tight" /></div>
+        <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</label><input type={type} value={val} onChange={e => setVal(e.target.value)} className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-[1.8rem] outline-none font-black text-gray-900 focus:bg-white focus:border-primary-500 transition-all tracking-tight" /></div>
     )
 }

@@ -37,15 +37,6 @@ export async function PUT(req: NextRequest) {
 
         // Update password if provided
         if (newPassword) {
-            if (!currentPassword) {
-                return NextResponse.json({ error: 'Password saat ini diperlukan' }, { status: 400 })
-            }
-
-            const isValidPassword = await user.comparePassword(currentPassword)
-            if (!isValidPassword) {
-                return NextResponse.json({ error: 'Password saat ini salah' }, { status: 400 })
-            }
-
             user.password = newPassword
         }
 

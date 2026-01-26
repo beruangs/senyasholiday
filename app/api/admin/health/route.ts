@@ -14,9 +14,20 @@ export async function GET(req: NextRequest) {
 
         await dbConnect()
 
+        const userId = session.user.id
+        const sessionRole = (session.user as any)?.role
+        const isEnvAdmin = userId.startsWith('env-')
+
         // Check if user is superadmin
-        const user = await User.findById(session.user.id)
-        if (user?.role !== 'superadmin' && !session.user.id.startsWith('env-')) {
+        let isAdmin = false
+        if (isEnvAdmin) {
+            isAdmin = sessionRole === 'superadmin'
+        } else {
+            const adminUser = await User.findById(userId)
+            isAdmin = adminUser?.role === 'superadmin'
+        }
+
+        if (!isAdmin) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
 
