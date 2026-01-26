@@ -33,7 +33,14 @@ export default function ExpenseCard({ expense, onEdit, onDelete, readOnly, t, la
                         </div>
                         <div className="min-w-0">
                             <h3 className="text-base font-black text-gray-900 truncate leading-tight uppercase tracking-tight group-hover:text-primary-600 transition-colors">{expense.itemName}</h3>
-                            <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mt-0.5 font-bold">BY {expense.collectorName?.toUpperCase() || '-'}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest font-bold">BY {expense.collectorName?.toUpperCase() || '-'}</p>
+                                {expense.categoryId && (
+                                    <span className="px-1.5 py-0.5 bg-gray-50 text-gray-400 text-[6px] font-black rounded uppercase tracking-widest border border-gray-100 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
+                                        {expense.categoryId.name?.toUpperCase() || 'CATEGORY'}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
 

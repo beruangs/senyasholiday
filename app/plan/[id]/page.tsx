@@ -17,6 +17,7 @@ import { id, enUS } from 'date-fns/locale'
 import { usePageTitle, pageTitle } from '@/lib/usePageTitle'
 import SuggestionButton from '@/components/SuggestionButton'
 import { useLanguage } from '@/context/LanguageContext'
+import DigitalReceipt from '@/components/DigitalReceipt'
 
 export default function PublicPlanPage() {
   const params = useParams()
@@ -69,27 +70,41 @@ export default function PublicPlanPage() {
       const res = await fetch(`/api/plans/${planId}`)
       if (res.ok) {
         const data = await res.json(); setPlan(data);
-        if (!data.hasPassword) setIsAuthenticated(true)
+        if (!data.hasPassword) {
+          setIsAuthenticated(true)
+          // No need to wait for useEffect, just fetch full data here
+          const fullRes = await fetch(`/api/plans/${planId}/full`)
+          if (fullRes.ok) {
+            const fullData = await fullRes.json()
+            setRundowns(fullData.rundowns)
+            setExpenses(fullData.expenses)
+            setParticipants(fullData.participants)
+            setContributions(fullData.contributions)
+            setSplitBills(fullData.splitBills)
+            setChecklist(fullData.checklist)
+            setNote(fullData.note)
+          }
+        }
       }
     } catch (error) { toast.error(t.dashboard.loading_data) } finally { setLoading(false) }
   }
 
   const fetchAllData = async () => {
     try {
-      const [rundownsRes, expensesRes, participantsRes, contributionsRes, notesRes, splitRes, checkRes] = await Promise.all([
-        fetch(`/api/rundowns?planId=${planId}`), fetch(`/api/expenses?planId=${planId}`),
-        fetch(`/api/participants?planId=${planId}`), fetch(`/api/contributions?planId=${planId}`),
-        fetch(`/api/notes?planId=${planId}`), fetch(`/api/split-bills?planId=${planId}`),
-        fetch(`/api/plans/${planId}/checklist`),
-      ])
-      if (rundownsRes.ok) setRundowns(await rundownsRes.json())
-      if (expensesRes.ok) setExpenses(await expensesRes.json())
-      if (participantsRes.ok) setParticipants(await participantsRes.json())
-      if (contributionsRes.ok) setContributions(await contributionsRes.json())
-      if (splitRes.ok) setSplitBills(await splitRes.json())
-      if (checkRes.ok) setChecklist(await checkRes.json())
-      if (notesRes.ok) { const data = await notesRes.json(); setNote(data.content || ''); }
-    } catch (error) { console.error('Error fetching data:', error) }
+      setLoading(true)
+      const res = await fetch(`/api/plans/${planId}/full`)
+      if (res.ok) {
+        const data = await res.json()
+        setPlan(data.plan) // Keep plan synced
+        setRundowns(data.rundowns)
+        setExpenses(data.expenses)
+        setParticipants(data.participants)
+        setContributions(data.contributions)
+        setSplitBills(data.splitBills)
+        setChecklist(data.checklist)
+        setNote(data.note)
+      }
+    } catch (error) { console.error('Error fetching data:', error) } finally { setLoading(false) }
   }
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -340,7 +355,10 @@ export default function PublicPlanPage() {
                         {participants.map((p: any) => (
                           <div key={p._id} className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 shadow-sm">
                             <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white font-black uppercase flex-shrink-0">{p.name[0]}</div>
-                            <p className="font-black text-gray-900 text-[11px] uppercase truncate">{p.name}</p>
+                            <div className="min-w-0">
+                              <p className="font-black text-gray-900 text-[11px] uppercase truncate">{p.name}</p>
+                              <p className="text-[7px] font-bold text-gray-400 tracking-tight">{p.phoneNumber || (language === 'id' ? 'No Kontak' : 'No Contact')}</p>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -404,7 +422,7 @@ export default function PublicPlanPage() {
               </div>
 
               <section className="space-y-6">
-                <p className="text-[12px] font-black text-gray-400 uppercase tracking-[0.3em] border-l-8 border-primary-600 pl-6">A. Rincian Pengeluaran Terverifikasi</p>
+                <p className="text-[12px] font-black text-gray-400 uppercase tracking-[0.3em] border-l-8 border-primary-600 pl-6">A. Rincian Pengeluaran</p>
                 <div className="overflow-hidden rounded-[2rem] border-2 border-gray-900 shadow-sm bg-white">
                   <table className="w-full text-left uppercase text-[10px]">
                     <thead className="bg-gray-900 text-white">
@@ -432,7 +450,7 @@ export default function PublicPlanPage() {
                       <tr>
                         <td colSpan={2} className="px-10 py-8 text-right tracking-[0.2em] font-black uppercase text-sm text-gray-400">Total Realisasi Anggaran</td>
                         <td className="px-10 py-8 text-right text-2xl border-l border-gray-200">{formatCurrency(grandTotal)}</td>
-                        <td className="px-10 py-8 text-right text-[11px] text-primary-600 border-l border-gray-200 bg-emerald-50/50">{formatCurrency(grandTotal / (participants.length || 1))} / Orang</td>
+                        <td className="px-10 py-8 text-right text-[11px] text-primary-600 border-l border-gray-200 bg-emerald-50/20">{formatCurrency(grandTotal / (participants.length || 1))} / Orang</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -458,15 +476,76 @@ export default function PublicPlanPage() {
                             {isLunas ? 'Lunas / Terverifikasi' : 'Belum Lunas'}
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-10 text-[11px] font-black uppercase">
+                        <div className="space-y-4 mb-8">
+                          <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em]">Rincian Item:</p>
+                          <div className="space-y-2">
+                            {pContributions.map((c: any) => (
+                              <div key={c._id} className="flex justify-between items-center text-[10px] bg-gray-50/50 px-4 py-2 rounded-lg border border-gray-100">
+                                <span className="text-gray-500 uppercase truncate pr-4">{c.expenseItemId?.itemName || 'ITEM'}</span>
+                                <span className="text-gray-900 font-black">{formatCurrency(c.amount)}</span>
+                              </div>
+                            ))}
+                            {pContributions.length === 0 && <p className="text-[9px] text-gray-400 italic">Tidak ada tagihan iuran.</p>}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-10 text-[11px] font-black uppercase pt-6 border-t border-dashed border-gray-100">
                           <div className="space-y-2"><p className="text-gray-400 text-[10px]">Tagihan Wajib</p><p className="text-gray-900 text-lg">{formatCurrency(totalReq)}</p></div>
-                          <div className="space-y-2 text-right"><p className="text-gray-400 text-[10px]">Realisasi Bayar</p><p className="text-primary-600 text-lg">{formatCurrency(totalPaid)}</p></div>
+                          <div className="space-y-2 text-right"><p className="text-gray-400 text-[10px]">Bayar</p><p className="text-primary-600 text-lg">{formatCurrency(totalPaid)}</p></div>
                         </div>
                       </div>
                     )
                   })}
                 </div>
               </section>
+            </div>
+
+            {/* IVb. SPLIT BILLS */}
+            <div className={`${activeTab === 'splitbill' ? 'block' : 'hidden print:block'} space-y-12 print:break-before-page pt-20`}>
+              <div className="hidden print:flex items-center gap-6 mb-16">
+                <span className="w-14 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center font-black text-2xl">04b</span>
+                <div>
+                  <h3 className="text-4xl font-black text-gray-900 uppercase tracking-tighter">Bagi Tagihan (Split Bill)</h3>
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Detail Pembagian Biaya Per Item</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2">
+                {splitBills.length === 0 ? (
+                  <div className="col-span-full text-center py-20 bg-gray-50 rounded-[2.5rem] border border-dashed border-gray-100 italic font-black uppercase tracking-widest text-gray-400 text-[9px]">Belum ada catatan split bill.</div>
+                ) : (
+                  splitBills.map((bill: any) => (
+                    <div key={bill._id} className="bg-white border-2 border-gray-900 rounded-[2.5rem] overflow-hidden shadow-sm flex flex-col print:break-inside-avoid">
+                      <div className="p-8 border-b-2 border-gray-900 bg-gray-50/50">
+                        <div className="flex justify-between items-start gap-4 mb-4">
+                          <div>
+                            <h4 className="text-xl font-black text-gray-900 uppercase leading-tight mb-2">{bill.title}</h4>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Payer: <span className="text-primary-600">{bill.payerId?.name || 'Unknown'}</span></p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-black text-gray-900 leading-none mb-2">{formatCurrency(bill.totalAmount)}</p>
+                            <button onClick={() => setSelectedBill(bill)} className="text-[7px] font-black uppercase text-primary-600 hover:underline tracking-widest leading-none">LIHAT STRUK</button>
+                          </div>
+                        </div>
+                        <div className="text-[9px] font-black text-gray-300 uppercase tracking-widest">{format(new Date(bill.date), 'dd MMMM yyyy', { locale: language === 'id' ? id : enUS })}</div>
+                      </div>
+                      <div className="p-8 space-y-4">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Peserta & Bagian:</p>
+                        <div className="space-y-3">
+                          {bill.participantPayments.map((p: any) => (
+                            <div key={p.participantId?._id} className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] ${p.isPaid ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-400'}`}>{p.isPaid ? '✓' : '✗'}</div>
+                                <span className="text-[11px] font-black text-gray-900 uppercase">{p.participantId?.name}</span>
+                              </div>
+                              <span className="text-[11px] font-black text-gray-700">{formatCurrency(p.shareAmount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             {/* V. EVALUASI KESIAPAN */}
@@ -540,6 +619,7 @@ export default function PublicPlanPage() {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
       <SuggestionButton page={`Shared Link Content - ${plan.title}`} />
+      {selectedBill && <DigitalReceipt bill={selectedBill} onClose={() => setSelectedBill(null)} language={language} />}
     </div>
   )
 }

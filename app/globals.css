@@ -64,6 +64,8 @@
 }
 
 [data-theme='dark'] .bg-gray-50,
+[data-theme='dark'] .bg-gray-100,
+[data-theme='dark'] .bg-gray-200,
 [data-theme='dark'] .bg-gray-50\/30,
 [data-theme='dark'] .bg-gray-50\/50 {
   background-color: #0f172a !important;

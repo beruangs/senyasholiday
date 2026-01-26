@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Receipt, Edit2, Trash2, Eye, CheckCircle, XCircle, User, MessageCircle } from 'lucide-react'
-import DigitalReceipt from './DigitalReceipt'
+import DigitalReceipt from '@/components/DigitalReceipt'
 
 interface SplitBillCardProps {
     bill: any

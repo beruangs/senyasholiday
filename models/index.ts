@@ -105,6 +105,7 @@ const expenseItemSchema = new Schema({
 const participantSchema = new Schema({
   holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
   name: { type: String, required: true },
+  phoneNumber: String,
   // Link ke user jika participant adalah user terdaftar
   userId: { type: Schema.Types.ObjectId, ref: 'User' },
   order: { type: Number, default: 0 },

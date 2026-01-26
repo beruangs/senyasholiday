@@ -8,6 +8,7 @@ import { useLanguage } from '@/context/LanguageContext'
 interface Participant {
   _id?: string
   name: string
+  phoneNumber?: string
 }
 
 export default function ParticipantsTab({ planId, isCompleted }: { planId: string; isCompleted?: boolean }) {
@@ -17,11 +18,13 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
   const [showForm, setShowForm] = useState(false)
   const [showBulkForm, setShowBulkForm] = useState(false)
   const [name, setName] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [bulkNames, setBulkNames] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
 
   useEffect(() => {
     fetchParticipants()
@@ -44,11 +47,11 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
       const res = await fetch('/api/participants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ holidayPlanId: planId, name: name.trim(), order: participants.length }),
+        body: JSON.stringify({ holidayPlanId: planId, name: name.trim(), phoneNumber: phoneNumber.trim(), order: participants.length }),
       })
       if (res.ok) {
         toast.success(`${t.plan.participant_name} ${t.plan.add_success}`)
-        setShowForm(false); setName(''); fetchParticipants();
+        setShowForm(false); setName(''); setPhoneNumber(''); fetchParticipants();
       }
     } catch (error) { toast.error(t.common.loading) } finally { setIsSubmitting(false) }
   }
@@ -78,7 +81,7 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
       const res = await fetch(`/api/participants`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, name: editName.trim() }),
+        body: JSON.stringify({ id, name: editName.trim(), phoneNumber: editPhone.trim() }),
       })
       if (res.ok) {
         toast.success(t.common.save_changes)
@@ -134,8 +137,9 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
           {showForm ? (
             <div className="space-y-5">
               <h3 className="text-base font-black text-gray-900 uppercase tracking-tight">{t.plan.add_participant}</h3>
-              <form onSubmit={handleSubmit} className="flex gap-3">
-                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="flex-1 px-5 py-3 bg-white border border-gray-100 rounded-xl outline-none font-bold text-gray-900 text-sm" placeholder={language === 'id' ? 'Isi nama teman kamu...' : "Type your buddy's name..."} />
+              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="flex-1 px-5 py-3 bg-white border border-gray-100 rounded-xl outline-none font-bold text-gray-900 text-sm" placeholder={language === 'id' ? 'Nama...' : "Name..."} />
+                <input type="text" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="flex-1 px-5 py-3 bg-white border border-gray-100 rounded-xl outline-none font-bold text-gray-900 text-sm" placeholder={language === 'id' ? 'Nomor WA (Opsional)...' : "WhatsApp (Optional)..."} />
                 <button type="submit" className="px-8 py-3 bg-primary-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary-50">{t.common.save}</button>
               </form>
             </div>
@@ -177,18 +181,22 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
                       {editingId === p._id ? (
                         <button onClick={() => handleUpdateName(p._id!)} className="p-1 text-primary-600 hover:bg-primary-50 rounded-md transition-all"><Save className="w-3.5 h-3.5" /></button>
                       ) : (
-                        <button onClick={() => { setEditingId(p._id!); setEditName(p.name); }} className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-all"><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => { setEditingId(p._id!); setEditName(p.name); setEditPhone(p.phoneNumber || ''); }} className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-all"><Edit3 className="w-3.5 h-3.5" /></button>
                       )}
                       <button onClick={() => deleteParticipant(p._id!, p.name)} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   )}
                 </div>
                 {editingId === p._id ? (
-                  <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleUpdateName(p._id!)} className="w-full px-2.5 py-1.5 bg-gray-50 border border-primary-100 rounded-lg outline-none font-black text-xs uppercase" />
+                  <div className="space-y-2">
+                    <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-2.5 py-1.5 bg-gray-50 border border-primary-100 rounded-lg outline-none font-black text-[10px] uppercase" placeholder="Name" />
+                    <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleUpdateName(p._id!)} className="w-full px-2.5 py-1.5 bg-gray-50 border border-primary-100 rounded-lg outline-none font-black text-[10px] uppercase" placeholder="Phone" />
+                  </div>
                 ) : (
                   <div>
                     <h4 className="font-black text-sm text-gray-900 group-hover:text-primary-600 transition-all uppercase leading-tight truncate">{p.name}</h4>
-                    <span className="text-[7px] font-black text-primary-300 uppercase tracking-widest mt-0.5 block">CONFIRMED</span>
+                    <p className="text-[8px] font-bold text-gray-400 tracking-tight mt-0.5">{p.phoneNumber || (language === 'id' ? 'No Kontak' : 'No Contact')}</p>
+                    <span className="text-[7px] font-black text-primary-300 uppercase tracking-widest mt-1 block">CONFIRMED</span>
                   </div>
                 )}
               </div>

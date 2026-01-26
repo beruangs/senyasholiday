@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
     }
 
     await dbConnect()
-    const body = await req.json()
-    const participant = await Participant.create(body)
+    const { holidayPlanId, name, phoneNumber, order } = await req.json()
+    const participant = await Participant.create({ holidayPlanId, name, phoneNumber, order })
 
     return NextResponse.json(participant, { status: 201 })
   } catch (error) {
@@ -124,7 +124,7 @@ export async function PUT(req: NextRequest) {
     }
 
     await dbConnect()
-    const { id, name } = await req.json()
+    const { id, name, phoneNumber } = await req.json()
 
     if (!id || !name) {
       return NextResponse.json({ error: 'ID and name are required' }, { status: 400 })
@@ -132,7 +132,7 @@ export async function PUT(req: NextRequest) {
 
     const updatedParticipant = await Participant.findByIdAndUpdate(
       id,
-      { name },
+      { name, phoneNumber },
       { new: true }
     )
 

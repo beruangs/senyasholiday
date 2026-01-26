@@ -23,15 +23,49 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
     const [quantity, setQuantity] = useState(1)
     const [collectorId, setCollectorId] = useState('')
     const [downPayment, setDownPayment] = useState(0)
+    const [categoryId, setCategoryId] = useState('')
+    const [categories, setCategories] = useState<any[]>([])
+    const [showNewCategory, setShowNewCategory] = useState(false)
+    const [newCategoryName, setNewCategoryName] = useState('')
     const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
 
     useEffect(() => {
-        if (editData) {
-            setItemName(editData.itemName); setDetail(editData.detail || ''); setPrice(editData.price); setQuantity(editData.quantity);
-            setCollectorId(editData.collectorId?._id || editData.collectorId || ''); setDownPayment(editData.downPayment || 0);
-            if (editData.contributors) setSelectedParticipants(editData.contributors.map((c: any) => c.participantId?._id || c.participantId))
-        } else { setSelectedParticipants(participants.map(p => p._id)) }
+        if (isOpen) {
+            fetchCategories()
+            if (editData) {
+                setItemName(editData.itemName); setDetail(editData.detail || ''); setPrice(editData.price); setQuantity(editData.quantity);
+                setCollectorId(editData.collectorId?._id || editData.collectorId || ''); setDownPayment(editData.downPayment || 0);
+                setCategoryId(editData.categoryId?._id || editData.categoryId || '');
+                if (editData.contributors) setSelectedParticipants(editData.contributors.map((c: any) => c.participantId?._id || c.participantId))
+            } else { setSelectedParticipants(participants.map(p => p._id)) }
+        }
     }, [editData, participants, isOpen])
+
+    const fetchCategories = async () => {
+        try {
+            const res = await fetch(`/api/expense-categories?planId=${planId}`)
+            if (res.ok) setCategories(await res.json())
+        } catch { }
+    }
+
+    const handleAddCategory = async () => {
+        if (!newCategoryName.trim()) return
+        try {
+            const res = await fetch('/api/expense-categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ holidayPlanId: planId, name: newCategoryName.trim() })
+            })
+            if (res.ok) {
+                const newCat = await res.json()
+                setCategories([...categories, newCat])
+                setCategoryId(newCat._id)
+                setNewCategoryName('')
+                setShowNewCategory(false)
+                toast.success(language === 'id' ? 'Kategori ditambahkan' : 'Category added')
+            }
+        } catch { toast.error(t.common.failed) }
+    }
 
     const calculateTotal = () => price * quantity
 
@@ -44,7 +78,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
         setLoading(true)
         const total = calculateTotal(); const expenseId = editData?._id
         try {
-            const res = await fetch('/api/expenses', { method: editData ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ holidayPlanId: planId, _id: expenseId, itemName, detail, price, quantity, total, collectorId, downPayment }) })
+            const res = await fetch('/api/expenses', { method: editData ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ holidayPlanId: planId, _id: expenseId, itemName, detail, price, quantity, total, collectorId, downPayment, categoryId: categoryId || null }) })
             if (!res.ok) throw new Error()
             const savedExpense = await res.json(); const finalExpenseId = expenseId || savedExpense._id
 
@@ -105,6 +139,22 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                         <div className="space-y-2">
                             <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'JUMLAH' : 'QUANTITY'}</label>
                             <input type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900" />
+                        </div>
+                        <div className="md:col-span-2 space-y-2">
+                            <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'KATEGORI' : 'CATEGORY'}</label>
+                            <div className="flex gap-2">
+                                <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="flex-1 px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900 appearance-none cursor-pointer">
+                                    <option value="">-- {language === 'id' ? 'Umum' : 'General'} --</option>
+                                    {categories.map(c => <option key={c._id} value={c._id}>{c.name.toUpperCase()}</option>)}
+                                </select>
+                                <button type="button" onClick={() => setShowNewCategory(!showNewCategory)} className="px-4 bg-gray-50 border border-gray-100 rounded-xl text-primary-600 hover:bg-primary-50 transition-all font-black">+</button>
+                            </div>
+                            {showNewCategory && (
+                                <div className="flex gap-2 animate-in slide-in-from-top-2">
+                                    <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="flex-1 px-4 py-2 bg-white border border-primary-200 rounded-lg outline-none font-bold text-xs uppercase" placeholder={language === 'id' ? 'NAMA KATEGORI BARU...' : 'NEW CATEGORY NAME...'} />
+                                    <button type="button" onClick={handleAddCategory} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">ADD</button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
