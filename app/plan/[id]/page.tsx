@@ -430,7 +430,6 @@ export default function PublicPlanPage() {
                         <th className="px-10 py-6 font-black tracking-widest">Deskripsi Item</th>
                         <th className="px-10 py-6 font-black tracking-widest">Kategori</th>
                         <th className="px-10 py-6 font-black tracking-widest text-right">Total Biaya</th>
-                        <th className="px-10 py-6 font-black tracking-widest text-right">Beban Unit</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-gray-100">
@@ -442,7 +441,6 @@ export default function PublicPlanPage() {
                           </td>
                           <td className="px-10 py-6"><span className="px-3 py-1 bg-gray-100 text-gray-500 rounded font-black uppercase text-[8px]">{expense.categoryId?.name || 'UMUM'}</span></td>
                           <td className="px-10 py-6 text-right font-black text-gray-900 text-sm">{formatCurrency(expense.total)}</td>
-                          <td className="px-10 py-6 text-right font-black text-emerald-600 text-sm">{formatCurrency(expense.total / (participants.length || 1))}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -450,7 +448,6 @@ export default function PublicPlanPage() {
                       <tr>
                         <td colSpan={2} className="px-10 py-8 text-right tracking-[0.2em] font-black uppercase text-sm text-gray-400">Total Realisasi Anggaran</td>
                         <td className="px-10 py-8 text-right text-2xl border-l border-gray-200">{formatCurrency(grandTotal)}</td>
-                        <td className="px-10 py-8 text-right text-[11px] text-primary-600 border-l border-gray-200 bg-emerald-50/20">{formatCurrency(grandTotal / (participants.length || 1))} / Orang</td>
                       </tr>
                     </tfoot>
                   </table>
