@@ -175,33 +175,32 @@ export default function PublicPlanPage() {
         </button>
       </nav>
 
-      <div className="relative mb-8 max-w-6xl mx-auto pt-4 sm:pt-8 print:hidden">
-        <div className="relative h-40 sm:h-64 w-full overflow-hidden rounded-[1.5rem] sm:rounded-[3rem] shadow-xl">
-          {plan.bannerImage ? <img src={plan.bannerImage} alt="Banner" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-900" />}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-          {plan.status === 'completed' && <div className="absolute top-4 right-4 px-4 py-1.5 bg-emerald-600 text-white rounded-full font-black text-[9px] uppercase tracking-widest shadow-lg flex items-center gap-2"><CheckSquare className="w-3.5 h-3.5" /> {t.plan.trip_completed}</div>}
-        </div>
-
-        <div className="relative px-4 sm:px-12 -mt-12 sm:-mt-16">
-          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] shadow-2xl p-6 sm:p-10 border border-gray-100 relative">
-            <div className="flex flex-col lg:flex-row gap-6 items-center lg:items-center">
-              <div className="flex-shrink-0 relative z-20">
-                <div className="w-24 h-24 sm:w-36 sm:h-36 bg-white rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl p-2 border-4 border-white flex items-center justify-center -mt-20 sm:-mt-28 font-black">
-                  {plan.logoImage ? <img src={plan.logoImage} alt="Logo" className="w-full h-full object-contain" /> : <div className="w-full h-full bg-primary-600 rounded-[1.2rem] sm:rounded-[2rem] flex items-center justify-center font-black text-3xl sm:text-5xl leading-none text-white">SYD</div>}
-                </div>
+      <div className="max-w-7xl mx-auto pt-24 sm:pt-32 px-4 print:hidden">
+        <div className="mb-8 rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-xl border border-gray-100 bg-white relative">
+          <div className="relative h-40 sm:h-64">
+            {plan.bannerImage ? <img src={plan.bannerImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-900" />}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+            <div className="absolute -bottom-8 sm:-bottom-10 left-4 sm:left-8">
+              <div className="w-20 h-20 sm:w-36 sm:h-36 rounded-[1.2rem] sm:rounded-[2.5rem] bg-white p-2 shadow-2xl overflow-hidden border-4 border-white">
+                {plan.logoImage ? <img src={plan.logoImage} className="w-full h-full object-contain" /> : <div className="w-full h-full bg-primary-600 rounded-[0.8rem] sm:rounded-[1.8rem] flex items-center justify-center"><span className="text-white font-black text-xl sm:text-4xl">SYD</span></div>}
               </div>
+            </div>
+          </div>
 
-              <div className="flex-1 text-center lg:text-left space-y-4 lg:pt-2">
-                <h1 className="text-3xl sm:text-5xl font-black text-gray-900 tracking-tight leading-tight uppercase break-words">{plan.title}</h1>
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
-                  <span className="px-5 py-2 bg-primary-50 text-primary-600 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm border border-primary-100/50"><MapPin className="w-3.5 h-3.5" /> {plan.destination}</span>
-                  <span className="px-5 py-2 bg-gray-50 text-gray-500 rounded-full text-[10px] font-black uppercase tracking-widest border border-gray-100 flex items-center gap-2 shadow-sm"><Calendar className="w-3.5 h-3.5 text-primary-400" /> {format(new Date(plan.startDate), 'dd MMM', { locale: dateLocale })} - {format(new Date(plan.endDate), 'dd MMM yyyy', { locale: dateLocale })}</span>
+          <div className="pt-14 sm:pt-16 px-4 sm:px-8 pb-6 sm:pb-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+              <div className="flex-1 space-y-4 w-full">
+                <h1 className="text-2xl sm:text-5xl font-black text-gray-900 uppercase tracking-tight leading-none break-words">{plan.title}</h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="px-4 py-1.5 bg-primary-50 text-primary-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><MapPin className="w-3.5 h-3.5" /> {plan.destination}</span>
+                  {plan.status === 'completed' && <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><CheckSquare className="w-3.5 h-3.5" /> {t.plan.trip_completed}</span>}
+                  <span className="px-4 py-1.5 bg-gray-50 text-gray-400 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><Calendar className="w-3.5 h-3.5" /> {format(new Date(plan.startDate), 'dd MMM', { locale: dateLocale })} - {format(new Date(plan.endDate), 'dd MMM yyyy', { locale: dateLocale })}</span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-10 w-full overflow-x-auto no-scrollbar pt-10 border-t border-gray-50 -mx-6 sm:-mx-10 px-6 sm:px-10">
-              <nav className="flex sm:justify-center gap-3 min-w-max pb-8">
+            <div className="mt-10 overflow-x-auto no-scrollbar -mx-4 sm:mx-0">
+              <nav className="flex items-center justify-start sm:justify-center gap-2 border-t border-gray-100 pt-6 min-w-max px-4 sm:px-0">
                 {[
                   { id: 'info', label: t.plan.about_trip || 'Info', icon: Globe },
                   { id: 'rundown', label: t.plan.rundown, icon: Calendar },
@@ -210,8 +209,8 @@ export default function PublicPlanPage() {
                   { id: 'checklist', label: t.plan.checklist, icon: CheckSquare },
                   { id: 'note', label: t.plan.notes, icon: StickyNote },
                 ].map((tab) => (
-                  <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-primary-600 text-white shadow-xl shadow-primary-200 scale-105' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}>
-                    <tab.icon className="w-4 h-4" /> {tab.label}
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-primary-600 text-white shadow-lg shadow-primary-100 scale-105' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}>
+                    <tab.icon className="w-3.5 h-3.5" /> {tab.label}
                   </button>
                 ))}
               </nav>
@@ -220,7 +219,7 @@ export default function PublicPlanPage() {
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto pb-24 font-medium print:max-w-none print:pb-0">
+      <main className="max-w-7xl mx-auto pb-24 font-medium print:max-w-none print:pb-0">
         {/* ==========================================
             PRINT-ONLY PAGE 1: COVER (LAPORAN PROPOSAL)
             ========================================== */}
