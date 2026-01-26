@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Users, Shield, Crown, User as UserIcon, Trash2, ChevronDown, Search, AtSign, Loader2, Calendar, Lock, Key, Settings, Megaphone, Bell, X as XIcon, Star, Filter, ExternalLink, RefreshCw, AlertTriangle, CheckCircle, Activity, Database, Zap, Cpu } from 'lucide-react'
+import { Users, Shield, Crown, User as UserIcon, Trash2, ChevronDown, Search, AtSign, Loader2, Calendar, Lock, Key, Settings, Megaphone, Bell, X as XIcon, Star, Filter, ExternalLink, RefreshCw, AlertTriangle, CheckCircle, Activity, Database, Zap, Cpu, Wind, Eraser } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id, enUS } from 'date-fns/locale'
@@ -16,7 +16,7 @@ interface Plan { _id: string; title: string; destination: string; planCategory: 
 
 export default function SuperadminClient({ session }: any) {
     const { language, t } = useLanguage(); const dateLocale = language === 'id' ? id : enUS
-    const [activeTab, setActiveTab] = useState<'users' | 'plans' | 'notifications' | 'broadcast' | 'settings' | 'health'>('users')
+    const [activeTab, setActiveTab] = useState<'users' | 'plans' | 'notifications' | 'broadcast' | 'settings' | 'health' | 'prune'>('users')
     const [healthData, setHealthData] = useState<any>(null); const [fetchingHealth, setFetchingHealth] = useState(false)
     const [users, setUsers] = useState<User[]>([]); const [notifications, setNotifications] = useState<Notification[]>([]); const [plans, setPlans] = useState<Plan[]>([]); const [loading, setLoading] = useState(true); const [searchQuery, setSearchQuery] = useState('')
     const [editingRole, setEditingRole] = useState<string | null>(null); const [updatingRole, setUpdatingRole] = useState(false)
@@ -24,6 +24,7 @@ export default function SuperadminClient({ session }: any) {
     const [resetPassModal, setResetPassModal] = useState<{ isOpen: boolean, user: User | null }>({ isOpen: false, user: null })
     const [newPassword, setNewPassword] = useState(''); const [isUpdatingPassword, setIsUpdatingPassword] = useState(false); const [isMaintenance, setIsMaintenance] = useState(false); const [allowRegistration, setAllowRegistration] = useState(true)
     const [broadcastData, setBroadcastData] = useState({ title: '', message: '', targetRoles: ['user', 'sen_user'] }); const [sendingBroadcast, setSendingBroadcast] = useState(false); const [impersonatingId, setImpersonatingId] = useState<string | null>(null)
+    const [pruneStats, setPruneStats] = useState<any>(null); const [pruning, setPruning] = useState<string | null>(null)
 
     useEffect(() => {
         fetchAll();
@@ -31,7 +32,7 @@ export default function SuperadminClient({ session }: any) {
 
     const fetchAll = async () => {
         setLoading(true);
-        await Promise.all([fetchUsers(), fetchNotifications(), fetchPlans(), fetchSettings(), fetchHealth()]);
+        await Promise.all([fetchUsers(), fetchNotifications(), fetchPlans(), fetchSettings(), fetchHealth(), fetchPruneStats()]);
         setLoading(false);
     }
 
@@ -56,6 +57,21 @@ export default function SuperadminClient({ session }: any) {
     const fetchUsers = async () => { try { const res = await fetch('/api/admin/users'); if (res.ok) setUsers(await res.json()); } catch { toast.error(t.common.failed) } }
     const fetchNotifications = async () => { try { const res = await fetch('/api/notifications?admin=true'); if (res.ok) setNotifications(await res.json()); } catch { } }
     const fetchPlans = async () => { try { const res = await fetch('/api/plans'); if (res.ok) setPlans(await res.json()); } catch { } }
+    const fetchPruneStats = async () => { try { const res = await fetch('/api/admin/prune'); if (res.ok) setPruneStats(await res.json()); } catch { } }
+
+    const executePrune = async (type: string) => {
+        if (!confirm(language === 'id' ? 'Anda yakin ingin menghapus data ini secara permanen?' : 'Are you sure you want to permanently delete this data?')) return;
+        setPruning(type)
+        try {
+            const res = await fetch('/api/admin/prune', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }) })
+            if (res.ok) {
+                const data = await res.json()
+                toast.success(language === 'id' ? `Berhasil menghapus ${data.deletedCount} data` : `Successfully deleted ${data.deletedCount} items`)
+                fetchPruneStats()
+                fetchPlans()
+            }
+        } catch { toast.error(t.common.failed) } finally { setPruning(null) }
+    }
 
     const updateRole = async (userId: string, newRole: string) => {
         setUpdatingRole(true)
@@ -203,6 +219,7 @@ export default function SuperadminClient({ session }: any) {
                     { id: 'notifications', label: 'LOGS', icon: Bell, count: notifications.filter(n => !n.read).length },
                     { id: 'broadcast', label: 'BROADCAST', icon: Megaphone },
                     { id: 'health', label: 'HEALTH', icon: Activity },
+                    { id: 'prune', label: 'PRUNE', icon: Wind },
                     { id: 'settings', label: 'SYSTEM', icon: Settings }
                 ].map(tab => (
                     <button
@@ -529,6 +546,87 @@ export default function SuperadminClient({ session }: any) {
                                     <div className="flex flex-col items-end">
                                         <p className="text-[8px] font-black text-gray-500 uppercase tracking-[0.3em] mb-1">LAST HEARTBEAT</p>
                                         <p className="text-sm font-black text-emerald-400">{healthData ? format(new Date(healthData.timestamp), 'HH:mm:ss') : '--:--:--'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'prune' && (
+                            <div className="space-y-12 animate-in fade-in zoom-in duration-500">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+                                    <div>
+                                        <h2 className="text-3xl font-black uppercase tracking-tight text-gray-900">Data Pruning</h2>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Maintenance tools to clean up junk and inactive data</p>
+                                    </div>
+                                    <button onClick={fetchPruneStats} className="px-6 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl flex items-center gap-2">
+                                        <RefreshCw className="w-3.5 h-3.5" />
+                                        Scan System
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="bg-white p-10 rounded-[3rem] border-2 border-gray-50 shadow-sm space-y-8 relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform"><Wind className="w-40 h-40" /></div>
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-3xl flex items-center justify-center shadow-lg shadow-blue-50"><Wind className="w-8 h-8" /></div>
+                                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${pruneStats?.skeletonPlans.count > 0 ? 'bg-amber-500 text-white animate-pulse' : 'bg-emerald-500 text-white'}`}>
+                                                {pruneStats?.skeletonPlans.count > 0 ? 'NEEDS CLEANUP' : 'CLEAN'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-2xl font-black text-gray-900 tracking-tight uppercase mb-2">Skeleton Plans</h3>
+                                            <p className="text-[11px] font-bold text-gray-400 leading-relaxed uppercase tracking-tight">{pruneStats?.skeletonPlans.description}</p>
+                                        </div>
+                                        <div className="flex items-end justify-between">
+                                            <div>
+                                                <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.3em] mb-1">DATA DETECTED</p>
+                                                <p className="text-4xl font-black text-gray-900 tracking-tighter">{pruneStats?.skeletonPlans.count || '0'}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => executePrune('skeleton')}
+                                                disabled={!pruneStats?.skeletonPlans.count || pruning === 'skeleton'}
+                                                className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-rose-600 disabled:opacity-20 transition-all flex items-center gap-3"
+                                            >
+                                                {pruning === 'skeleton' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eraser className="w-4 h-4" />}
+                                                PRUNE DATA
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-10 rounded-[3rem] border-2 border-gray-50 shadow-sm space-y-8 relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform"><Trash2 className="w-40 h-40" /></div>
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center shadow-lg shadow-rose-50"><Trash2 className="w-8 h-8" /></div>
+                                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${pruneStats?.trashPlans.count > 0 ? 'bg-rose-500 text-white animate-pulse' : 'bg-emerald-500 text-white'}`}>
+                                                {pruneStats?.trashPlans.count > 0 ? 'OVERFLOWING' : 'EMPTY'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-2xl font-black text-gray-900 tracking-tight uppercase mb-2">Trash Purge</h3>
+                                            <p className="text-[11px] font-bold text-gray-400 leading-relaxed uppercase tracking-tight">{pruneStats?.trashPlans.description}</p>
+                                        </div>
+                                        <div className="flex items-end justify-between">
+                                            <div>
+                                                <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.3em] mb-1">STALE ITEMS</p>
+                                                <p className="text-4xl font-black text-gray-900 tracking-tighter">{pruneStats?.trashPlans.count || '0'}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => executePrune('trash')}
+                                                disabled={!pruneStats?.trashPlans.count || pruning === 'trash'}
+                                                className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-rose-600 disabled:opacity-20 transition-all flex items-center gap-3"
+                                            >
+                                                {pruning === 'trash' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eraser className="w-4 h-4" />}
+                                                PURGE TRASH
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-10 bg-amber-50 rounded-[3rem] border border-amber-100 flex items-start gap-8">
+                                    <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center text-amber-500 shadow-xl shrink-0"><AlertTriangle className="w-8 h-8" /></div>
+                                    <div className="space-y-2">
+                                        <h4 className="text-xl font-black text-amber-900 uppercase tracking-tight">Perhatian Keamanan</h4>
+                                        <p className="text-xs font-bold text-amber-800/60 leading-relaxed uppercase tracking-tight">Data yang sudah di-prune akan dihapus secara permanen dari server dan database. Proses ini tidak dapat dibatalkan (undo). Gunakan hanya untuk membersihkan data sampah atau data yang sudah kadaluarsa.</p>
                                     </div>
                                 </div>
                             </div>
