@@ -98,7 +98,7 @@ export default function NoteTab({ planId, isCompleted }: { planId: string; isCom
           {note ? (
             <div className="relative bg-white rounded-[2rem] border border-gray-100 p-8 sm:p-12 shadow-sm hover:shadow-xl transition-all overflow-hidden font-bold">
               <div className="absolute top-0 right-0 w-48 h-48 bg-primary-50/20 rounded-full blur-3xl -mr-24 -mt-24" />
-              <div className="relative prose prose-base max-w-none prose-p:font-bold prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tight" dangerouslySetInnerHTML={{ __html: note }} />
+              <div className="relative prose prose-base max-w-none prose-p:font-bold prose-headings:font-black prose-headings:tracking-tight" dangerouslySetInnerHTML={{ __html: note }} />
               <div className="mt-10 pt-6 border-t border-gray-50 flex items-center gap-2 text-gray-300 font-black text-[8px] uppercase tracking-widest leading-none">
                 <Sparkles className="w-3 h-3 text-primary-200" /> {language === 'id' ? 'CATATAN INI TERINTEGRASI' : 'THIS NOTE IS INTEGRATED'}
               </div>

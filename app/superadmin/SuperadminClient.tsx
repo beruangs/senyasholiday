@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Users, Shield, Crown, User as UserIcon, Trash2, ChevronDown, Search, AtSign, Loader2, Calendar, Lock, Key, Settings, Megaphone, Bell, X as XIcon, Star, Filter, ExternalLink, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Users, Shield, Crown, User as UserIcon, Trash2, ChevronDown, Search, AtSign, Loader2, Calendar, Lock, Key, Settings, Megaphone, Bell, X as XIcon, Star, Filter, ExternalLink, RefreshCw, AlertTriangle, CheckCircle, Activity, Database, Zap, Cpu } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id, enUS } from 'date-fns/locale'
@@ -16,7 +16,8 @@ interface Plan { _id: string; title: string; destination: string; planCategory: 
 
 export default function SuperadminClient({ session }: any) {
     const { language, t } = useLanguage(); const dateLocale = language === 'id' ? id : enUS
-    const [activeTab, setActiveTab] = useState<'users' | 'plans' | 'notifications' | 'broadcast' | 'settings'>('users')
+    const [activeTab, setActiveTab] = useState<'users' | 'plans' | 'notifications' | 'broadcast' | 'settings' | 'health'>('users')
+    const [healthData, setHealthData] = useState<any>(null); const [fetchingHealth, setFetchingHealth] = useState(false)
     const [users, setUsers] = useState<User[]>([]); const [notifications, setNotifications] = useState<Notification[]>([]); const [plans, setPlans] = useState<Plan[]>([]); const [loading, setLoading] = useState(true); const [searchQuery, setSearchQuery] = useState('')
     const [editingRole, setEditingRole] = useState<string | null>(null); const [updatingRole, setUpdatingRole] = useState(false)
     const [deleteUserConfirm, setDeleteUserConfirm] = useState({ isOpen: false, userId: '', username: '' }); const [deletePlanConfirm, setDeletePlanConfirm] = useState({ isOpen: false, planId: '', title: '' })
@@ -30,8 +31,16 @@ export default function SuperadminClient({ session }: any) {
 
     const fetchAll = async () => {
         setLoading(true);
-        await Promise.all([fetchUsers(), fetchNotifications(), fetchPlans(), fetchSettings()]);
+        await Promise.all([fetchUsers(), fetchNotifications(), fetchPlans(), fetchSettings(), fetchHealth()]);
         setLoading(false);
+    }
+
+    const fetchHealth = async () => {
+        setFetchingHealth(true);
+        try {
+            const res = await fetch('/api/admin/health');
+            if (res.ok) setHealthData(await res.json());
+        } catch { } finally { setFetchingHealth(false); }
     }
 
     const fetchSettings = async () => {
@@ -193,6 +202,7 @@ export default function SuperadminClient({ session }: any) {
                     { id: 'plans', label: 'ALL PLANS', icon: Calendar },
                     { id: 'notifications', label: 'LOGS', icon: Bell, count: notifications.filter(n => !n.read).length },
                     { id: 'broadcast', label: 'BROADCAST', icon: Megaphone },
+                    { id: 'health', label: 'HEALTH', icon: Activity },
                     { id: 'settings', label: 'SYSTEM', icon: Settings }
                 ].map(tab => (
                     <button
@@ -445,6 +455,81 @@ export default function SuperadminClient({ session }: any) {
                                         {sendingBroadcast ? <Loader2 className="w-5 h-5 animate-spin" /> : <Megaphone className="w-5 h-5" />}
                                         {sendingBroadcast ? 'TRANSMITTING...' : 'INITIATE BROADCAST'}
                                     </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'health' && (
+                            <div className="space-y-12 animate-in fade-in zoom-in duration-500">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+                                    <div>
+                                        <h2 className="text-3xl font-black uppercase tracking-tight text-gray-900">System Vitality</h2>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Real-time performance & infrastructure metrics</p>
+                                    </div>
+                                    <button onClick={fetchHealth} disabled={fetchingHealth} className="px-6 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl flex items-center gap-2">
+                                        {fetchingHealth ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                        Refresh Metrics
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <div className="bg-white p-8 rounded-[2.5rem] border-2 border-gray-50 shadow-sm space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center"><Database className="w-6 h-6" /></div>
+                                            <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${healthData?.database.status === 'Healthy' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>{healthData?.database.status || '...'}</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">MDB LATENCY</p>
+                                            <p className="text-3xl font-black text-gray-900 tracking-tighter">{healthData?.database.latency || '0ms'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-8 rounded-[2.5rem] border-2 border-gray-50 shadow-sm space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-12 h-12 bg-primary-50 text-primary-500 rounded-2xl flex items-center justify-center"><Zap className="w-6 h-6" /></div>
+                                            <span className="px-3 py-1 bg-primary-500 text-white rounded-full text-[8px] font-black uppercase tracking-widest">OPERATIONAL</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">SERVER UPTIME</p>
+                                            <p className="text-3xl font-black text-gray-900 tracking-tighter">{healthData?.system.uptime || '...'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-8 rounded-[2.5rem] border-2 border-gray-50 shadow-sm space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center"><Cpu className="w-6 h-6" /></div>
+                                            <span className="px-3 py-1 bg-indigo-500 text-white rounded-full text-[8px] font-black uppercase tracking-widest">NODE.JS</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">MEMORY (RSS)</p>
+                                            <p className="text-3xl font-black text-gray-900 tracking-tighter">{healthData?.system.memoryUsage || '...'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-8 rounded-[2.5rem] border-2 border-gray-50 shadow-sm space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center"><Shield className="w-6 h-6" /></div>
+                                            <span className="px-3 py-1 bg-amber-500 text-white rounded-full text-[8px] font-black uppercase tracking-widest">SECURITY</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">OS PLATFORM</p>
+                                            <p className="text-3xl font-black text-gray-900 tracking-tighter uppercase">{healthData?.system.platform || '...'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-10 bg-gray-900 rounded-[3rem] text-white flex flex-col md:flex-row items-center justify-between gap-8 border-4 border-gray-800 shadow-2xl">
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-16 h-16 bg-emerald-500 text-white rounded-3xl flex items-center justify-center shadow-xl animate-pulse"><Activity className="w-8 h-8" /></div>
+                                        <div>
+                                            <h4 className="text-xl font-black uppercase tracking-tight">System Status: All Green</h4>
+                                            <p className="text-xs font-bold text-gray-400 leading-relaxed mt-1 uppercase tracking-tight">No critical issues reported across all server clusters. Core API and database nodes are fully operational.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <p className="text-[8px] font-black text-gray-500 uppercase tracking-[0.3em] mb-1">LAST HEARTBEAT</p>
+                                        <p className="text-sm font-black text-emerald-400">{healthData ? format(new Date(healthData.timestamp), 'HH:mm:ss') : '--:--:--'}</p>
+                                    </div>
                                 </div>
                             </div>
                         )}

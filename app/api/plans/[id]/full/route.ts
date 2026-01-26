@@ -47,7 +47,7 @@ export async function GET(
             Participant.find({ holidayPlanId: id }).sort({ order: 1 }).lean(),
             ExpenseCategory.find({ holidayPlanId: id }).sort({ order: 1 }).lean(),
             ExpenseItem.find({ holidayPlanId: id }).populate('categoryId').sort({ createdAt: 1 }).lean(),
-            Contribution.find({ holidayPlanId: id }).populate('participantId').lean(),
+            Contribution.find({ holidayPlanId: id }).populate('participantId').populate('expenseItemId').lean(),
             SplitBill.find({ holidayPlanId: id })
                 .populate('payerId', 'name')
                 .populate('participantPayments.participantId', 'name')

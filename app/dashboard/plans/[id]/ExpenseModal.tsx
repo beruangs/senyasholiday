@@ -109,7 +109,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-100"><DollarSign className="w-5 h-5" /></div>
                         <div>
-                            <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">{editData ? t.plan.edit_expense : t.plan.add_expense}</h2>
+                            <h2 className="text-lg font-black text-gray-900 tracking-tight">{editData ? t.plan.edit_expense : t.plan.add_expense}</h2>
                             <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">{language === 'id' ? 'RINCIAN KEUANGAN' : 'FINANCIAL DETAILS'}</p>
                         </div>
                     </div>
@@ -122,14 +122,14 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                             <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{t.plan.item_name}</label>
                             <div className="relative group">
                                 <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300 group-focus-within:text-primary-600 transition-all font-bold" />
-                                <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} className="w-full pl-10 pr-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-bold text-sm text-gray-900 focus:bg-white focus:border-primary-500 transition-all uppercase" placeholder="E.g. VILLA" />
+                                <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} className="w-full pl-10 pr-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-bold text-sm text-gray-900 focus:bg-white focus:border-primary-500 transition-all" placeholder="E.g. Villa" />
                             </div>
                         </div>
                         <div className="md:col-span-2 space-y-2">
                             <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{t.common.description}</label>
                             <div className="relative group">
                                 <HelpCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300 group-focus-within:text-primary-600 transition-all font-bold" />
-                                <input type="text" value={detail} onChange={(e) => setDetail(e.target.value)} className="w-full pl-10 pr-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-bold text-sm text-gray-900 focus:bg-white focus:border-primary-500 transition-all uppercase" placeholder="E.g. ROOM 2" />
+                                <input type="text" value={detail} onChange={(e) => setDetail(e.target.value)} className="w-full pl-10 pr-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-bold text-sm text-gray-900 focus:bg-white focus:border-primary-500 transition-all" placeholder="E.g. Room 2" />
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -145,13 +145,13 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                             <div className="flex gap-2">
                                 <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="flex-1 px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900 appearance-none cursor-pointer">
                                     <option value="">-- {language === 'id' ? 'Umum' : 'General'} --</option>
-                                    {categories.map(c => <option key={c._id} value={c._id}>{c.name.toUpperCase()}</option>)}
+                                    {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                                 </select>
                                 <button type="button" onClick={() => setShowNewCategory(!showNewCategory)} className="px-4 bg-gray-50 border border-gray-100 rounded-xl text-primary-600 hover:bg-primary-50 transition-all font-black">+</button>
                             </div>
                             {showNewCategory && (
                                 <div className="flex gap-2 animate-in slide-in-from-top-2">
-                                    <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="flex-1 px-4 py-2 bg-white border border-primary-200 rounded-lg outline-none font-bold text-xs uppercase" placeholder={language === 'id' ? 'NAMA KATEGORI BARU...' : 'NEW CATEGORY NAME...'} />
+                                    <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="flex-1 px-4 py-2 bg-white border border-primary-200 rounded-lg outline-none font-bold text-xs" placeholder={language === 'id' ? 'Nama kategori baru...' : 'New category name...'} />
                                     <button type="button" onClick={handleAddCategory} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">ADD</button>
                                 </div>
                             )}
@@ -171,7 +171,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                             <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{t.plan.expense_collector}</label>
                             <select value={collectorId} onChange={(e) => setCollectorId(e.target.value)} className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900 appearance-none cursor-pointer">
                                 <option value="">-- {language === 'id' ? 'Pilih' : 'Select'} --</option>
-                                {participants.map(p => <option key={p._id} value={p._id}>{p.name.toUpperCase()}</option>)}
+                                {participants.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                             </select>
                         </div>
                         <div className="space-y-2">

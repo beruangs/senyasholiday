@@ -139,7 +139,7 @@ export default function ChecklistTab({ planId, planTitle = '', destination = '',
             {!isCompleted && (
                 <div className="relative group">
                     <Plus className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-primary-600 transition-all" />
-                    <input type="text" value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addItem(newItem)} placeholder={language === 'id' ? 'Apa lagi yang perlu disiapkan?' : 'What else to prepare?'} className="w-full pl-12 pr-32 py-4 bg-gray-50 rounded-2xl border border-gray-100 focus:bg-white focus:border-primary-500 outline-none transition-all font-black text-sm uppercase placeholder:text-gray-300" />
+                    <input type="text" value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addItem(newItem)} placeholder={language === 'id' ? 'Apa lagi yang perlu disiapkan?' : 'What else to prepare?'} className="w-full pl-12 pr-32 py-4 bg-gray-50 rounded-2xl border border-gray-100 focus:bg-white focus:border-primary-500 outline-none transition-all font-black text-sm placeholder:text-gray-300" />
                     <button onClick={() => addItem(newItem)} disabled={adding || !newItem.trim()} className="absolute right-2 top-2 bottom-2 px-6 bg-primary-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-primary-700 disabled:opacity-50 transition-all shadow-lg shadow-primary-50 flex items-center gap-2">
                         {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
                         <span>{t.common.add}</span>
@@ -161,7 +161,7 @@ export default function ChecklistTab({ planId, planTitle = '', destination = '',
                                 <button onClick={() => !isCompleted && toggleItem(item._id, item.isCompleted)} disabled={isCompleted} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${item.isCompleted ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-50 text-gray-300 hover:text-primary-600 hover:bg-primary-100'}`}>
                                     {item.isCompleted ? <CheckCircle2 className="w-5 h-5 shadow-inner" /> : <Circle className="w-5 h-5 shadow-inner" />}
                                 </button>
-                                <span className={`flex-1 text-sm font-black transition-all uppercase tracking-tight ${item.isCompleted ? 'text-gray-300 line-through' : 'text-gray-900'}`}>{item.item}</span>
+                                <span className={`flex-1 text-sm font-black transition-all tracking-tight ${item.isCompleted ? 'text-gray-300 line-through' : 'text-gray-900'}`}>{item.item}</span>
                                 {!isCompleted && (
                                     <button onClick={() => deleteItem(item._id)} className="p-2 text-gray-200 hover:text-rose-500 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
                                 )}

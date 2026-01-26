@@ -249,10 +249,10 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
                             {rundown.time}
                           </span>
                         )}
-                        <h4 className="text-base font-black text-gray-900 mb-1 uppercase tracking-tight">{rundown.activity}</h4>
+                        <h4 className="text-base font-black text-gray-900 mb-1 tracking-tight">{rundown.activity}</h4>
                         <div className="flex flex-wrap gap-3 text-[9px] font-bold text-gray-400">
-                          {rundown.location && <span className="flex items-center gap-1.5 uppercase tracking-tighter"><MapPinIcon className="w-3 h-3 text-primary-400" /> {rundown.location}</span>}
-                          {rundown.notes && <span className="flex items-center gap-1.5 uppercase tracking-tighter opacity-60"><NotesIcon className="w-3 h-3" /> {rundown.notes}</span>}
+                          {rundown.location && <span className="flex items-center gap-1.5 tracking-tighter"><MapPinIcon className="w-3 h-3 text-primary-400" /> {rundown.location}</span>}
+                          {rundown.notes && <span className="flex items-center gap-1.5 tracking-tighter opacity-60"><NotesIcon className="w-3 h-3" /> {rundown.notes}</span>}
                         </div>
                       </div>
                       {!isCompleted && (

@@ -48,7 +48,7 @@ export default function SplitBillCard({ bill, onEdit, onDelete, onPaymentUpdate,
                 <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-50"><Receipt className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="text-base font-black text-gray-900 leading-tight uppercase tracking-tight">{bill.title}</h3>
+                        <h3 className="text-base font-black text-gray-900 leading-tight tracking-tight">{bill.title}</h3>
                         <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[11px] font-black text-primary-600">{formatCurrency(bill.totalAmount)}</span>
                             <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest">{formatDate(bill.date)}</span>
@@ -59,7 +59,7 @@ export default function SplitBillCard({ bill, onEdit, onDelete, onPaymentUpdate,
                 <div className="flex items-center gap-3">
                     <div className="hidden sm:flex flex-col items-end mr-2">
                         <span className="text-[7px] font-black uppercase text-gray-400 tracking-widest">PAYER</span>
-                        <span className="text-[10px] font-black text-gray-900 uppercase tracking-tight flex items-center gap-1.5"><User className="w-2.5 h-2.5 text-primary-500" /> {bill.payerId?.name || 'Unknown'}</span>
+                        <span className="text-[10px] font-black text-gray-900 tracking-tight flex items-center gap-1.5"><User className="w-2.5 h-2.5 text-primary-500" /> {bill.payerId?.name || 'Unknown'}</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <button onClick={handleShareWhatsApp} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all"><MessageCircle className="w-4 h-4" /></button>
@@ -84,8 +84,8 @@ export default function SplitBillCard({ bill, onEdit, onDelete, onPaymentUpdate,
                     </div>
 
                     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
-                        <table className="w-full text-left uppercase text-[9px]">
-                            <thead><tr className="bg-gray-50 border-b border-gray-100"><th className="px-4 py-2.5 font-black tracking-widest text-gray-400">Nama</th><th className="px-4 py-2.5 font-black tracking-widest text-gray-400">Bagian</th><th className="px-4 py-2.5 font-black tracking-widest text-gray-400">Status</th>{!readOnly && <th className="px-4 py-2.5 font-black tracking-widest text-gray-400 text-right">Aksi</th>}</tr></thead>
+                        <table className="w-full text-left text-[9px]">
+                            <thead><tr className="bg-gray-50 border-b border-gray-100"><th className="px-4 py-2.5 font-black tracking-widest text-gray-400 uppercase">Nama</th><th className="px-4 py-2.5 font-black tracking-widest text-gray-400 uppercase">Bagian</th><th className="px-4 py-2.5 font-black tracking-widest text-gray-400 uppercase">Status</th>{!readOnly && <th className="px-4 py-2.5 font-black tracking-widest text-gray-400 uppercase text-right">Aksi</th>}</tr></thead>
                             <tbody className="divide-y divide-gray-50">{bill.participantPayments.map((p: any) => {
                                 const isPayer = p.participantId?._id === bill.payerId?._id
                                 return (

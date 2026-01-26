@@ -38,7 +38,10 @@ export default function SplitBillModal({ isOpen, onClose, onSuccess, planId, par
             setTitle(editData.title); setPayerId(editData.payerId?._id || editData.payerId); setDate(new Date(editData.date).toISOString().split('T')[0]);
             setItems(editData.items.map((item: any) => ({ ...item, involvedParticipants: item.involvedParticipants.map((p: any) => p._id || p) })));
             setTaxPercent(editData.taxPercent || 0); setServicePercent(editData.servicePercent || 0); setRoundingIncrement(editData.roundingIncrement || 100);
-        } else if (participants.length > 0) { setItems(items.map(i => ({ ...i, involvedParticipants: participants.map(p => p._id) }))) }
+        } else if (participants.length > 0) {
+            if (!payerId) setPayerId(participants[0]._id);
+            setItems(items.map(i => i.involvedParticipants.length === 0 ? { ...i, involvedParticipants: participants.map(p => p._id) } : i))
+        }
     }, [editData, participants])
 
     const calculateTotals = () => {
@@ -78,7 +81,7 @@ export default function SplitBillModal({ isOpen, onClose, onSuccess, planId, par
                 <div className="px-10 py-8 border-b border-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-primary-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary-200"><Receipt className="w-6 h-6" /></div>
-                        <div><h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">{editData ? t.plan.edit_split_bill : t.plan.add_split_bill}</h2><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'id' ? 'Bagi Tagihan Itemized' : 'Itemized Bill Split'}</p></div>
+                        <div><h2 className="text-xl font-black text-gray-900 tracking-tight">{editData ? t.plan.edit_split_bill : t.plan.add_split_bill}</h2><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'id' ? 'Bagi Tagihan Itemized' : 'Itemized Bill Split'}</p></div>
                     </div>
                     <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-full transition-all text-gray-400 hover:text-red-500"><X className="w-6 h-6" /></button>
                 </div>
@@ -86,7 +89,7 @@ export default function SplitBillModal({ isOpen, onClose, onSuccess, planId, par
                 <div className="flex-1 overflow-y-auto px-10 py-10 space-y-10 no-scrollbar">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.plan.bill_title}</label><input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold focus:bg-white transition-all" placeholder="Jimbaran Dinner" /></div>
-                        <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.plan.payer}</label><select value={payerId} onChange={(e) => setPayerId(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold cursor-pointer appearance-none">{participants.map(p => <option key={p._id} value={p._id}>{p.name.toUpperCase()}</option>)}</select></div>
+                        <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.plan.payer}</label><select value={payerId} onChange={(e) => setPayerId(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold cursor-pointer appearance-none">{participants.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}</select></div>
                         <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.plan.date}</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold" /></div>
                     </div>
 
@@ -102,7 +105,7 @@ export default function SplitBillModal({ isOpen, onClose, onSuccess, planId, par
                                 </div>
                                 <div className="space-y-4 pt-4 border-t border-gray-50">
                                     <div className="flex justify-between items-center"><label className="text-[9px] font-black text-gray-400 uppercase">{language === 'id' ? 'SIAPA YANG MEMESAN?' : 'WHO ORDERED THIS?'} ({item.involvedParticipants.length})</label><button onClick={() => { const n = [...items]; n[idx].involvedParticipants = n[idx].involvedParticipants.length === participants.length ? [] : participants.map(p => p._id); setItems(n); }} className="text-[7px] font-black uppercase text-primary-600 tracking-widest">{item.involvedParticipants.length === participants.length ? 'DESELECT ALL' : 'SELECT ALL'}</button></div>
-                                    <div className="flex flex-wrap gap-2">{participants.map(p => { const isSelected = item.involvedParticipants.includes(p._id); return <button key={p._id} onClick={() => { const n = [...items]; n[idx].involvedParticipants = isSelected ? n[idx].involvedParticipants.filter(id => id !== p._id) : [...n[idx].involvedParticipants, p._id]; setItems(n); }} className={`px-4 py-2 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${isSelected ? 'bg-primary-600 text-white shadow-lg shadow-primary-100' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>{isSelected && '✓ '} {p.name}</button> })}</div>
+                                    <div className="flex flex-wrap gap-2">{participants.map(p => { const isSelected = item.involvedParticipants.includes(p._id); return <button key={p._id} onClick={() => { const n = [...items]; n[idx].involvedParticipants = isSelected ? n[idx].involvedParticipants.filter(id => id !== p._id) : [...n[idx].involvedParticipants, p._id]; setItems(n); }} className={`px-4 py-2 rounded-full text-[8px] font-black tracking-widest transition-all ${isSelected ? 'bg-primary-600 text-white shadow-lg shadow-primary-100' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>{isSelected && '✓ '} {p.name}</button> })}</div>
                                 </div>
                             </div>
                         ))}

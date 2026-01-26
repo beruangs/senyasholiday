@@ -161,7 +161,7 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
           <h3 className="text-[9px] font-black text-gray-300 uppercase tracking-[0.3em]">{language === 'id' ? 'Daftar Teman' : 'GUEST LIST'}</h3>
           <div className="relative w-full sm:w-64 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300 group-focus-within:text-primary-600 transition-all font-bold" />
-            <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-5 py-2.5 bg-white border border-gray-100 rounded-xl outline-none font-black text-[10px] uppercase shadow-sm" />
+            <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-5 py-2.5 bg-white border border-gray-100 rounded-xl outline-none font-black text-[10px] shadow-sm" />
           </div>
         </div>
 
@@ -189,12 +189,12 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
                 </div>
                 {editingId === p._id ? (
                   <div className="space-y-2">
-                    <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-2.5 py-1.5 bg-gray-50 border border-primary-100 rounded-lg outline-none font-black text-[10px] uppercase" placeholder="Name" />
-                    <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleUpdateName(p._id!)} className="w-full px-2.5 py-1.5 bg-gray-50 border border-primary-100 rounded-lg outline-none font-black text-[10px] uppercase" placeholder="Phone" />
+                    <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-2.5 py-1.5 bg-gray-50 border border-primary-100 rounded-lg outline-none font-black text-[10px]" placeholder="Name" />
+                    <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleUpdateName(p._id!)} className="w-full px-2.5 py-1.5 bg-gray-50 border border-primary-100 rounded-lg outline-none font-black text-[10px]" placeholder="Phone" />
                   </div>
                 ) : (
                   <div>
-                    <h4 className="font-black text-sm text-gray-900 group-hover:text-primary-600 transition-all uppercase leading-tight truncate">{p.name}</h4>
+                    <h4 className="font-black text-sm text-gray-900 group-hover:text-primary-600 transition-all leading-tight truncate">{p.name}</h4>
                     <p className="text-[8px] font-bold text-gray-400 tracking-tight mt-0.5">{p.phoneNumber || (language === 'id' ? 'No Kontak' : 'No Contact')}</p>
                     <span className="text-[7px] font-black text-primary-300 uppercase tracking-widest mt-1 block">CONFIRMED</span>
                   </div>

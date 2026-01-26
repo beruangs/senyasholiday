@@ -32,12 +32,12 @@ export default function ExpenseCard({ expense, onEdit, onDelete, readOnly, t, la
                             <Wallet className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-base font-black text-gray-900 truncate leading-tight uppercase tracking-tight group-hover:text-primary-600 transition-colors">{expense.itemName}</h3>
+                            <h3 className="text-base font-black text-gray-900 truncate leading-tight tracking-tight group-hover:text-primary-600 transition-colors">{expense.itemName}</h3>
                             <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest font-bold">BY {expense.collectorName?.toUpperCase() || '-'}</p>
+                                <p className="text-[7px] font-black text-gray-300 tracking-widest font-bold uppercase">By {expense.collectorName || '-'}</p>
                                 {expense.categoryId && (
-                                    <span className="px-1.5 py-0.5 bg-gray-50 text-gray-400 text-[6px] font-black rounded uppercase tracking-widest border border-gray-100 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
-                                        {expense.categoryId.name?.toUpperCase() || 'CATEGORY'}
+                                    <span className="px-1.5 py-0.5 bg-gray-50 text-gray-400 text-[6px] font-black rounded tracking-widest border border-gray-100 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
+                                        {expense.categoryId.name || 'Category'}
                                     </span>
                                 )}
                             </div>
@@ -92,7 +92,7 @@ export default function ExpenseCard({ expense, onEdit, onDelete, readOnly, t, la
                             <div key={idx} className="flex items-center justify-between p-2.5 bg-gray-50/30 rounded-lg">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <div className="w-5 h-5 rounded-md bg-white flex items-center justify-center text-gray-300 shadow-sm"><User className="w-3 h-3" /></div>
-                                    <span className="text-[9px] font-black text-gray-700 truncate uppercase">{c.participantName}</span>
+                                    <span className="text-[9px] font-black text-gray-700 truncate">{c.participantName}</span>
                                 </div>
                                 <span className="text-[9px] font-black text-gray-900 ml-3">{formatCurrency(c.amount)}</span>
                             </div>

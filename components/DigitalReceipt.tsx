@@ -24,7 +24,7 @@ export default function DigitalReceipt({ bill, onClose, language, participants =
                 <div className="bg-primary-600 px-6 md:px-10 pt-8 md:pt-12 pb-16 md:pb-20 text-center text-white relative">
                     <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all"><X className="w-5 h-5" /></button>
                     <div className="w-12 h-12 md:w-16 md:h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 border border-white/30"><Receipt className="w-6 h-6 md:w-8 md:h-8 text-white" /></div>
-                    <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-1">{bill.title}</h2>
+                    <h2 className="text-xl md:text-2xl font-black tracking-tight mb-1">{bill.title}</h2>
                     <p className="text-primary-100 text-[10px] font-black uppercase tracking-widest opacity-60">{formatDate(bill.date)}</p>
                     <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0]"><svg className="relative block w-full h-8 translate-y-1" viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5,73.84-4.36,147.54,16.88,218.2,52.38,57.18,28.73,114,58.85,176.1,58,69.59-1,123.6-26.69,183.1-62.5,60.89-36.63,123.51-60.67,196-51.49,14.39,1.8,28.61,4.36,42.7,7.69V0Z" className="fill-white" /></svg></div>
                 </div>
@@ -33,7 +33,7 @@ export default function DigitalReceipt({ bill, onClose, language, participants =
                     <div className="flex items-center justify-between p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-primary-600 shadow-sm"><User className="w-6 h-6" /></div>
-                            <div><span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'DIBAYAR OLEH' : 'PAID BY'}</span><p className="text-sm font-black text-gray-900 uppercase tracking-tight">{bill.payerId?.name}</p></div>
+                            <div><span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'DIBAYAR OLEH' : 'PAID BY'}</span><p className="text-sm font-black text-gray-900 tracking-tight">{bill.payerId?.name}</p></div>
                         </div>
                         <div className="text-right"><span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'TOTAL BILL' : 'TOTAL BILL'}</span><p className="text-xl font-black text-primary-600 tracking-tighter">{formatCurrency(bill.totalAmount)}</p></div>
                     </div>
@@ -43,14 +43,14 @@ export default function DigitalReceipt({ bill, onClose, language, participants =
                         <div className="space-y-6">{bill.items.map((item: any, idx: number) => (
                             <div key={idx} className="group">
                                 <div className="flex justify-between items-start mb-3">
-                                    <div className="flex flex-col"><span className="text-sm font-black text-gray-900 uppercase tracking-tight leading-tight">{item.name}</span><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">x{item.quantity} · {formatCurrency(item.price)}</span></div>
+                                    <div className="flex flex-col"><span className="text-sm font-black text-gray-900 tracking-tight leading-tight">{item.name}</span><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">x{item.quantity} · {formatCurrency(item.price)}</span></div>
                                     <span className="text-sm font-black text-gray-900">{formatCurrency(item.price * item.quantity)}</span>
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none">{language === 'id' ? 'Dipesan oleh:' : 'Ordered by:'}</span>
                                     <div className="flex flex-wrap gap-1.5">
                                         {item.involvedParticipants?.map((p: any, pIdx: number) => (
-                                            <span key={p._id || pIdx} className="px-2 py-1 rounded-md bg-gray-50 text-gray-600 text-[9px] font-black uppercase tracking-tighter border border-gray-100">
+                                            <span key={p._id || pIdx} className="px-2 py-1 rounded-md bg-gray-50 text-gray-600 text-[9px] font-black tracking-tighter border border-gray-100">
                                                 {typeof p === 'object' ? p.name : (participants.find((part: any) => part._id === p)?.name || 'User')}
                                             </span>
                                         ))}
@@ -75,7 +75,7 @@ export default function DigitalReceipt({ bill, onClose, language, participants =
                             <p className="text-[8px] font-black uppercase text-gray-500 tracking-[0.3em] mb-4">{language === 'id' ? 'BAGIAN PER ORANG' : 'PARTICIPANT SHARES'}</p>
                             {bill.participantPayments.map((p: any) => (
                                 <div key={p.participantId?._id} className="flex justify-between items-center">
-                                    <div className="flex items-center gap-3"><span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{p.participantId?.name}</span>{p.isPaid && <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />}</div>
+                                    <div className="flex items-center gap-3"><span className="text-[10px] font-black tracking-widest text-gray-400">{p.participantId?.name}</span>{p.isPaid && <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />}</div>
                                     <span className="text-xs font-black text-white">{formatCurrency(p.shareAmount)}</span>
                                 </div>
                             ))}

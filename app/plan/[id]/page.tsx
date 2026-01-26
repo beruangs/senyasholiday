@@ -153,7 +153,7 @@ export default function PublicPlanPage() {
           <div className="flex justify-center mb-8"><Image src="/logo.png" alt="SEN YAS DADDY" width={80} height={80} className="rounded-[1.5rem] shadow-xl" /></div>
           <div className="text-center mb-8">
             <Lock className="w-10 h-10 text-primary-600 mx-auto mb-4" />
-            <h1 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">{plan.title}</h1>
+            <h1 className="text-xl font-black text-gray-900 mb-2 tracking-tight">{plan.title}</h1>
             <p className="text-gray-400 font-black uppercase tracking-widest text-[9px]">{t.plan.password_protected}</p>
           </div>
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
@@ -205,10 +205,10 @@ export default function PublicPlanPage() {
           <div className="pt-14 sm:pt-16 px-4 sm:px-8 pb-6 sm:pb-8 text-center">
             <div className="flex flex-col items-center gap-6">
               <div className="flex-1 space-y-4 w-full">
-                <h1 className="text-2xl sm:text-5xl font-black text-gray-900 uppercase tracking-tight leading-none break-words">{plan.title}</h1>
+                <h1 className="text-2xl sm:text-5xl font-black text-gray-900 tracking-tight leading-none break-words">{plan.title}</h1>
                 <div className="flex flex-wrap justify-center items-center gap-3">
-                  <span className="px-4 py-1.5 bg-primary-50 text-primary-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><MapPin className="w-3.5 h-3.5" /> {plan.destination}</span>
-                  {plan.status === 'completed' && <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><CheckSquare className="w-3.5 h-3.5" /> {t.plan.trip_completed}</span>}
+                  <span className="px-4 py-1.5 bg-primary-50 text-primary-600 rounded-full text-[9px] font-black tracking-widest flex items-center gap-2 shadow-sm"><MapPin className="w-3.5 h-3.5" /> {plan.destination}</span>
+                  {plan.status === 'completed' && <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black tracking-widest flex items-center gap-2 shadow-sm uppercase"><CheckSquare className="w-3.5 h-3.5" /> {t.plan.trip_completed}</span>}
                   <span className="px-4 py-1.5 bg-gray-50 text-gray-400 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm"><Calendar className="w-3.5 h-3.5" /> {format(new Date(plan.startDate), 'dd MMM', { locale: dateLocale })} - {format(new Date(plan.endDate), 'dd MMM yyyy', { locale: dateLocale })}</span>
                 </div>
               </div>
@@ -243,10 +243,10 @@ export default function PublicPlanPage() {
             <div className="w-24 h-24 bg-primary-600 rounded-[2.5rem] flex items-center justify-center text-white mb-10 mx-auto shadow-2xl rotate-12">
               <Globe className="w-12 h-12" />
             </div>
-            <h1 className="text-6xl font-black uppercase tracking-tighter mb-4 text-gray-900 leading-none">Proposal & Laporan<br />Rencana Liburan</h1>
+            <h1 className="text-6xl font-black tracking-tighter mb-4 text-gray-900 leading-none">Proposal & Laporan<br />Rencana Liburan</h1>
             <div className="w-40 h-2 bg-primary-600 mx-auto my-10"></div>
-            <h2 className="text-4xl font-black text-primary-600 uppercase mb-4">{plan.title}</h2>
-            <p className="text-xl text-gray-400 font-black uppercase tracking-[0.4em]">{plan.destination}</p>
+            <h2 className="text-4xl font-black text-primary-600 mb-4">{plan.title}</h2>
+            <p className="text-xl text-gray-400 font-black tracking-[0.4em]">{plan.destination}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-20 w-full max-w-2xl border-t-4 border-gray-900 pt-20 mt-20">
@@ -356,7 +356,7 @@ export default function PublicPlanPage() {
                           <div key={p._id} className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 shadow-sm">
                             <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white font-black uppercase flex-shrink-0">{p.name[0]}</div>
                             <div className="min-w-0">
-                              <p className="font-black text-gray-900 text-[11px] uppercase truncate">{p.name}</p>
+                              <p className="font-black text-gray-900 text-[11px] truncate">{p.name}</p>
                               <p className="text-[7px] font-bold text-gray-400 tracking-tight">{p.phoneNumber || (language === 'id' ? 'No Kontak' : 'No Contact')}</p>
                             </div>
                           </div>
@@ -386,7 +386,7 @@ export default function PublicPlanPage() {
                     <div className="flex items-center gap-4 mb-8">
                       <div className="w-12 h-12 bg-primary-600 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg">0{idx + 1}</div>
                       <div>
-                        <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase mb-1">{t.demo.day} 0{idx + 1}</h3>
+                        <h3 className="text-xl font-black text-gray-900 tracking-tight mb-1">{t.demo.day} 0{idx + 1}</h3>
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{format(new Date(date), 'EEEE, dd MMMM yyyy', { locale: id })}</p>
                       </div>
                     </div>
@@ -396,7 +396,7 @@ export default function PublicPlanPage() {
                           <div className="flex flex-col sm:flex-row gap-6">
                             <div className="text-[11px] font-black text-primary-600 bg-white border-2 border-primary-50 px-5 py-2 rounded-xl h-fit uppercase tracking-widest text-center min-w-[100px]">{rundown.time || 'WIB'}</div>
                             <div className="flex-1">
-                              <h4 className="font-black text-gray-900 text-xl mb-3 leading-tight uppercase tracking-tight">{rundown.activity}</h4>
+                              <h4 className="font-black text-gray-900 text-xl mb-3 leading-tight tracking-tight">{rundown.activity}</h4>
                               <div className="flex flex-wrap gap-6">
                                 {rundown.location && <p className="text-[11px] text-gray-500 font-black uppercase tracking-widest flex items-center gap-2"><MapPin className="w-4 h-4 text-primary-400" /> {rundown.location}</p>}
                                 {rundown.notes && <p className="text-[11px] text-gray-400 font-bold bg-white px-3 py-1 rounded-lg border border-gray-100 italic">"{rundown.notes}"</p>}
@@ -466,7 +466,7 @@ export default function PublicPlanPage() {
                       <div key={p._id} className={`bg-white border-2 rounded-[2rem] p-8 transition-all font-bold print:break-inside-avoid ${isLunas ? 'border-emerald-200 bg-emerald-50/10' : 'border-gray-200'}`}>
                         <div className="flex justify-between items-center mb-8 border-b pb-6">
                           <div>
-                            <p className="font-black text-gray-900 text-lg uppercase mb-1">{p.name}</p>
+                            <p className="font-black text-gray-900 text-lg mb-1">{p.name}</p>
                             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{p.phoneNumber || 'KONTAK TIDAK TERSEDIA'}</p>
                           </div>
                           <div className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest ${isLunas ? 'bg-emerald-600 text-white' : 'bg-rose-100 text-rose-600'}`}>
@@ -478,7 +478,7 @@ export default function PublicPlanPage() {
                           <div className="space-y-2">
                             {pContributions.map((c: any) => (
                               <div key={c._id} className="flex justify-between items-center text-[10px] bg-gray-50/50 px-4 py-2 rounded-lg border border-gray-100">
-                                <span className="text-gray-500 uppercase truncate pr-4">{c.expenseItemId?.itemName || 'ITEM'}</span>
+                                <span className="text-gray-500 truncate pr-4">{c.expenseItemId?.itemName || 'Item'}</span>
                                 <span className="text-gray-900 font-black">{formatCurrency(c.amount)}</span>
                               </div>
                             ))}
@@ -515,7 +515,7 @@ export default function PublicPlanPage() {
                       <div className="p-8 border-b-2 border-gray-900 bg-gray-50/50">
                         <div className="flex justify-between items-start gap-4 mb-4">
                           <div>
-                            <h4 className="text-xl font-black text-gray-900 uppercase leading-tight mb-2">{bill.title}</h4>
+                            <h4 className="text-xl font-black text-gray-900 leading-tight mb-2">{bill.title}</h4>
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Payer: <span className="text-primary-600">{bill.payerId?.name || 'Unknown'}</span></p>
                           </div>
                           <div className="text-right">
@@ -532,7 +532,7 @@ export default function PublicPlanPage() {
                             <div key={p.participantId?._id} className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
                               <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] ${p.isPaid ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-400'}`}>{p.isPaid ? '✓' : '✗'}</div>
-                                <span className="text-[11px] font-black text-gray-900 uppercase">{p.participantId?.name}</span>
+                                <span className="text-[11px] font-black text-gray-900">{p.participantId?.name}</span>
                               </div>
                               <span className="text-[11px] font-black text-gray-700">{formatCurrency(p.shareAmount)}</span>
                             </div>
@@ -560,7 +560,7 @@ export default function PublicPlanPage() {
                   <div key={item._id} className="flex items-center gap-6 p-8 rounded-[2rem] border-2 border-gray-100 bg-white print:break-inside-avoid">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-4 font-black text-lg ${item.isCompleted ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-100 text-gray-100'}`}>{item.isCompleted ? '✓' : ''}</div>
                     <div className="flex-1">
-                      <p className={`font-black text-sm uppercase tracking-tight ${item.isCompleted ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{item.item}</p>
+                      <p className={`font-black text-sm tracking-tight ${item.isCompleted ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{item.item}</p>
                       <span className="text-[9px] font-black text-primary-400 uppercase tracking-[0.3em] mt-1 block">{item.category || 'LOGISTIK UTAMA'}</span>
                     </div>
                   </div>
