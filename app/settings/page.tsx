@@ -13,13 +13,78 @@ import { Palette } from 'lucide-react'
 export default function SettingsPage() {
     const { data: session, status } = useSession(); const router = useRouter(); const { language, setLanguage, t } = useLanguage(); const { theme, setTheme } = useTheme()
     const [showPassword, setShowPassword] = useState(false); const [userProfile, setUserProfile] = useState<any>(null); const [loading, setLoading] = useState(false); const [profileLoading, setProfileLoading] = useState(true)
-    const [formData, setFormData] = useState({ name: '', newPassword: '', confirmPassword: '', })
+    const [formData, setFormData] = useState({ name: '', newPassword: '', confirmPassword: '', profileImage: '' })
+    const [profileUploading, setProfileUploading] = useState(false)
 
     useEffect(() => {
-        if (status === 'unauthenticated') router.push('/login'); else if (session?.user) { setFormData(prev => ({ ...prev, name: session.user.name || '', })); fetchUserProfile(); }
+        if (status === 'unauthenticated') router.push('/login');
+        else if (session?.user) {
+            fetchUserProfile();
+        }
     }, [status, session])
 
-    const fetchUserProfile = async () => { try { const res = await fetch('/api/user/profile'); if (res.ok) { const d = await res.json(); setUserProfile(d); if (d.language) setLanguage(d.language); if (d.theme) setTheme(d.theme); } } catch { } finally { setProfileLoading(false) } }
+    const fetchUserProfile = async () => {
+        try {
+            const res = await fetch('/api/user/profile');
+            if (res.ok) {
+                const d = await res.json();
+                setUserProfile(d);
+                setFormData(prev => ({
+                    ...prev,
+                    name: d.name || '',
+                    profileImage: d.profileImage || ''
+                }));
+                if (d.language) setLanguage(d.language);
+                if (d.theme) setTheme(d.theme);
+            }
+        } catch { } finally { setProfileLoading(false) }
+    }
+
+    const handleImageUpload = async (file: File) => {
+        if (!file.type.startsWith('image/')) return;
+        setProfileUploading(true)
+        const toastId = toast.loading(language === 'id' ? 'Mengunggah foto...' : 'Uploading photo...');
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+
+                // 1. Upload to Cloudinary
+                const uploadRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file: base64,
+                        folder: 'profiles',
+                        filename: `profile_${session?.user?.id}`
+                    }),
+                })
+
+                if (!uploadRes.ok) throw new Error('Upload failed');
+                const { url } = await uploadRes.json();
+
+                // 2. Update User Settings
+                const res = await fetch('/api/user/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profileImage: url }),
+                })
+
+                if (res.ok) {
+                    toast.success(t.common.success, { id: toastId });
+                    setFormData(prev => ({ ...prev, profileImage: url }));
+                    fetchUserProfile();
+                } else {
+                    throw new Error('Update failed');
+                }
+            };
+            reader.readAsDataURL(file)
+        } catch (error) {
+            toast.error(t.common.failed, { id: toastId });
+        } finally {
+            setProfileUploading(false)
+        }
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -44,6 +109,35 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-5">
                         <div className="w-14 h-14 bg-primary-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shadow-primary-100"><Settings className="w-7 h-7" /></div>
                         <div><h1 className="text-4xl font-black uppercase tracking-tight">{t.settings.title}</h1><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'id' ? 'MANAJEMEN AKUN' : 'ACCOUNT MANAGEMENT'}</p></div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col items-center mb-12">
+                    <div className="relative group">
+                        <div className="w-32 h-32 rounded-[2.5rem] bg-gray-50 border-4 border-white shadow-2xl overflow-hidden flex items-center justify-center relative">
+                            {formData.profileImage ? (
+                                <img src={formData.profileImage} className="w-full h-full object-cover" alt="Profile" />
+                            ) : (
+                                <User className="w-12 h-12 text-gray-200" />
+                            )}
+                            {profileUploading && (
+                                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                                </div>
+                            )}
+                        </div>
+                        {!isEnvAdmin && (
+                            <label className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary-600 text-white rounded-xl shadow-xl flex items-center justify-center cursor-pointer hover:bg-primary-700 transition-all hover:scale-110">
+                                <Save className="w-5 h-5" />
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    disabled={profileUploading}
+                                    onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+                                />
+                            </label>
+                        )}
                     </div>
                 </div>
 

@@ -141,13 +141,45 @@ export default function PlanDetailPage() {
   }
 
   const handleImageUpload = async (file: File, type: 'banner' | 'logo') => {
-    if (!file.type.startsWith('image/')) return; setUploading(true)
+    if (!file.type.startsWith('image/')) return;
+    setUploading(true)
     try {
-      const reader = new FileReader(); reader.onloadend = async () => {
-        const res = await fetch(`/api/plans/${planId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [type === 'banner' ? 'bannerImage' : 'logoImage']: reader.result as string }), })
-        if (res.ok) { toast.success(t.common.success); fetchPlan(); } setUploading(false)
-      }; reader.readAsDataURL(file)
-    } catch { setUploading(false); toast.error(t.common.failed); }
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+
+        // 1. Upload to Cloudinary via our new API
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file: base64,
+            folder: type === 'banner' ? 'banners' : 'logos',
+            filename: file.name
+          }),
+        })
+
+        if (!uploadRes.ok) throw new Error('Upload failed');
+        const { url } = await uploadRes.json();
+
+        // 2. Update the Plan with the new clean URL
+        const res = await fetch(`/api/plans/${planId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ [type === 'banner' ? 'bannerImage' : 'logoImage']: url }),
+        })
+
+        if (res.ok) {
+          toast.success(t.common.success);
+          fetchPlan();
+        }
+        setUploading(false)
+      };
+      reader.readAsDataURL(file)
+    } catch (error) {
+      setUploading(false);
+      toast.error(t.common.failed);
+    }
   }
 
   const updateStatus = async (status: string) => {

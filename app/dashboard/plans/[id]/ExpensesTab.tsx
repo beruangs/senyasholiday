@@ -106,6 +106,67 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
     }
   }
 
+  const handleScanReceipt = async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    setIsCategorizing(true); // Reusing isCategorizing as a general AI loading state
+    const toastId = toast.loading(language === 'id' ? 'Sedang memindai struk...' : 'Scanning receipt...');
+
+    try {
+      // 1. Convert file to base64
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      // 2. Upload to Vercel Blob via our API
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file: base64,
+          folder: 'receipts',
+          filename: file.name
+        }),
+      });
+
+      if (!uploadRes.ok) throw new Error('Upload failed');
+      const { url } = await uploadRes.json();
+
+      // 3. Call AI Scanner
+      const scanRes = await fetch('/api/ai/scan-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: url, lang: language }),
+      });
+
+      if (!scanRes.ok) {
+        const errorData = await scanRes.json();
+        throw new Error(errorData.error || 'Scan failed');
+      }
+
+      const { data } = await scanRes.json();
+
+      // 4. Open Modal with extracted data
+      setEditingExpense({
+        itemName: data.itemName,
+        price: data.totalAmount,
+        quantity: 1,
+        total: data.totalAmount,
+        detail: data.detail,
+        currency: data.currency || 'IDR',
+        receiptUrl: url // Optional: if we want to store the receipt link
+      });
+      setShowModal(true);
+      toast.success(language === 'id' ? 'Struk berhasil dipindai!' : 'Receipt scanned successfully!', { id: toastId });
+    } catch (error: any) {
+      console.error('Scan Error:', error);
+      toast.error(error.message || t.common.failed, { id: toastId });
+    } finally {
+      setIsCategorizing(false);
+    }
+  }
+
   const filteredExpenses = expenses.filter(exp =>
     exp.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     exp.detail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -139,22 +200,42 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
             <span className="text-[7px] font-black uppercase text-primary-400 mb-0.5 tracking-widest leading-none">{language === 'id' ? 'TOTAL EST.' : 'TOTAL EST.'}</span>
             <span className="text-base font-black text-primary-600 leading-none">{formatCurrency(grandTotal)}</span>
           </div>
-          {!isCompleted && (
-            <div className="flex gap-2">
-              <button
-                disabled={isCategorizing}
-                onClick={handleAutoCategorize}
-                className="px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group disabled:opacity-50"
-              >
-                {isCategorizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                <span className="hidden sm:inline">{t.plan.auto_categorize}</span>
-              </button>
-              <button onClick={handleCreateNew} className="px-5 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-50 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group">
-                <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
-                <span>{t.common.add}</span>
-              </button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            {!isCompleted && (
+              <>
+                <input
+                  type="file"
+                  id="receipt-upload"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleScanReceipt(file);
+                  }}
+                />
+                <button
+                  disabled={isCategorizing || loading}
+                  onClick={() => document.getElementById('receipt-upload')?.click()}
+                  className="px-4 py-3 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group disabled:opacity-50"
+                >
+                  {isCategorizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">{language === 'id' ? 'SCAN STRUK' : 'SCAN RECEIPT'}</span>
+                </button>
+                <button
+                  disabled={isCategorizing}
+                  onClick={handleAutoCategorize}
+                  className="px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group disabled:opacity-50"
+                >
+                  {isCategorizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <List className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">{t.plan.auto_categorize}</span>
+                </button>
+                <button onClick={handleCreateNew} className="px-5 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-50 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group">
+                  <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
+                  <span>{t.common.add}</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

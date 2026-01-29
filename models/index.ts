@@ -27,6 +27,7 @@ const userSchema = new Schema({
   premiumExpiresAt: { type: Date, default: null },
   premiumOrderId: { type: String, default: null },
   pendingPlan: { type: String, default: null },
+  profileImage: { type: String, default: null },
 })
 
 // Hash password before saving
@@ -120,6 +121,7 @@ const expenseItemSchema = new Schema({
   originalPrice: { type: Number },
   collectorId: { type: Schema.Types.ObjectId, ref: 'Participant' },
   downPayment: { type: Number, default: 0 },
+  receiptUrl: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 })
 

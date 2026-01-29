@@ -18,11 +18,16 @@ export async function PUT(req: NextRequest) {
 
         await dbConnect()
         const body = await req.json()
-        const { name, currentPassword, newPassword, theme } = body
+        const { name, currentPassword, newPassword, theme, profileImage } = body
 
         const user = await User.findById(session.user.id)
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        }
+
+        // Update profileImage if provided
+        if (profileImage !== undefined) {
+            user.profileImage = profileImage
         }
 
         // Update theme if provided

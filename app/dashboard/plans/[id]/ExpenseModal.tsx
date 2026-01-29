@@ -33,6 +33,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
     const [currency, setCurrency] = useState('IDR')
     const [exchangeRate, setExchangeRate] = useState(1)
     const [originalPrice, setOriginalPrice] = useState(0)
+    const [receiptUrl, setReceiptUrl] = useState<string | null>(null)
     const isPremium = (session?.user as any)?.isPremium || (session?.user as any)?.role === 'superadmin'
 
     const currencies = [
@@ -55,10 +56,12 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                 setCurrency(editData.currency || 'IDR');
                 setExchangeRate(editData.exchangeRate || 1);
                 setOriginalPrice(editData.originalPrice || editData.price);
+                setReceiptUrl(editData.receiptUrl || null);
                 if (editData.contributors) setSelectedParticipants(editData.contributors.map((c: any) => c.participantId?._id || c.participantId))
             } else {
                 setSelectedParticipants(participants.map(p => p._id))
                 setCurrency('IDR'); setExchangeRate(1); setOriginalPrice(0);
+                setReceiptUrl(null);
             }
         }
     }, [editData, participants, isOpen, session])
@@ -138,7 +141,8 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                     originalPrice: currency === 'IDR' ? finalUnitPrice : originalPrice,
                     collectorId,
                     downPayment,
-                    categoryId: categoryId || null
+                    categoryId: categoryId || null,
+                    receiptUrl: receiptUrl
                 })
             })
             if (!res.ok) throw new Error()
@@ -279,6 +283,21 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                             <p className="text-2xl font-black">{new Intl.NumberFormat(language === 'id' ? 'id-ID' : 'en-US', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(calculateTotal())}</p>
                         </div>
                     </div>
+
+                    {receiptUrl && (
+                        <div className="space-y-3 pt-4 border-t border-dashed border-gray-100 animate-in fade-in">
+                            <div className="flex justify-between items-center">
+                                <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'STRUK TERLAMPIR' : 'ATTACHED RECEIPT'}</label>
+                                <button type="button" onClick={() => setReceiptUrl(null)} className="text-[8px] font-black uppercase tracking-widest text-rose-500 hover:underline">HAPUS</button>
+                            </div>
+                            <div className="relative aspect-video rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 group">
+                                <img src={receiptUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="Receipt" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                                    <HelpCircle className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-all" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-dashed border-gray-100">
                         <div className="space-y-2">

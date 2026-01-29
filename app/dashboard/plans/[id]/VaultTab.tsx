@@ -67,19 +67,39 @@ export default function TravelDocumentTab({ planId, isCompleted, userRole }: { p
 
         setIsUploading(true)
         const reader = new FileReader()
-        reader.onloadend = () => {
+        reader.onloadend = async () => {
             const result = reader.result as string
-            let type: 'pdf' | 'image' | 'text' = 'text'
-            if (file.type === 'application/pdf') type = 'pdf'
-            else if (file.type.startsWith('image/')) type = 'image'
 
-            setFormData({
-                ...formData,
-                fileUrl: result,
-                fileType: type,
-                name: formData.name || file.name.split('.')[0]
-            })
-            setIsUploading(false)
+            try {
+                // Upload to Vercel Blob via our API
+                const uploadRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file: result,
+                        folder: 'receipts', // Using receipts folder for Vercel Blob as requested
+                        filename: file.name
+                    }),
+                })
+
+                if (!uploadRes.ok) throw new Error('Upload failed')
+                const { url } = await uploadRes.json()
+
+                let type: 'pdf' | 'image' | 'text' = 'text'
+                if (file.type === 'application/pdf') type = 'pdf'
+                else if (file.type.startsWith('image/')) type = 'image'
+
+                setFormData({
+                    ...formData,
+                    fileUrl: url,
+                    fileType: type,
+                    name: formData.name || file.name.split('.')[0]
+                })
+            } catch (error) {
+                toast.error('Gagal mengupload file')
+            } finally {
+                setIsUploading(false)
+            }
         }
         reader.readAsDataURL(file)
     }
