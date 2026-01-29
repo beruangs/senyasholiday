@@ -285,7 +285,7 @@ export default function PublicPlanView({ planIdOrSlug }: { planIdOrSlug: string 
             <div className="text-left space-y-4">
               <p className="text-[12px] font-black text-gray-400 uppercase tracking-widest">Disusun Oleh</p>
               <div className="space-y-1">
-                <p className="font-black text-gray-900 text-xl uppercase">Sistem Senyas Holiday</p>
+                <p className="font-black text-gray-900 text-xl uppercase">Sistem SEN Yas Holiday</p>
                 <p className="text-sm text-gray-500 font-bold uppercase underline underline-offset-4 decoration-primary-300">Automated Planning System v2.0</p>
               </div>
             </div>

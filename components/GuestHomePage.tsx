@@ -18,7 +18,7 @@ export default function GuestHomePage() {
                     __html: JSON.stringify({
                         '@context': 'https://schema.org',
                         '@type': 'SoftwareApplication',
-                        'name': 'SEN YAS DADDY',
+                        'name': 'SEN Yas Holiday',
                         'operatingSystem': 'Web',
                         'applicationCategory': 'Travel Tool, Expense Manager',
                         'offers': {
@@ -40,7 +40,7 @@ export default function GuestHomePage() {
                     __html: JSON.stringify({
                         '@context': 'https://schema.org',
                         '@type': 'Organization',
-                        'name': 'SEN YAS DADDY',
+                        'name': 'SEN Yas Holiday',
                         'url': 'https://senyasdaddy.app',
                         'logo': 'https://senyasdaddy.app/logo.png',
                         'sameAs': [
@@ -55,8 +55,8 @@ export default function GuestHomePage() {
 
             <section className="py-12 md:py-24">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
-                    <div className="flex justify-center mb-8"><Image src="/logo.png" alt="SEN YAS DADDY - Ultimate Holiday Planner Logo" width={80} height={80} className="rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl p-1 bg-white border border-gray-100 transition-all hover:scale-105" /></div>
-                    <h1 className="text-3xl md:text-7xl font-black text-gray-900 mb-4 tracking-tighter leading-none uppercase">SEN YAS DADDY</h1>
+                    <div className="flex justify-center mb-8"><Image src="/logo.png" alt="SEN Yas Holiday - Ultimate Holiday Planner Logo" width={80} height={80} className="rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl p-1 bg-white border border-gray-100 transition-all hover:scale-105" /></div>
+                    <h1 className="text-3xl md:text-7xl font-black text-gray-900 mb-4 tracking-tighter leading-none uppercase">SEN Yas Holiday</h1>
                     <p className="text-sm md:text-xl text-primary-600 mb-6 font-black uppercase tracking-[0.3em] font-bold">{t.guest.hero_subtitle}</p>
                     <p className="text-xs md:text-lg text-gray-400 max-w-xl mx-auto mb-10 uppercase leading-relaxed tracking-widest">{t.guest.hero_desc}</p>
                     <div className="flex flex-wrap gap-3 justify-center">
@@ -131,7 +131,7 @@ export default function GuestHomePage() {
                     <Link href="/terms" className="text-gray-900 font-black uppercase tracking-[0.2em] text-[8px] hover:text-primary-600 transition-colors">{t.common.terms}</Link>
                     <Link href="/privacy" className="text-gray-900 font-black uppercase tracking-[0.2em] text-[8px] hover:text-primary-600 transition-colors">{t.common.privacy}</Link>
                 </div>
-                <p className="text-gray-900 font-black uppercase tracking-[0.3em] text-[9px] mb-1.5 font-bold">SEN YAS DADDY &copy; {new Date().getFullYear()}</p>
+                <p className="text-gray-900 font-black uppercase tracking-[0.3em] text-[9px] mb-1.5 font-bold">SEN Yas Holiday &copy; {new Date().getFullYear()}</p>
                 <p className="text-gray-300 font-black uppercase tracking-[0.4em] text-[7px] font-bold">The All-in-One Holiday Orchestrator</p>
             </footer>
         </div>

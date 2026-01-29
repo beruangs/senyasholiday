@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       ],
       timestamp: new Date().toISOString(),
       footer: {
-        text: 'SenYas Holiday - Feedback System',
+        text: 'SEN Yas Holiday - Feedback System',
       },
     }
 

@@ -10,14 +10,14 @@ import ImpersonationBanner from '@/components/ImpersonationBanner'
 
 export const metadata: Metadata = {
   title: {
-    default: 'SEN YAS DADDY - The Ultimate Holiday Orchestrator',
-    template: '%s | SEN YAS DADDY'
+    default: 'SEN Yas Holiday - The Ultimate Holiday Orchestrator',
+    template: '%s | SEN Yas Holiday'
   },
   description: 'The all-in-one holiday planner and expense manager. Plan your trips, coordinate budgets with friends, and use AI to generate itineraries and scan receipts.',
-  keywords: ['holiday planner', 'trip coordinator', 'expense manager', 'travel budget', 'itinerary generator', 'AI travel consultant', 'receipt scanner', 'sen yas daddy', 'liburan', 'rencana perjalanan'],
-  authors: [{ name: 'Sen Yas Daddy Team' }],
-  creator: 'Sen Yas Daddy',
-  publisher: 'Sen Yas Daddy',
+  keywords: ['holiday planner', 'trip coordinator', 'expense manager', 'travel budget', 'itinerary generator', 'AI travel consultant', 'receipt scanner', 'sen yas holiday', 'liburan', 'rencana perjalanan'],
+  authors: [{ name: 'SEN Yas Holiday Team' }],
+  creator: 'SEN Yas Holiday',
+  publisher: 'SEN Yas Holiday',
   formatDetection: {
     email: false,
     address: false,
@@ -32,16 +32,16 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: 'SEN YAS DADDY - The Ultimate Holiday Orchestrator',
+    title: 'SEN Yas Holiday - The Ultimate Holiday Orchestrator',
     description: 'Plan your dream holiday with ease. Manage rundowns, split bills, and use AI features to make your travel hassle-free.',
     url: 'https://senyasdaddy.app',
-    siteName: 'Sen Yas Daddy',
+    siteName: 'SEN Yas Holiday',
     images: [
       {
         url: '/logo.png',
         width: 800,
         height: 600,
-        alt: 'Sen Yas Daddy Logo',
+        alt: 'SEN Yas Holiday Logo',
       },
     ],
     locale: 'id_ID',
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'SEN YAS DADDY - Holiday Planner',
+    title: 'SEN Yas Holiday - Holiday Planner',
     description: 'Plan, share, and manage your trips with friends. All-in-one travel tool.',
     images: ['/logo.png'],
   },

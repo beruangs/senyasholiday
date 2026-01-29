@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-    title: 'Join SEN YAS DADDY',
+    title: 'Join SEN Yas Holiday',
     description: 'Create an account to start planning your perfect holiday and managing expenses with your friends.',
 }
 

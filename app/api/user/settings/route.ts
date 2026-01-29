@@ -18,7 +18,7 @@ export async function PUT(req: NextRequest) {
 
         await dbConnect()
         const body = await req.json()
-        const { name, currentPassword, newPassword, theme, profileImage } = body
+        const { name, currentPassword, newPassword, theme, profileImage, defaultCurrency } = body
 
         const user = await User.findById(session.user.id)
         if (!user) {
@@ -28,6 +28,11 @@ export async function PUT(req: NextRequest) {
         // Update profileImage if provided
         if (profileImage !== undefined) {
             user.profileImage = profileImage
+        }
+
+        // Update defaultCurrency
+        if (defaultCurrency && ['IDR', 'USD', 'JPY', 'KRW', 'SGD', 'EUR', 'MYR'].includes(defaultCurrency)) {
+            user.defaultCurrency = defaultCurrency
         }
 
         // Update theme if provided
@@ -54,10 +59,34 @@ export async function PUT(req: NextRequest) {
                 name: user.name,
                 username: user.username,
                 role: user.role,
+                defaultCurrency: user.defaultCurrency,
             }
         })
     } catch (error) {
         console.error('Error updating settings:', error)
         return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
+    }
+}
+
+export async function DELETE() {
+    try {
+        const session = await getServerSession(authOptions)
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Env admins cannot delete their accounts this way
+        if (session.user.id.startsWith('env-')) {
+            return NextResponse.json({ error: 'Environment admins cannot delete account here' }, { status: 400 })
+        }
+
+        await dbConnect()
+        await User.findByIdAndDelete(session.user.id)
+
+        // Note: Sign out should be handled on frontend
+        return NextResponse.json({ message: 'Account deleted successfully' })
+    } catch (error) {
+        console.error('Error deleting account:', error)
+        return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 })
     }
 }

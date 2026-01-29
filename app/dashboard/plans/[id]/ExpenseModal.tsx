@@ -60,7 +60,14 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                 if (editData.contributors) setSelectedParticipants(editData.contributors.map((c: any) => c.participantId?._id || c.participantId))
             } else {
                 setSelectedParticipants(participants.map(p => p._id))
-                setCurrency('IDR'); setExchangeRate(1); setOriginalPrice(0);
+                const userDefaultCurrency = (session?.user as any)?.defaultCurrency || 'IDR'
+                setCurrency(userDefaultCurrency)
+                if (userDefaultCurrency !== 'IDR') {
+                    fetchExchangeRate(userDefaultCurrency)
+                } else {
+                    setExchangeRate(1)
+                }
+                setOriginalPrice(0); setPrice(0);
                 setReceiptUrl(null);
             }
         }

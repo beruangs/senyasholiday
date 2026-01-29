@@ -141,6 +141,7 @@ export const authOptions: NextAuthOptions = {
               isPremium: user.isPremium || false,
               planType: user.planType || 'free',
               premiumExpiresAt: user.premiumExpiresAt ? user.premiumExpiresAt.toISOString() : null,
+              defaultCurrency: user.defaultCurrency || 'IDR',
             }
             console.log('[Auth] Returning database user:', result)
             return result
@@ -173,6 +174,7 @@ export const authOptions: NextAuthOptions = {
         token.isPremium = (user as any).isPremium
         token.planType = (user as any).planType
         token.premiumExpiresAt = (user as any).premiumExpiresAt
+        token.defaultCurrency = (user as any).defaultCurrency || 'IDR'
         token.impersonatedBy = (user as any).impersonatedBy
       }
 
@@ -203,6 +205,7 @@ export const authOptions: NextAuthOptions = {
           ; (session.user as any).isPremium = token.isPremium as boolean
           ; (session.user as any).planType = token.planType as string
           ; (session.user as any).premiumExpiresAt = token.premiumExpiresAt as string
+          ; (session.user as any).defaultCurrency = token.defaultCurrency as string
           ; (session.user as any).impersonatedBy = token.impersonatedBy
       }
       return session

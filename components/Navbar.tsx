@@ -37,7 +37,7 @@ export default function Navbar() {
   return (
     <nav className="bg-white border-b border-gray-100 sticky top-0 z-[1000] font-bold">
       <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-        <Link href="/" className="flex items-center gap-3"><Image src="/logo.png" alt="LOGO" width={40} height={40} className="rounded-xl shadow-inner" /><span className="text-xl font-black text-gray-900 hidden sm:block uppercase tracking-tight">SEN YAS DADDY</span></Link>
+        <Link href="/" className="flex items-center gap-3"><Image src="/logo.png" alt="LOGO" width={40} height={40} className="rounded-xl shadow-inner" /><span className="text-xl font-black text-gray-900 hidden sm:block uppercase tracking-tight">SEN Yas Holiday</span></Link>
 
         <div className="hidden lg:flex items-center gap-2">
           <NavLink href="/" active={pathname === '/'} icon={<Home className="w-4 h-4" />}>{t.common.home}</NavLink>

@@ -6,7 +6,7 @@ import Navbar from '@/components/Navbar'
 import DashboardClient from './DashboardClient'
 
 export const metadata: Metadata = {
-  title: 'Dashboard | SEN YAS DADDY',
+  title: 'Dashboard | SEN Yas Holiday',
 }
 
 export default async function DashboardPage() {

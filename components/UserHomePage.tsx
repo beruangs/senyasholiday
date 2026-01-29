@@ -109,7 +109,7 @@ export default function UserHomePage({ session }: { session: any }) {
                     <Link href="/terms" className="text-gray-900 font-black uppercase tracking-[0.2em] text-[8px] hover:text-primary-600 transition-colors">{t.common.terms}</Link>
                     <Link href="/privacy" className="text-gray-900 font-black uppercase tracking-[0.2em] text-[8px] hover:text-primary-600 transition-colors">{t.common.privacy}</Link>
                 </div>
-                <p className="text-gray-900 font-black uppercase tracking-[0.3em] text-[9px] mb-1.5 leading-none">SEN YAS DADDY &copy; {new Date().getFullYear()}</p>
+                <p className="text-gray-900 font-black uppercase tracking-[0.3em] text-[9px] mb-1.5 leading-none">SEN Yas Holiday &copy; {new Date().getFullYear()}</p>
                 <p className="text-gray-300 font-black uppercase tracking-[0.4em] text-[7px]">The All-in-One Holiday Orchestrator</p>
             </footer>
         </div>

@@ -28,6 +28,7 @@ const userSchema = new Schema({
   premiumOrderId: { type: String, default: null },
   pendingPlan: { type: String, default: null },
   profileImage: { type: String, default: null },
+  defaultCurrency: { type: String, enum: ['IDR', 'USD', 'JPY', 'KRW', 'SGD', 'EUR', 'MYR'], default: 'IDR' },
 })
 
 // Hash password before saving

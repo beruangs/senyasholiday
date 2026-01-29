@@ -4,16 +4,16 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Settings, User, AtSign, Shield, ArrowLeft, Eye, EyeOff, Save, Loader2, Globe } from 'lucide-react'
+import { Settings, User, AtSign, Shield, ArrowLeft, Eye, EyeOff, Save, Loader2, Globe, Crown, Calendar, Zap, Sparkles, Coins, Trash2, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTheme } from '@/context/ThemeContext'
 import { Palette } from 'lucide-react'
 
 export default function SettingsPage() {
-    const { data: session, status } = useSession(); const router = useRouter(); const { language, setLanguage, t } = useLanguage(); const { theme, setTheme } = useTheme()
+    const { data: session, status, update } = useSession(); const router = useRouter(); const { language, setLanguage, t } = useLanguage(); const { theme, setTheme } = useTheme()
     const [showPassword, setShowPassword] = useState(false); const [userProfile, setUserProfile] = useState<any>(null); const [loading, setLoading] = useState(false); const [profileLoading, setProfileLoading] = useState(true)
-    const [formData, setFormData] = useState({ name: '', newPassword: '', confirmPassword: '', profileImage: '' })
+    const [formData, setFormData] = useState({ name: '', newPassword: '', confirmPassword: '', profileImage: '', defaultCurrency: 'IDR' })
     const [profileUploading, setProfileUploading] = useState(false)
 
     useEffect(() => {
@@ -32,7 +32,8 @@ export default function SettingsPage() {
                 setFormData(prev => ({
                     ...prev,
                     name: d.name || '',
-                    profileImage: d.profileImage || ''
+                    profileImage: d.profileImage || '',
+                    defaultCurrency: d.defaultCurrency || 'IDR'
                 }));
                 if (d.language) setLanguage(d.language);
                 if (d.theme) setTheme(d.theme);
@@ -91,9 +92,32 @@ export default function SettingsPage() {
         if (formData.newPassword && formData.newPassword !== formData.confirmPassword) { toast.error(language === 'id' ? 'Password baru tidak cocok' : 'Passwords mismatch'); return; }
         setLoading(true)
         try {
-            const res = await fetch('/api/user/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: formData.name, newPassword: formData.newPassword || undefined, }), })
-            if (res.ok) { toast.success(t.common.success); setFormData(p => ({ ...p, newPassword: '', confirmPassword: '' })); } else { toast.error(t.common.failed) }
+            const res = await fetch('/api/user/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: formData.name, newPassword: formData.newPassword || undefined, defaultCurrency: formData.defaultCurrency }), })
+            if (res.ok) {
+                toast.success(t.common.success);
+                setFormData(p => ({ ...p, newPassword: '', confirmPassword: '' }));
+                // Update session
+                update({ defaultCurrency: formData.defaultCurrency })
+            } else { toast.error(t.common.failed) }
         } catch { toast.error(t.common.failed) } finally { setLoading(false) }
+    }
+
+    const handleDeleteAccount = async () => {
+        if (!confirm(t.settings.confirm_delete_account)) return
+        setLoading(true)
+        try {
+            const res = await fetch('/api/user/settings', { method: 'DELETE' })
+            if (res.ok) {
+                toast.success(t.common.success)
+                import('next-auth/react').then(({ signOut }) => signOut({ callbackUrl: '/' }))
+            } else {
+                toast.error(t.common.failed)
+            }
+        } catch {
+            toast.error(t.common.failed)
+        } finally {
+            setLoading(false)
+        }
     }
 
     if (status === 'loading' || profileLoading) return <div className="min-h-screen bg-white flex items-center justify-center font-bold"><Loader2 className="w-10 h-10 animate-spin text-primary-600" /></div>
@@ -146,6 +170,27 @@ export default function SettingsPage() {
                     <div className="space-y-6">
                         <InfoRow icon={<AtSign />} label={t.settings.username} val={`@${username}`} />
                         <InfoRow icon={<Shield />} label={t.settings.role} val={userRole.toUpperCase()} color={userRole === 'superadmin' ? 'text-amber-500 bg-amber-50' : 'text-primary-600 bg-primary-50'} />
+                        <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-gray-50 rounded-[1.2rem] flex items-center justify-center text-gray-400">
+                                    <Coins className="w-5 h-5" />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t.settings.default_currency}</span>
+                            </div>
+                            <select
+                                value={formData.defaultCurrency}
+                                onChange={(e) => setFormData({ ...formData, defaultCurrency: e.target.value })}
+                                className="bg-gray-50 border-none outline-none font-black text-[10px] uppercase tracking-widest px-4 py-2 rounded-xl text-primary-600 cursor-pointer hover:bg-gray-100 transition-all"
+                            >
+                                <option value="IDR">IDR (Rp)</option>
+                                <option value="USD">USD ($)</option>
+                                <option value="JPY">JPY (¥)</option>
+                                <option value="KRW">KRW (₩)</option>
+                                <option value="SGD">SGD (S$)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="MYR">MYR (RM)</option>
+                            </select>
+                        </div>
                         <div className="flex items-center justify-between py-2 border-b border-gray-50"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-gray-50 rounded-[1.2rem] flex items-center justify-center text-gray-400"><Globe className="w-5 h-5" /></div><span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t.settings.language_setting}</span></div><div className="flex px-1 py-1.5 bg-gray-50 rounded-2xl"><button onClick={() => setLanguage('id')} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${language === 'id' ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400'}`}>ID</button><button onClick={() => setLanguage('en')} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${language === 'en' ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-400'}`}>EN</button></div></div>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-4">
                             <div className="flex items-center gap-4">
@@ -173,6 +218,44 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
+                <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm p-10 mb-8 font-bold relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] rotate-12">
+                        <Crown className="w-32 h-32" />
+                    </div>
+                    <h2 className="text-xl font-black uppercase tracking-tight mb-8 flex items-center gap-3"><Crown className="w-6 h-6 text-amber-500" /> {t.settings.plan_info}</h2>
+                    <div className="space-y-6">
+                        <InfoRow
+                            icon={<Zap className="w-5 h-5 text-amber-500" />}
+                            label={t.settings.account_type}
+                            val={
+                                userProfile?.planType === 'premium_ai' ? t.settings.premium_ai_plan :
+                                    userProfile?.planType === 'premium' ? t.settings.premium_plan :
+                                        t.settings.free_plan
+                            }
+                            color={userProfile?.isPremium ? 'text-amber-600 bg-amber-50' : 'text-gray-400 bg-gray-50'}
+                        />
+                        <InfoRow
+                            icon={<Shield className="w-5 h-5 text-emerald-500" />}
+                            label={t.settings.premium_status}
+                            val={userProfile?.isPremium ? t.settings.active : t.settings.inactive}
+                            color={userProfile?.isPremium ? 'text-emerald-600 bg-emerald-50' : 'text-rose-500 bg-rose-50'}
+                        />
+                        {userProfile?.isPremium && (
+                            <InfoRow
+                                icon={<Calendar className="w-5 h-5 text-indigo-500" />}
+                                label={t.settings.expiry_date}
+                                val={userProfile?.premiumExpiresAt ? new Date(userProfile.premiumExpiresAt).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : t.settings.never_expires}
+                            />
+                        )}
+                        {!userProfile?.isPremium && !isEnvAdmin && (
+                            <Link href="/pricing" className="mt-4 w-full py-4 bg-amber-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-amber-100 hover:bg-amber-600 transition-all flex items-center justify-center gap-2">
+                                <Sparkles className="w-4 h-4 fill-white" />
+                                {t.settings.upgrade_now}
+                            </Link>
+                        )}
+                    </div>
+                </div>
+
                 {!isEnvAdmin && (
                     <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm p-10 font-bold">
                         <h2 className="text-xl font-black uppercase mb-10">{t.settings.edit_profile}</h2>
@@ -192,7 +275,32 @@ export default function SettingsPage() {
                     </div>
                 )}
 
-                {isEnvAdmin && (<div className="mt-8 p-8 bg-indigo-50 border border-indigo-100 rounded-[2.5rem] flex items-start gap-5"><Shield className="w-6 h-6 text-indigo-500 shrink-0" /><div className="space-y-2"><p className="text-[10px] font-black text-indigo-800 uppercase tracking-widest">SYSTEM ACCOUNT</p><p className="text-[11px] font-bold text-indigo-900/60 uppercase leading-relaxed">{language === 'id' ? 'Akun admin lingkungan tidak dapat diubah di sini.' : 'Environment admin account cannot be modified here.'}</p></div></div>)}
+                {!isEnvAdmin && (
+                    <div className="mt-16 pt-12 border-t border-gray-50">
+                        <div className="bg-rose-50/50 rounded-[3rem] border border-rose-100 p-10 font-bold overflow-hidden relative">
+                            <div className="absolute -top-10 -right-10 opacity-5">
+                                <AlertTriangle className="w-40 h-40 text-rose-500" />
+                            </div>
+                            <div className="relative z-10">
+                                <h2 className="text-xl font-black uppercase tracking-tight text-rose-600 mb-2 flex items-center gap-3">
+                                    <Trash2 className="w-6 h-6" />
+                                    {t.settings.danger_zone}
+                                </h2>
+                                <p className="text-[11px] font-bold text-rose-400 uppercase tracking-widest mb-8 leading-relaxed max-w-md">
+                                    {t.settings.delete_account_desc}
+                                </p>
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    disabled={loading}
+                                    className="px-8 py-4 bg-white text-rose-500 border-2 border-rose-100 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all shadow-sm flex items-center gap-3"
+                                >
+                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    {t.settings.delete_account}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

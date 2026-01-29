@@ -7,7 +7,7 @@ import GuestHomePage from '@/components/GuestHomePage'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'The All-in-One Holiday Orchestrator',
+  title: 'SEN Yas Holiday',
 }
 
 export default async function HomePage() {
@@ -23,7 +23,7 @@ export default async function HomePage() {
         {/* Simple Footer for logged in */}
         <footer className="py-12 text-center border-t border-gray-100 mt-20">
           <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em]">
-            SEN YAS DADDY &copy; {new Date().getFullYear()}
+            SEN Yas Holiday &copy; {new Date().getFullYear()}
           </p>
         </footer>
       </div>
