@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Wallet, Search, DollarSign, LayoutGrid, List, Loader2 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { Plus, Wallet, Search, DollarSign, LayoutGrid, List, Loader2, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import ExpenseCard from './ExpenseCard'
 import ExpenseModal from './ExpenseModal'
@@ -14,14 +15,16 @@ interface ExpensesTabProps {
 }
 
 export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
-  const { language, t } = useLanguage()
+  const { t, language } = useLanguage() // Changed destructuring order
+  const { data: session } = useSession() // Added useSession hook
   const [expenses, setExpenses] = useState<any[]>([])
   const [participants, setParticipants] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
+  const [showModal, setShowModal] = useState(false) // Kept original state name
   const [editingExpense, setEditingExpense] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [isCategorizing, setIsCategorizing] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -81,6 +84,28 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
     } catch (error) { toast.error(t.common.loading); }
   }
 
+  const handleAutoCategorize = async () => {
+    setIsCategorizing(true)
+    try {
+      const res = await fetch('/api/ai/expenses/categorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, lang: language })
+      })
+      if (res.ok) {
+        toast.success(t.common.success)
+        fetchData()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'AI Failed')
+      }
+    } catch {
+      toast.error(t.common.failed)
+    } finally {
+      setIsCategorizing(false)
+    }
+  }
+
   const filteredExpenses = expenses.filter(exp =>
     exp.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     exp.detail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,10 +140,20 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
             <span className="text-base font-black text-primary-600 leading-none">{formatCurrency(grandTotal)}</span>
           </div>
           {!isCompleted && (
-            <button onClick={handleCreateNew} className="px-5 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-50 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group">
-              <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
-              <span>{t.common.add}</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                disabled={isCategorizing}
+                onClick={handleAutoCategorize}
+                className="px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group disabled:opacity-50"
+              >
+                {isCategorizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{t.plan.auto_categorize}</span>
+              </button>
+              <button onClick={handleCreateNew} className="px-5 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-50 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group">
+                <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
+                <span>{t.common.add}</span>
+              </button>
+            </div>
           )}
         </div>
       </div>

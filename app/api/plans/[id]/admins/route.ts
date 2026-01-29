@@ -28,6 +28,17 @@ export async function GET(
             return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
         }
 
+        const userId = session.user.id
+        const userRole = (session?.user as any)?.role || 'user'
+        const isEnvAdmin = userId?.startsWith('env-')
+        const isSuperadmin = userRole === 'superadmin' || isEnvAdmin
+        const isOwner = plan.ownerId?._id?.toString() === userId
+        const isAdmin = plan.adminIds?.some((admin: any) => admin._id?.toString() === userId) || false
+
+        if (!isOwner && !isAdmin && !isSuperadmin) {
+            return NextResponse.json({ error: 'Not authorized to view admin list' }, { status: 403 })
+        }
+
         const owner = plan.ownerId ? {
             _id: plan.ownerId._id.toString(),
             username: plan.ownerId.username,

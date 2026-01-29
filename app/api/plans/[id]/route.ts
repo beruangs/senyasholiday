@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import dbConnect from '@/lib/mongodb'
 import { HolidayPlan, Rundown, ExpenseCategory, ExpenseItem, Participant, Contribution, SplitPayment, SplitBill, PaymentHistory, User } from '@/models'
 import mongoose from 'mongoose'
+import { slugify } from '@/lib/utils'
 
 // Helper to check if ID is a valid MongoDB ObjectId
 const isValidObjectId = (id: string) => {
@@ -18,10 +19,21 @@ export async function GET(
   try {
     await dbConnect()
     const session = await getServerSession(authOptions)
-    const plan = await HolidayPlan.findById(params.id)
-      .populate('ownerId', 'username name')
-      .populate('adminIds', 'username name')
-      .lean() as any
+
+    let plan;
+    if (isValidObjectId(params.id)) {
+      plan = await HolidayPlan.findById(params.id)
+        .populate('ownerId', 'username name')
+        .populate('adminIds', 'username name')
+        .lean() as any
+    }
+
+    if (!plan) {
+      plan = await HolidayPlan.findOne({ slug: params.id })
+        .populate('ownerId', 'username name')
+        .populate('adminIds', 'username name')
+        .lean() as any
+    }
 
     if (!plan) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
@@ -51,6 +63,13 @@ export async function GET(
     const canEdit = isOwner || isAdmin || isSuperadmin || (isSenPlan && isSenUser)
     const hasAccess = canEdit || session !== null // Logged in users can view
 
+    // Get owner's premium status
+    let planIsPremium = false
+    if (plan.ownerId) {
+      const owner = await User.findById(plan.ownerId._id || plan.ownerId)
+      planIsPremium = owner?.isPremium || false
+    }
+
     return NextResponse.json({
       ...plan,
       _id: plan._id.toString(),
@@ -63,6 +82,7 @@ export async function GET(
       isSenUser,
       canEdit,
       hasAccess,
+      planIsPremium,
     })
   } catch (error) {
     console.error('Error fetching plan:', error)
@@ -112,6 +132,52 @@ export async function PUT(
     }
 
     const body = await req.json()
+
+    // Premium Features Validation
+    let isPremium = (session.user as any).isPremium || false
+    if (!isPremium && !isEnvAdmin && isValidObjectId(userId)) {
+      const user = await User.findById(userId)
+      isPremium = user?.isPremium || false
+    }
+
+    if (body.slug && (isPremium || isEnvAdmin)) {
+      const sanitizedSlug = slugify(body.slug)
+      if (sanitizedSlug !== existingPlan.slug) {
+        const existingSlug = await HolidayPlan.findOne({
+          slug: sanitizedSlug,
+          _id: { $ne: params.id },
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+        })
+        if (existingSlug) {
+          return NextResponse.json({
+            error: 'URL kustom sudah diambil dan tidak dapat dipakai',
+            details: 'Silakan gunakan URL kustom lain yang unik.'
+          }, { status: 400 })
+        }
+        body.slug = sanitizedSlug
+      }
+    } else if (body.hasOwnProperty('slug')) {
+      // If slug is provided but user is not premium, don't update it
+      delete body.slug
+    }
+
+    if (body.theme && !(isPremium || isEnvAdmin)) {
+      delete body.theme
+    }
+
+    if (body.customPrimaryColor && !(isPremium || isEnvAdmin)) {
+      delete body.customPrimaryColor
+    }
+
+    if ((body.hasOwnProperty('bannerImage') || body.hasOwnProperty('logoImage')) && !(isPremium || isEnvAdmin)) {
+      // If setting to null (deleting), allow it. If setting a new value, reject if not premium.
+      if (body.bannerImage !== null || body.logoImage !== null) {
+        return NextResponse.json({
+          error: 'Fitur Premium',
+          details: 'Upload Banner dan Logo kustom hanya tersedia untuk pengguna Premium.'
+        }, { status: 403 })
+      }
+    }
 
     const plan = await HolidayPlan.findByIdAndUpdate(
       params.id,

@@ -133,6 +133,147 @@
   background: #475569;
 }
 
+/* ==========================================
+   PUBLIC PLAN PREMIUM THEMES
+   ========================================== */
+
+/* Tropical Theme */
+[data-plan-theme='tropical'] {
+  --primary: #059669;
+  --primary-dark: #047857;
+  --bg-primary-50: #ecfdf5;
+}
+
+[data-plan-theme='tropical'] .bg-primary-600 {
+  background-color: #059669 !important;
+}
+
+[data-plan-theme='tropical'] .text-primary-600 {
+  color: #059669 !important;
+}
+
+[data-plan-theme='tropical'] .bg-primary-50 {
+  background-color: #ecfdf5 !important;
+}
+
+[data-plan-theme='tropical'] .text-primary-50 {
+  color: #ecfdf5 !important;
+}
+
+[data-plan-theme='tropical'] .border-primary-50 {
+  border-color: #ecfdf5 !important;
+}
+
+[data-plan-theme='tropical'] .shadow-primary-100 {
+  --tw-shadow-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+[data-plan-theme='tropical'] .shadow-primary-200 {
+  --tw-shadow-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Cyberpunk Theme */
+[data-plan-theme='cyberpunk'] {
+  --primary: #c026d3;
+  --primary-dark: #d946ef;
+}
+
+[data-plan-theme='cyberpunk'] .bg-gray-50\/50,
+[data-plan-theme='cyberpunk'] .bg-gray-50 {
+  background-color: #020617 !important;
+}
+
+[data-plan-theme='cyberpunk'] .bg-white {
+  background-color: #0f172a !important;
+}
+
+[data-plan-theme='cyberpunk'] .text-gray-900 {
+  color: #f5f3ff !important;
+}
+
+[data-plan-theme='cyberpunk'] .text-gray-400 {
+  color: #a21caf !important;
+}
+
+[data-plan-theme='cyberpunk'] .border-gray-100 {
+  border-color: #1e293b !important;
+}
+
+[data-plan-theme='cyberpunk'] .bg-primary-600 {
+  background-color: #c026d3 !important;
+}
+
+[data-plan-theme='cyberpunk'] .text-primary-600 {
+  color: #c026d3 !important;
+}
+
+[data-plan-theme='cyberpunk'] .bg-primary-50 {
+  background-color: rgba(192, 38, 211, 0.1) !important;
+}
+
+[data-plan-theme='cyberpunk'] .shadow-primary-100 {
+  --tw-shadow-color: rgba(192, 38, 211, 0.2) !important;
+}
+
+/* Elegant Theme */
+[data-plan-theme='elegant'] {
+  --primary: #92400e;
+}
+
+[data-plan-theme='elegant'] .bg-primary-600 {
+  background-color: #92400e !important;
+}
+
+[data-plan-theme='elegant'] .text-primary-600 {
+  color: #92400e !important;
+}
+
+[data-plan-theme='elegant'] .bg-primary-50 {
+  background-color: #fffbeb !important;
+}
+
+[data-plan-theme='elegant'] .bg-gray-50\/50,
+[data-plan-theme='elegant'] .bg-gray-50 {
+  background-color: #fafaf9 !important;
+}
+
+[data-plan-theme='elegant'] .font-black {
+  font-weight: 700 !important;
+}
+
+/* Custom Theme */
+[data-plan-theme='custom'] .bg-primary-600 {
+  background-color: var(--primary) !important;
+}
+
+[data-plan-theme='custom'] .text-primary-600 {
+  color: var(--primary) !important;
+}
+
+[data-plan-theme='custom'] .bg-primary-50 {
+  background-color: var(--bg-primary-50) !important;
+}
+
+[data-plan-theme='custom'] .text-primary-50 {
+  color: var(--bg-primary-50) !important;
+}
+
+[data-plan-theme='custom'] .border-primary-50 {
+  border-color: var(--bg-primary-50) !important;
+}
+
+[data-plan-theme='custom'] .shadow-primary-100 {
+  --tw-shadow-color: var(--tw-shadow-color) !important;
+}
+
+[data-plan-theme='custom'] .shadow-primary-50 {
+  --tw-shadow-color: var(--tw-shadow-color) !important;
+}
+
+[data-plan-theme='custom'] .shadow-xl {
+  box-shadow: 0 20px 25px -5px var(--tw-shadow-color), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

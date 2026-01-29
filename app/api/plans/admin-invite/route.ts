@@ -81,6 +81,12 @@ export async function POST(req: NextRequest) {
         const isOwner = plan.ownerId?.toString() === userId
         const isSenPlan = !plan.ownerId
 
+        let isPremium = (session.user as any).isPremium || false
+        if (!isPremium && !isEnvAdmin && isValidObjectId(userId)) {
+            const user = await User.findById(userId)
+            isPremium = user?.isPremium || false
+        }
+
         const canInvite = isOwner || (isSenPlan && (userRole === 'superadmin' || isEnvAdmin)) || userRole === 'superadmin' || isEnvAdmin
 
         if (!canInvite) {
@@ -94,6 +100,18 @@ export async function POST(req: NextRequest) {
         }
 
         const targetUserId = targetUser._id.toString()
+
+        // Check for Premium Status (Limit Collaborators)
+        if (!isPremium && !isEnvAdmin) {
+            const currentAdmins = plan.adminIds?.length || 0
+            const currentPending = plan.pendingAdminIds?.length || 0
+            if (currentAdmins + currentPending >= 1) {
+                return NextResponse.json({
+                    error: 'Limit Editor Tercapai',
+                    details: 'Upgrade ke Premium untuk mengundang lebih banyak editor ke rencana trip ini!'
+                }, { status: 403 })
+            }
+        }
 
         // Check if already an admin
         if (plan.adminIds?.some((id: any) => id.toString() === targetUserId)) {

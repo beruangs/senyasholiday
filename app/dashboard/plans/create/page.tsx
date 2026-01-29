@@ -41,7 +41,28 @@ export default function CreatePlanPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="md:col-span-2 space-y-2"><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t.common.title} <span className="text-rose-500">*</span></label><input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-gray-900 focus:bg-white focus:border-primary-500 transition-all text-lg" placeholder="E.g. SUMMER TRIP TO BALI" /></div>
               <div className="space-y-2"><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t.common.destination} <span className="text-rose-500">*</span></label><div className="relative"><MapPin className="absolute left-5 h-4 w-4 text-gray-300 top-1/2 -translate-y-1/2" /><input type="text" required value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-gray-900" placeholder="E.g. Tokyo" /></div></div>
-              <div className="space-y-2"><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t.plan.share_link_password}</label><div className="relative"><Lock className="absolute left-5 h-4 w-4 text-gray-300 top-1/2 -translate-y-1/2" /><input type="text" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-gray-900" placeholder="Optional" /></div></div>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center justify-between">
+                  <span>{t.plan.share_link_password}</span>
+                  {!(session?.user as any).isPremium && (
+                    <Link href="/pricing" className="text-amber-600 flex items-center gap-1 hover:underline">
+                      <Lock size={10} />
+                      PREMIUM
+                    </Link>
+                  )}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-5 h-4 w-4 text-gray-300 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={formData.password}
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    className={`w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-gray-900 ${!(session?.user as any).isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    placeholder={!(session?.user as any).isPremium ? 'Upgrade to use Password' : 'Optional'}
+                    disabled={!(session?.user as any).isPremium}
+                  />
+                </div>
+              </div>
               <div className="space-y-2"><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t.common.start_date} <span className="text-rose-500">*</span></label><div className="relative"><Calendar className="absolute left-5 h-4 w-4 text-gray-300 top-1/2 -translate-y-1/2" /><input type="date" required value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black" /></div></div>
               <div className="space-y-2"><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t.common.end_date} <span className="text-rose-500">*</span></label><div className="relative"><Calendar className="absolute left-5 h-4 w-4 text-gray-300 top-1/2 -translate-y-1/2" /><input type="date" required value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} className="w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black" /></div></div>
               {canSelectCategory && (<div className="md:col-span-2 space-y-2 p-6 bg-primary-50/50 rounded-[1.5rem] border border-primary-100"><label className="text-[9px] font-black text-primary-600 uppercase tracking-widest">DATABASE CATEGORY</label><select value={formData.planCategory} onChange={e => setFormData({ ...formData, planCategory: e.target.value as any })} className="w-full px-6 py-3 bg-white border border-primary-100 rounded-xl outline-none font-black appearance-none cursor-pointer"><option value="individual">{language === 'id' ? 'INDIVIDU' : 'INDIVIDUAL'}</option><option value="sen_yas_daddy">SEN YAS DADDY</option></select><p className="text-[8px] font-black text-primary-400 uppercase tracking-widest mt-2">{formData.planCategory === 'individual' ? 'PRIVATE · ONLY YOU CAN SEE' : 'ORG · TEAM CAN SEE'}</p></div>)}

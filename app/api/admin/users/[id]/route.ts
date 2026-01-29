@@ -40,7 +40,7 @@ export async function PUT(
         }
 
         const body = await request.json()
-        const { role, password } = body
+        const { role, password, isPremium } = body
 
         const updateData: any = {}
 
@@ -55,6 +55,10 @@ export async function PUT(
                 return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 })
             }
             updateData.role = role
+        }
+
+        if (typeof isPremium === 'boolean') {
+            updateData.isPremium = isPremium
         }
 
         // Add password if provided (it will be hashed by the model's pre-save middleware)
@@ -77,6 +81,7 @@ export async function PUT(
 
         if (updateData.role) user.role = updateData.role
         if (updateData.password) user.password = updateData.password
+        if (updateData.isPremium !== undefined) user.isPremium = updateData.isPremium
 
         await user.save()
 

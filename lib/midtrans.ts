@@ -16,7 +16,7 @@ export const calculateServiceFee = (amount: number): number => {
   // - Round up to nearest 100
   const feePercentage = 0.02 // 2%
   const fixedFee = 2000 // Rp 2,000
-  
+
   const fee = Math.ceil((amount * feePercentage + fixedFee) / 100) * 100
   return fee
 }
@@ -44,9 +44,17 @@ interface CreateTransactionParams {
     price: number
     quantity: number
   }>
+  customCallbackUrls?: {
+    finish?: string
+    error?: string
+    pending?: string
+  }
 }
 
 export const createTransaction = async (params: CreateTransactionParams) => {
+  const planId = params.itemDetails[0]?.id?.includes('ORDER-') ? params.itemDetails[0]?.id?.split('-')[1] : ''
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+
   const parameter = {
     transaction_details: {
       order_id: params.orderId,
@@ -66,9 +74,9 @@ export const createTransaction = async (params: CreateTransactionParams) => {
       'qris',
     ],
     callbacks: {
-      finish: `${process.env.NEXT_PUBLIC_BASE_URL}/plan/${params.itemDetails[0]?.id?.split('-')[1] || ''}?payment=success`,
-      error: `${process.env.NEXT_PUBLIC_BASE_URL}/plan/${params.itemDetails[0]?.id?.split('-')[1] || ''}?payment=error`,
-      pending: `${process.env.NEXT_PUBLIC_BASE_URL}/plan/${params.itemDetails[0]?.id?.split('-')[1] || ''}?payment=pending`,
+      finish: params.customCallbackUrls?.finish || `${baseUrl}/plan/${planId}?payment=success`,
+      error: params.customCallbackUrls?.error || `${baseUrl}/plan/${planId}?payment=error`,
+      pending: params.customCallbackUrls?.pending || `${baseUrl}/plan/${planId}?payment=pending`,
     },
   }
 
@@ -94,6 +102,6 @@ export const verifySignatureKey = (
     .createHash('sha512')
     .update(`${orderId}${statusCode}${grossAmount}${serverKey}`)
     .digest('hex')
-  
+
   return hash === signatureKey
 }

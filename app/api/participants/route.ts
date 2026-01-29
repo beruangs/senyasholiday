@@ -29,6 +29,26 @@ export async function POST(req: NextRequest) {
 
     await dbConnect()
     const { holidayPlanId, name, phoneNumber, order } = await req.json()
+
+    // Premium Check
+    const { HolidayPlan, User } = await import('@/models')
+    const plan = await HolidayPlan.findById(holidayPlanId).populate('ownerId')
+
+    if (plan && plan.ownerId) {
+      const owner = plan.ownerId as any
+      const isPremium = owner.isPremium || false
+
+      if (!isPremium) {
+        const participantCount = await Participant.countDocuments({ holidayPlanId })
+        if (participantCount >= 5) {
+          return NextResponse.json({
+            error: 'Limit Peserta Tercapai',
+            details: 'Paket Free maksimal 5 peserta. Upgrade ke Premium untuk menambah peserta tanpa batas!'
+          }, { status: 403 })
+        }
+      }
+    }
+
     const participant = await Participant.create({ holidayPlanId, name, phoneNumber, order })
 
     return NextResponse.json(participant, { status: 201 })

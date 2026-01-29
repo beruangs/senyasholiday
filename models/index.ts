@@ -22,6 +22,11 @@ const userSchema = new Schema({
   lastLoginAt: Date,
   language: { type: String, enum: ['id', 'en'], default: 'id' },
   theme: { type: String, enum: ['light', 'ash', 'dark'], default: 'light' },
+  isPremium: { type: Boolean, default: false },
+  planType: { type: String, enum: ['free', 'premium', 'premium_ai'], default: 'free' },
+  premiumExpiresAt: { type: Date, default: null },
+  premiumOrderId: { type: String, default: null },
+  pendingPlan: { type: String, default: null },
 })
 
 // Hash password before saving
@@ -67,6 +72,15 @@ const holidayPlanSchema = new Schema({
   // Soft delete / Trash feature
   deletedAt: { type: Date, default: null },
   trashExpiresAt: { type: Date, default: null },
+  // Premium Features
+  slug: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
+  theme: { type: String, enum: ['default', 'tropical', 'cyberpunk', 'elegant', 'custom'], default: 'default' },
+  customPrimaryColor: { type: String, default: null }, // HEX color
+  // Accommodation - New Feature
+  accommodationType: { type: String, default: null },
+  accommodationName: { type: String, default: null },
+  checkInTime: { type: String, default: null },
+  checkOutTime: { type: String, default: null },
 })
 
 // Rundown/Schedule Schema
@@ -78,6 +92,11 @@ const rundownSchema = new Schema({
   location: String,
   notes: String,
   order: { type: Number, default: 0 },
+  coordinates: {
+    lat: Number,
+    lng: Number,
+    formattedAddress: String
+  },
 })
 
 // Expense Category Schema
@@ -96,6 +115,9 @@ const expenseItemSchema = new Schema({
   price: { type: Number, required: true },
   quantity: { type: Number, default: 1 },
   total: { type: Number, required: true },
+  currency: { type: String, default: 'IDR' },
+  exchangeRate: { type: Number, default: 1 },
+  originalPrice: { type: Number },
   collectorId: { type: Schema.Types.ObjectId, ref: 'Participant' },
   downPayment: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
@@ -240,6 +262,23 @@ const paymentHistorySchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 })
 
+// Travel Document Schema - for storing tickets, vouchers, etc.
+const travelDocumentSchema = new Schema({
+  holidayPlanId: { type: Schema.Types.ObjectId, ref: 'HolidayPlan', required: true },
+  name: { type: String, required: true },
+  category: {
+    type: String,
+    enum: ['flight', 'hotel', 'transport', 'visa', 'insurance', 'other'],
+    default: 'other'
+  },
+  fileUrl: String, // For Premium users
+  fileType: { type: String, enum: ['pdf', 'image', 'text'], default: 'text' },
+  notes: String, // Booking codes or extra info
+  rundownId: { type: Schema.Types.ObjectId, ref: 'Rundown' }, // Reference to activity
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+})
+
 // Export models
 export const User = mongoose.models.User || mongoose.model('User', userSchema)
 export const HolidayPlan = mongoose.models.HolidayPlan || mongoose.model('HolidayPlan', holidayPlanSchema)
@@ -254,5 +293,6 @@ export const Note = mongoose.models.Note || mongoose.model('Note', noteSchema)
 export const PaymentHistory = mongoose.models.PaymentHistory || mongoose.model('PaymentHistory', paymentHistorySchema)
 export const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema)
 export const Checklist = mongoose.models.Checklist || mongoose.model('Checklist', checklistSchema)
+export const TravelDocument = mongoose.models.TravelDocument || mongoose.model('TravelDocument', travelDocumentSchema)
 export const SystemSetting = mongoose.models.SystemSetting || mongoose.model('SystemSetting', systemSettingSchema)
 export const ImpersonationToken = mongoose.models.ImpersonationToken || mongoose.model('ImpersonationToken', impersonationTokenSchema)

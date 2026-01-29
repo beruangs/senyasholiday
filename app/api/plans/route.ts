@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import dbConnect from '@/lib/mongodb'
 import { HolidayPlan, User } from '@/models'
 import mongoose from 'mongoose'
+import { slugify, generateRandomString } from '@/lib/utils'
 
 // Helper to check if ID is a valid MongoDB ObjectId
 const isValidObjectId = (id: string) => {
@@ -129,9 +130,37 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     console.log('Create plan - Request body:', JSON.stringify(body, null, 2))
 
-    // For env admins, don't set ownerId (creates a SEN plan)
+    // Check Premium Status
     const isEnvAdmin = session.user.id.startsWith('env-')
-    console.log('Create plan - isEnvAdmin:', isEnvAdmin, 'userId:', session.user.id)
+    let isPremium = (session.user as any).isPremium || false
+
+    // Fallback check from DB to be sure
+    if (!isPremium && !isEnvAdmin && isValidObjectId(session.user.id)) {
+      const user = await User.findById(session.user.id)
+      isPremium = user?.isPremium || false
+    }
+
+    // Restriction 1: Max 3 plans for Free users
+    if (!isPremium && !isEnvAdmin) {
+      const ownedPlanCount = await HolidayPlan.countDocuments({
+        ownerId: session.user.id,
+        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+      })
+      if (ownedPlanCount >= 3) {
+        return NextResponse.json({
+          error: 'Limit Rencana Tercapai',
+          details: 'Upgrade ke Premium untuk membuat rencana liburan tanpa batas!'
+        }, { status: 403 })
+      }
+    }
+
+    // Restriction 2: Password protection is premium feature
+    if (!isPremium && !isEnvAdmin && body.password) {
+      return NextResponse.json({
+        error: 'Fitur Premium',
+        details: 'Fitur Password Protection hanya tersedia untuk pengguna Premium.'
+      }, { status: 403 })
+    }
 
     const planData: any = {
       ...body,
@@ -147,6 +176,45 @@ export async function POST(req: NextRequest) {
     // Only set ownerId if user has valid MongoDB ObjectId
     if (!isEnvAdmin && isValidObjectId(session.user.id)) {
       planData.ownerId = session.user.id
+    }
+
+    // Slug handling for Premium users
+    if (isPremium || isEnvAdmin) {
+      if (body.slug) {
+        // Validate provided slug
+        const sanitizedSlug = slugify(body.slug)
+        const existingSlug = await HolidayPlan.findOne({
+          slug: sanitizedSlug,
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+        })
+        if (existingSlug) {
+          return NextResponse.json({
+            error: 'URL kustom sudah diambil dan tidak dapat dipakai',
+            details: 'Silakan gunakan URL kustom lain yang unik.'
+          }, { status: 400 })
+        }
+        planData.slug = sanitizedSlug
+      } else {
+        // Auto-generate slug from title
+        let baseSlug = slugify(body.title || 'trip')
+        let generatedSlug = baseSlug
+        let attempts = 0
+        while (attempts < 5) {
+          const existing = await HolidayPlan.findOne({
+            slug: generatedSlug,
+            $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+          })
+          if (!existing) break
+          generatedSlug = `${baseSlug}-${generateRandomString(4)}`
+          attempts++
+        }
+        planData.slug = generatedSlug
+      }
+    }
+
+    // Theme handling for Premium users
+    if (body.theme && (isPremium || isEnvAdmin)) {
+      planData.theme = body.theme
     }
 
     console.log('Create plan - Plan data to save:', JSON.stringify(planData, null, 2))

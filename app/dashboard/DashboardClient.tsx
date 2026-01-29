@@ -38,9 +38,38 @@ export default function DashboardClient({ session }: any) {
       <ConfirmModal isOpen={deleteConfirm.isOpen} onClose={() => setDeleteConfirm({ isOpen: false, planId: '', planTitle: '' })} onConfirm={moveToTrash} title={t.dashboard.move_to_trash} message={`"${deleteConfirm.planTitle}" ${t.dashboard.trash_confirm}`} confirmText={t.dashboard.yes_move} cancelText={t.common.cancel} variant="danger" loading={deletingId === deleteConfirm.planId} />
       <ConfirmModal isOpen={leaveConfirm.isOpen} onClose={() => setLeaveConfirm({ isOpen: false, planId: '', planTitle: '' })} onConfirm={handleLeavePlan} title={t.dashboard.leave_plan} message={t.dashboard.leave_confirm} confirmText={t.dashboard.yes_leave} cancelText={t.common.cancel} variant="danger" loading={leavingId === leaveConfirm.planId} />
 
+      {!(session.user as any).isPremium && (session.user as any).role !== 'superadmin' && (
+        <Link href="/pricing" className="block mb-12 group">
+          <div className="relative overflow-hidden bg-gradient-to-r from-red-600 via-rose-600 to-indigo-700 rounded-[2rem] p-6 lg:p-8 text-white shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-white/20 transition-colors"></div>
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 justify-between">
+              <div className="flex items-center gap-6">
+                <div className="p-4 bg-white/20 backdrop-blur-md rounded-2xl">
+                  <Crown className="w-8 h-8 text-amber-300 animate-pulse" />
+                </div>
+                <div className="text-center md:text-left">
+                  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">{t.common.premium_ad_title} ✨</h3>
+                  <p className="text-sm md:text-base text-red-50 font-medium opacity-90">{t.common.premium_ad_desc}</p>
+                </div>
+              </div>
+              <div className="bg-white text-red-600 px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg group-hover:scale-105 transition-transform">
+                {t.common.premium_ad_button}
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
+
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 sm:gap-8 mb-12 sm:mb-16">
         <div>
-          <h1 className="text-2xl sm:text-5xl font-black text-gray-900 uppercase tracking-tighter leading-tight mb-2 sm:mb-3">{t.dashboard.welcome_back}, <br className="sm:hidden" />{session.user.name.split(' ')[0]} 👋</h1>
+          <h1 className="text-2xl sm:text-5xl font-black text-gray-900 uppercase tracking-tighter leading-tight mb-2 sm:mb-3">
+            {t.dashboard.welcome_back}, <br className="sm:hidden" />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-indigo-600">
+              {session.user.name.split(' ')[0]}
+            </span>
+            {(session.user as any).isPremium && <Crown className="inline-block ml-2 w-8 h-8 text-amber-500 -mt-2" />}
+            👋
+          </h1>
           <p className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">{plans.length > 0 ? `${plans.length} ${t.dashboard.stats_plans}` : t.dashboard.no_plans}</p>
         </div>
         <Link href="/dashboard/plans/create" className="w-full sm:w-auto px-8 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary-50 hover:bg-primary-700 transition-all flex items-center justify-center gap-3 group"><Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" /> <span>{t.dashboard.create_new}</span></Link>

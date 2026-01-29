@@ -7,7 +7,7 @@ import GuestHomePage from '@/components/GuestHomePage'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'SEN YAS DADDY - Home',
+  title: 'The All-in-One Holiday Orchestrator',
 }
 
 export default async function HomePage() {

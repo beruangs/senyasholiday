@@ -45,17 +45,24 @@ export default function ExpenseCard({ expense, onEdit, onDelete, readOnly, t, la
                     </div>
 
                     {!readOnly && (
-                        <div className="relative shrink-0">
-                            <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 hover:bg-gray-50 rounded-lg transition-all text-gray-300 hover:text-primary-600"><MoreVertical className="w-4 h-4" /></button>
-                            {showMenu && (
-                                <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                                    <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 animate-in zoom-in-95 duration-200">
-                                        <button onClick={() => { onEdit(expense); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase text-gray-600 hover:bg-primary-50 hover:text-primary-600 flex items-center gap-2 transition-colors tracking-widest"><Edit2 className="w-3.5 h-3.5" /> {t.common.edit}</button>
-                                        <button onClick={() => { onDelete(expense._id); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase text-rose-500 hover:bg-rose-50 flex items-center gap-2 transition-colors tracking-widest"><Trash2 className="w-3.5 h-3.5" /> {t.common.delete}</button>
-                                    </div>
-                                </>
+                        <div className="flex items-center gap-2 shrink-0">
+                            {expense.currency && expense.currency !== 'IDR' && (
+                                <div className="px-2 py-1 bg-slate-900 text-white rounded-lg text-[7px] font-black uppercase tracking-widest shadow-lg">
+                                    {expense.originalPrice} {expense.currency}
+                                </div>
                             )}
+                            <div className="relative">
+                                <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 hover:bg-gray-50 rounded-lg transition-all text-gray-300 hover:text-primary-600"><MoreVertical className="w-4 h-4" /></button>
+                                {showMenu && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                                        <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 animate-in zoom-in-95 duration-200">
+                                            <button onClick={() => { onEdit(expense); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase text-gray-600 hover:bg-primary-50 hover:text-primary-600 flex items-center gap-2 transition-colors tracking-widest"><Edit2 className="w-3.5 h-3.5" /> {t.common.edit}</button>
+                                            <button onClick={() => { onDelete(expense._id); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase text-rose-500 hover:bg-rose-50 flex items-center gap-2 transition-colors tracking-widest"><Trash2 className="w-3.5 h-3.5" /> {t.common.delete}</button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

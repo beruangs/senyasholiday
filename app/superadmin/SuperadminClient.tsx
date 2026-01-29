@@ -176,8 +176,8 @@ export default function SuperadminClient({ session }: any) {
         } catch { toast.error(t.common.failed) } finally { setImpersonatingId(null) }
     }
 
-    const filteredUsers = users.filter(u => u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    const filteredPlans = plans.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.destination.toLowerCase().includes(searchQuery.toLowerCase()) || p.ownerId?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredUsers = users.filter(u => (u.username?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || (u.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()))
+    const filteredPlans = plans.filter(p => (p.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || (p.destination?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || (p.ownerId?.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()))
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 font-bold mb-20 space-y-12">
@@ -277,28 +277,50 @@ export default function SuperadminClient({ session }: any) {
                                                         </div>
                                                     </td>
                                                     <td className="px-8 py-6">
-                                                        {editingRole === u._id ? (
-                                                            <select
-                                                                autoFocus
-                                                                onBlur={() => setEditingRole(null)}
-                                                                onChange={e => updateRole(u._id, e.target.value)}
-                                                                className="bg-white border-2 border-primary-500 rounded-xl px-4 py-2 font-black text-[9px] outline-none text-primary-600 shadow-lg"
-                                                            >
-                                                                <option value="user">USER</option>
-                                                                <option value="sen_user">SEN USER</option>
-                                                                <option value="superadmin">ADMIN</option>
-                                                            </select>
-                                                        ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            {editingRole === u._id ? (
+                                                                <select
+                                                                    autoFocus
+                                                                    onBlur={() => setEditingRole(null)}
+                                                                    onChange={e => updateRole(u._id, e.target.value)}
+                                                                    className="bg-white border-2 border-primary-500 rounded-xl px-4 py-2 font-black text-[9px] outline-none text-primary-600 shadow-lg"
+                                                                >
+                                                                    <option value="user">USER</option>
+                                                                    <option value="sen_user">SEN USER</option>
+                                                                    <option value="superadmin">ADMIN</option>
+                                                                </select>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => setEditingRole(u._id)}
+                                                                    className={`px-5 py-2 rounded-full text-[7px] font-black tracking-widest border transition-all ${u.role === 'superadmin' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                                                        u.role === 'sen_user' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                                                                            'bg-gray-50 text-gray-400 border-gray-100'
+                                                                        }`}
+                                                                >
+                                                                    {u.role.replace('_', ' ')}
+                                                                </button>
+                                                            )}
                                                             <button
-                                                                onClick={() => setEditingRole(u._id)}
-                                                                className={`px-5 py-2 rounded-full text-[7px] font-black tracking-widest border transition-all ${u.role === 'superadmin' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                                                    u.role === 'sen_user' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
-                                                                        'bg-gray-50 text-gray-400 border-gray-100'
-                                                                    }`}
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        const res = await fetch(`/api/admin/users/${u._id}`, {
+                                                                            method: 'PUT',
+                                                                            headers: { 'Content-Type': 'application/json' },
+                                                                            body: JSON.stringify({ isPremium: !(u as any).isPremium }),
+                                                                        })
+                                                                        if (res.ok) {
+                                                                            toast.success(t.common.success)
+                                                                            fetchUsers()
+                                                                        }
+                                                                    } catch (err) {
+                                                                        toast.error(t.common.failed)
+                                                                    }
+                                                                }}
+                                                                className={`px-3 py-2 rounded-full text-[7px] font-black tracking-widest border transition-all ${(u as any).isPremium ? 'bg-amber-500 text-white border-amber-600' : 'bg-gray-50 text-gray-300 border-gray-100'}`}
                                                             >
-                                                                {u.role.replace('_', ' ')}
+                                                                {(u as any).isPremium ? 'PREMIUM ✨' : 'FREE'}
                                                             </button>
-                                                        )}
+                                                        </div>
                                                     </td>
                                                     <td className="px-8 py-6">
                                                         <div className="space-y-1">
@@ -355,7 +377,32 @@ export default function SuperadminClient({ session }: any) {
                                             <div className={`absolute top-0 left-0 w-full h-2 ${p.planCategory === 'sen_yas_daddy' ? 'bg-primary-600' : 'bg-emerald-500'}`} />
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-gray-900 group-hover:text-white transition-all"><Calendar className="w-6 h-6" /></div>
-                                                <button onClick={() => setDeletePlanConfirm({ isOpen: true, planId: p._id, title: p.title })} className="p-3 text-gray-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Trash2 className="w-5 h-5" /></button>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={async () => {
+                                                            const newCat = p.planCategory === 'sen_yas_daddy' ? 'individual' : 'sen_yas_daddy'
+                                                            try {
+                                                                const res = await fetch(`/api/plans/${p._id}`, {
+                                                                    method: 'PUT',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ planCategory: newCat })
+                                                                })
+                                                                if (res.ok) {
+                                                                    toast.success(t.common.success)
+                                                                    fetchPlans()
+                                                                }
+                                                            } catch (err) {
+                                                                toast.error(t.common.failed)
+                                                            }
+                                                        }}
+                                                        className={`p-3 rounded-xl transition-all ${p.planCategory === 'sen_yas_daddy' ? 'bg-primary-50 text-primary-600 hover:bg-primary-600 hover:text-white' : 'bg-gray-50 text-gray-300 hover:bg-emerald-600 hover:text-white'}`}
+                                                        title="Toggle Official/Private"
+                                                    >
+                                                        <Crown size={16} />
+                                                    </button>
+                                                    <button onClick={() => setDeletePlanConfirm({ isOpen: false, userId: '', username: '' } as any)} className="hidden"></button>
+                                                    <button onClick={() => setDeletePlanConfirm({ isOpen: true, planId: p._id, title: p.title })} className="p-3 text-gray-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Trash2 className="w-5 h-5" /></button>
+                                                </div>
                                             </div>
                                             <div className="space-y-2 mb-8">
                                                 <h3 className="text-xl font-black uppercase tracking-tight text-gray-900 group-hover:text-primary-600 transition-colors truncate">{p.title}</h3>
@@ -689,43 +736,45 @@ export default function SuperadminClient({ session }: any) {
             </div>
 
             {/* Modals Overhaul */}
-            {resetPassModal.isOpen && (
-                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/70 backdrop-blur-xl animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[4rem] w-full max-w-md p-12 text-center shadow-2xl animate-in zoom-in-95 font-bold">
-                        <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-[2rem] flex items-center justify-center mx-auto mb-10 shadow-2xl shadow-amber-50">
-                            <Key className="w-10 h-10" />
-                        </div>
-                        <h3 className="text-3xl font-black uppercase mb-3 tracking-tighter text-gray-900">Security Reset</h3>
-                        <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-10">FORCING NEW ACCESS CREDENTIALS FOR<br /><span className="text-amber-500">@{resetPassModal.user?.username}</span></p>
+            {
+                resetPassModal.isOpen && (
+                    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/70 backdrop-blur-xl animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[4rem] w-full max-w-md p-12 text-center shadow-2xl animate-in zoom-in-95 font-bold">
+                            <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-[2rem] flex items-center justify-center mx-auto mb-10 shadow-2xl shadow-amber-50">
+                                <Key className="w-10 h-10" />
+                            </div>
+                            <h3 className="text-3xl font-black uppercase mb-3 tracking-tighter text-gray-900">Security Reset</h3>
+                            <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-10">FORCING NEW ACCESS CREDENTIALS FOR<br /><span className="text-amber-500">@{resetPassModal.user?.username}</span></p>
 
-                        <div className="flex flex-col gap-4">
-                            <input
-                                autoFocus
-                                type="text"
-                                value={newPassword}
-                                onChange={e => setNewPassword(e.target.value)}
-                                className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-[2rem] outline-none text-center font-black text-xl tracking-widest text-gray-900 focus:bg-white focus:border-amber-500 transition-all uppercase"
-                                placeholder="TYPE NEW PASSCODE"
-                            />
-                            <div className="flex gap-3 mt-4">
-                                <button
-                                    onClick={handleResetPassword}
-                                    disabled={isUpdatingPassword || !newPassword.trim()}
-                                    className="flex-1 py-5 bg-amber-500 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-2xl shadow-amber-100 hover:bg-amber-600 transition-all disabled:opacity-50"
-                                >
-                                    {isUpdatingPassword ? 'UPDATING...' : 'CONFIRM RESET'}
-                                </button>
-                                <button
-                                    onClick={() => { setResetPassModal({ isOpen: false, user: null }); setNewPassword(''); }}
-                                    className="px-8 py-5 text-gray-300 font-black uppercase text-xs tracking-widest hover:text-gray-900 transition-all"
-                                >
-                                    CANCEL
-                                </button>
+                            <div className="flex flex-col gap-4">
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    value={newPassword}
+                                    onChange={e => setNewPassword(e.target.value)}
+                                    className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-[2rem] outline-none text-center font-black text-xl tracking-widest text-gray-900 focus:bg-white focus:border-amber-500 transition-all uppercase"
+                                    placeholder="TYPE NEW PASSCODE"
+                                />
+                                <div className="flex gap-3 mt-4">
+                                    <button
+                                        onClick={handleResetPassword}
+                                        disabled={isUpdatingPassword || !newPassword.trim()}
+                                        className="flex-1 py-5 bg-amber-500 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-2xl shadow-amber-100 hover:bg-amber-600 transition-all disabled:opacity-50"
+                                    >
+                                        {isUpdatingPassword ? 'UPDATING...' : 'CONFIRM RESET'}
+                                    </button>
+                                    <button
+                                        onClick={() => { setResetPassModal({ isOpen: false, user: null }); setNewPassword(''); }}
+                                        className="px-8 py-5 text-gray-300 font-black uppercase text-xs tracking-widest hover:text-gray-900 transition-all"
+                                    >
+                                        CANCEL
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <ConfirmModal
                 isOpen={deleteUserConfirm.isOpen}
@@ -763,7 +812,7 @@ export default function SuperadminClient({ session }: any) {
                     scrollbar-width: none;
                 }
             `}</style>
-        </div>
+        </div >
     )
 }
 

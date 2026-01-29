@@ -6,7 +6,7 @@ import { verifySignatureKey } from '@/lib/midtrans'
 export async function POST(req: NextRequest) {
   try {
     await dbConnect()
-    
+
     const notification = await req.json()
 
     // Verify signature
@@ -29,6 +29,35 @@ export async function POST(req: NextRequest) {
       gross_amount,
     } = notification
 
+    // Handle Premium Orders
+    if (order_id.startsWith('PREM-')) {
+      let paymentStatus = 'pending'
+      if (transaction_status === 'capture' && fraud_status === 'accept') paymentStatus = 'success'
+      else if (transaction_status === 'settlement') paymentStatus = 'success'
+      else if (['cancel', 'deny', 'expire'].includes(transaction_status)) paymentStatus = 'failed'
+
+      if (paymentStatus === 'success') {
+        const userId = order_id.split('-')[1]
+        const { User } = await import('@/models')
+        const user = await User.findById(userId)
+        if (user) {
+          user.isPremium = true
+          user.planType = user.pendingPlan || 'premium'
+          user.premiumOrderId = order_id
+          // Set/Extend Expiry
+          const now = new Date()
+          const currentExpiry = (user.premiumExpiresAt && user.premiumExpiresAt > now)
+            ? new Date(user.premiumExpiresAt)
+            : now
+
+          user.premiumExpiresAt = new Date(currentExpiry.getTime() + 30 * 24 * 60 * 60 * 1000)
+          user.pendingPlan = null
+          await user.save()
+        }
+      }
+      return NextResponse.json({ success: true, status: paymentStatus })
+    }
+
     // Get contributions with this order ID
     const contributions = await Contribution.find({ midtransOrderId: order_id })
 
@@ -38,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     // Handle different transaction statuses
     let paymentStatus = 'pending'
-    
+
     if (transaction_status === 'capture') {
       if (fraud_status === 'accept') {
         paymentStatus = 'success'
@@ -63,11 +92,11 @@ export async function POST(req: NextRequest) {
 
       // Distribute payment to contributions
       let remainingAmount = netAmount
-      
+
       for (const contrib of contributions) {
         const remaining = contrib.amount - contrib.paid
         const paymentForThis = Math.min(remaining, remainingAmount)
-        
+
         if (paymentForThis > 0) {
           await Contribution.findByIdAndUpdate(contrib._id, {
             $inc: { paid: paymentForThis },
@@ -78,7 +107,7 @@ export async function POST(req: NextRequest) {
               isPaid: (contrib.paid + paymentForThis) >= contrib.amount,
             },
           })
-          
+
           remainingAmount -= paymentForThis
         }
       }

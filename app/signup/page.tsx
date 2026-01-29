@@ -31,7 +31,7 @@ export default function SignupPage() {
         try {
             const r = await fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: formData.username.trim().toLowerCase().replace(/^@/, ''), password: formData.password, name: formData.name, }), })
             if (!r.ok) { setError(await r.json().then(d => d.error) || t.auth.error_occurred); setLoading(false); return; }
-            await signIn('credentials', { username: formData.username.trim(), password: formData.password, redirect: true, callbackUrl: '/dashboard' })
+            await signIn('credentials', { username: formData.username.trim(), password: formData.password, redirect: true, callbackUrl: '/pricing?new_user=true' })
         } catch { setError(t.auth.error_occurred); setLoading(false); }
     }
 

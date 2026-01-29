@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Plus, Trash2, Users, Check, Save, Receipt, User, Calendar, Loader2 } from 'lucide-react'
+import { X, Plus, Trash2, Users, Check, Save, Receipt, User, Calendar, Loader2, Camera, Sparkles, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 
 interface SplitBillModalProps {
     isOpen: boolean
@@ -24,6 +26,11 @@ interface SplitItem {
 }
 
 export default function SplitBillModal({ isOpen, onClose, onSuccess, planId, participants, editData, t, language }: SplitBillModalProps) {
+    const { data: session } = useSession()
+    const router = useRouter()
+    const userRole = (session?.user as any)?.role
+    const isPremiumAI = (session?.user as any)?.planType === 'premium_ai' || userRole === 'superadmin'
+
     const [loading, setLoading] = useState(false)
     const [title, setTitle] = useState('')
     const [payerId, setPayerId] = useState('')
@@ -32,6 +39,7 @@ export default function SplitBillModal({ isOpen, onClose, onSuccess, planId, par
     const [taxPercent, setTaxPercent] = useState(0)
     const [servicePercent, setServicePercent] = useState(0)
     const [roundingIncrement, setRoundingIncrement] = useState(100)
+    const [isScanning, setIsScanning] = useState(false)
 
     useEffect(() => {
         if (editData) {
@@ -50,6 +58,53 @@ export default function SplitBillModal({ isOpen, onClose, onSuccess, planId, par
         const rawTotal = subtotal + tax + service
         const roundedTotal = Math.ceil(rawTotal / roundingIncrement) * roundingIncrement
         return { subtotal, tax, service, rawTotal, roundedTotal, roundingDiff: roundedTotal - rawTotal }
+    }
+    const handleScanReceipt = async (file: File) => {
+        if (!isPremiumAI) {
+            toast.error('Premium + AI Required', { description: 'Fitur pemindaian struk otomatis hanya tersedia untuk pengguna Premium + AI.' });
+            return;
+        }
+        setIsScanning(true)
+        try {
+            const reader = new FileReader()
+            reader.readAsDataURL(file)
+            reader.onload = async () => {
+                const base64 = reader.result as string
+                const res = await fetch('/api/ai/expenses/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64, lang: language })
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.title) setTitle(data.title)
+                    if (data.date) setDate(data.date)
+                    if (data.taxPercent) setTaxPercent(data.taxPercent)
+                    if (data.servicePercent) setServicePercent(data.servicePercent)
+
+                    if (data.items && data.items.length > 0) {
+                        // If currency is not IDR, we might need translation, 
+                        // but for SplitBill usually we record in the local currency of the receipt 
+                        // or converted. Since SplitBill in this app seems to use a single currency (implied IDR),
+                        // we'll assume the prices extracted are what the user wants.
+                        setItems(data.items.map((it: any) => ({
+                            name: it.name,
+                            price: it.price,
+                            quantity: it.quantity || 1,
+                            involvedParticipants: participants.map(p => p._id)
+                        })))
+                    }
+                    toast.success(language === 'id' ? 'Struk berhasil dipindai' : 'Receipt scanned successfully')
+                } else {
+                    const err = await res.json()
+                    toast.error(err.error || 'Gagal memindai struk')
+                }
+            }
+        } catch {
+            toast.error(t.common.failed)
+        } finally {
+            setIsScanning(false)
+        }
     }
 
     const handleSubmit = async () => {
@@ -83,7 +138,17 @@ export default function SplitBillModal({ isOpen, onClose, onSuccess, planId, par
                         <div className="w-12 h-12 bg-primary-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary-200"><Receipt className="w-6 h-6" /></div>
                         <div><h2 className="text-xl font-black text-gray-900 tracking-tight">{editData ? t.plan.edit_split_bill : t.plan.add_split_bill}</h2><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'id' ? 'Bagi Tagihan Itemized' : 'Itemized Bill Split'}</p></div>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-full transition-all text-gray-400 hover:text-red-500"><X className="w-6 h-6" /></button>
+                    <div className="flex items-center gap-2">
+                        {!editData && (
+                            <label className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${isScanning ? 'bg-gray-100 text-gray-400' : isPremiumAI ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700' : 'bg-gray-50 text-gray-300 hover:bg-gray-100 border border-gray-100'}`}>
+                                {isScanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (!isPremiumAI ? <Lock className="w-3.5 h-3.5" /> : <Camera className="w-3.5 h-3.5" />)}
+                                <span>{isScanning ? t.plan.scanning : t.plan.scan_receipt}</span>
+                                {isPremiumAI && <Sparkles className="w-2.5 h-2.5 text-amber-300 fill-amber-300 animate-pulse" />}
+                                <input type="file" className="hidden" accept="image/*" onChange={e => { e.target.files?.[0] && handleScanReceipt(e.target.files[0]); e.target.value = ''; }} disabled={isScanning} />
+                            </label>
+                        )}
+                        <button onClick={onClose} className="p-4 text-gray-400 hover:text-gray-900 transition-colors"><X className="w-6 h-6" /></button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-10 py-10 space-y-10 no-scrollbar">

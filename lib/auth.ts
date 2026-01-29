@@ -117,6 +117,16 @@ export const authOptions: NextAuthOptions = {
               return null
             }
 
+            // --- PREMIUM EXPIRY CHECK ---
+            if (user.isPremium && user.premiumExpiresAt && new Date(user.premiumExpiresAt) < new Date()) {
+              console.log('[Auth] Premium expired for user:', user.username)
+              user.isPremium = false
+              user.planType = 'free'
+              // user.premiumExpiresAt = null // keep for history or clear
+              await user.save()
+            }
+            // ----------------------------
+
             // Update last login
             user.lastLoginAt = new Date()
             await user.save()
@@ -128,6 +138,9 @@ export const authOptions: NextAuthOptions = {
               name: user.name,
               username: user.username,
               role: user.role,
+              isPremium: user.isPremium || false,
+              planType: user.planType || 'free',
+              premiumExpiresAt: user.premiumExpiresAt ? user.premiumExpiresAt.toISOString() : null,
             }
             console.log('[Auth] Returning database user:', result)
             return result
@@ -143,6 +156,7 @@ export const authOptions: NextAuthOptions = {
   ],
   pages: {
     signIn: '/login',
+    signOut: '/logout',
   },
   session: {
     strategy: 'jwt',
@@ -156,8 +170,27 @@ export const authOptions: NextAuthOptions = {
         token.name = user.name
         token.username = (user as any).username
         token.role = (user as any).role
+        token.isPremium = (user as any).isPremium
+        token.planType = (user as any).planType
+        token.premiumExpiresAt = (user as any).premiumExpiresAt
         token.impersonatedBy = (user as any).impersonatedBy
       }
+
+      // Live Premium Check: if we have an expiry date, check if it's passed
+      if (token.isPremium && token.premiumExpiresAt) {
+        if (new Date(token.premiumExpiresAt as string) < new Date()) {
+          token.isPremium = false
+          token.planType = 'free'
+        }
+      }
+
+      // Handle session update
+      if (trigger === "update") {
+        if (session?.isPremium !== undefined) token.isPremium = session.isPremium;
+        if (session?.planType !== undefined) token.planType = session.planType;
+        if (session?.premiumExpiresAt !== undefined) token.premiumExpiresAt = session.premiumExpiresAt;
+      }
+
       return token
     },
     async session({ session, token }) {
@@ -167,6 +200,9 @@ export const authOptions: NextAuthOptions = {
         session.user.name = token.name as string
           ; (session.user as any).username = token.username as string
           ; (session.user as any).role = token.role as string
+          ; (session.user as any).isPremium = token.isPremium as boolean
+          ; (session.user as any).planType = token.planType as string
+          ; (session.user as any).premiumExpiresAt = token.premiumExpiresAt as string
           ; (session.user as any).impersonatedBy = token.impersonatedBy
       }
       return session

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { UserPlus, X, Crown, User, Check, Loader2, AtSign, Trash2, Clock, XCircle, Shield } from 'lucide-react'
+import { UserPlus, X, Crown, User, Check, Loader2, AtSign, Trash2, Clock, XCircle, Shield, Sparkles } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -9,12 +10,16 @@ interface Admin { _id: string; username: string; name: string; status?: 'confirm
 interface AdminManagerProps { planId: string; isOwner: boolean; isSenPlan?: boolean; userRole?: string; }
 
 export default function AdminManager({ planId, isOwner, isSenPlan, userRole }: AdminManagerProps) {
-    const { language, t } = useLanguage()
+    const { language, t } = useLanguage(); const { data: session } = useSession()
     const [owner, setOwner] = useState<Admin | null>(null); const [admins, setAdmins] = useState<Admin[]>([]); const [pendingAdmins, setPendingAdmins] = useState<Admin[]>([]); const [loading, setLoading] = useState(true)
     const [showAddForm, setShowAddForm] = useState(false); const [usernameInput, setUsernameInput] = useState(''); const [checking, setChecking] = useState(false); const [userFound, setUserFound] = useState<Admin | null>(null); const [checkError, setCheckError] = useState('')
     const [adding, setAdding] = useState(false); const [removingId, setRemovingId] = useState<string | null>(null)
 
     const canManage = isOwner || (isSenPlan && userRole === 'superadmin')
+    const isPremium = (session?.user as any)?.isPremium || userRole === 'superadmin'
+    const adminCount = admins.length + pendingAdmins.length
+    const reachedLimit = !isPremium && adminCount >= 1
+
     useEffect(() => { fetchAdmins() }, [planId])
 
     const fetchAdmins = async () => {
@@ -63,7 +68,24 @@ export default function AdminManager({ planId, isOwner, isSenPlan, userRole }: A
 
     return (
         <div className="space-y-8 font-bold">
-            <div className="flex justify-between items-center bg-gray-50/50 p-4 rounded-2xl border border-gray-100"><h3 className="text-lg font-black uppercase tracking-tight font-bold">{language === 'id' ? 'TIM EDITOR' : 'EDITOR TEAM'}</h3>{canManage && !showAddForm && <button onClick={() => setShowAddForm(true)} className="px-5 py-2 bg-primary-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg shadow-primary-50 active:scale-95 transition-all">INVITE</button>}</div>
+            <div className="flex justify-between items-center bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                <h3 className="text-lg font-black uppercase tracking-tight font-bold">{language === 'id' ? 'TIM EDITOR' : 'EDITOR TEAM'}</h3>
+                {canManage && !showAddForm && (
+                    <button
+                        onClick={() => {
+                            if (reachedLimit) {
+                                toast.error('Limit Editor Tercapai', { description: 'Upgrade ke Premium untuk mengundang lebih banyak teman.' });
+                                return;
+                            }
+                            setShowAddForm(true);
+                        }}
+                        className={`px-5 py-2 rounded-xl font-black text-[9px] uppercase shadow-lg transition-all flex items-center gap-2 ${reachedLimit ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-primary-600 text-white shadow-primary-50 active:scale-95'}`}
+                    >
+                        {reachedLimit && <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />}
+                        INVITE
+                    </button>
+                )}
+            </div>
 
             {showAddForm && (
                 <div className="bg-white rounded-[1.5rem] p-6 border border-primary-100 shadow-xl space-y-5 animate-in slide-in-from-top-4 duration-300">

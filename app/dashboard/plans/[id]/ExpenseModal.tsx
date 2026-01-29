@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Save, DollarSign, User, Tag, Users, Check, HelpCircle, Loader2 } from 'lucide-react'
+import { X, Save, DollarSign, User, Tag, Users, Check, HelpCircle, Loader2, Sparkles } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -16,6 +17,7 @@ interface ExpenseModalProps {
 
 export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, participants, editData }: ExpenseModalProps) {
     const { language, t } = useLanguage()
+    const { data: session } = useSession()
     const [loading, setLoading] = useState(false)
     const [itemName, setItemName] = useState('')
     const [detail, setDetail] = useState('')
@@ -28,6 +30,20 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
     const [showNewCategory, setShowNewCategory] = useState(false)
     const [newCategoryName, setNewCategoryName] = useState('')
     const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
+    const [currency, setCurrency] = useState('IDR')
+    const [exchangeRate, setExchangeRate] = useState(1)
+    const [originalPrice, setOriginalPrice] = useState(0)
+    const isPremium = (session?.user as any)?.isPremium || (session?.user as any)?.role === 'superadmin'
+
+    const currencies = [
+        { code: 'IDR', symbol: 'Rp', name: 'Rupiah' },
+        { code: 'USD', symbol: '$', name: 'US Dollar' },
+        { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+        { code: 'KRW', symbol: '₩', name: 'Korean Won' },
+        { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+        { code: 'EUR', symbol: '€', name: 'Euro' },
+        { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit' },
+    ]
 
     useEffect(() => {
         if (isOpen) {
@@ -36,10 +52,16 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                 setItemName(editData.itemName); setDetail(editData.detail || ''); setPrice(editData.price); setQuantity(editData.quantity);
                 setCollectorId(editData.collectorId?._id || editData.collectorId || ''); setDownPayment(editData.downPayment || 0);
                 setCategoryId(editData.categoryId?._id || editData.categoryId || '');
+                setCurrency(editData.currency || 'IDR');
+                setExchangeRate(editData.exchangeRate || 1);
+                setOriginalPrice(editData.originalPrice || editData.price);
                 if (editData.contributors) setSelectedParticipants(editData.contributors.map((c: any) => c.participantId?._id || c.participantId))
-            } else { setSelectedParticipants(participants.map(p => p._id)) }
+            } else {
+                setSelectedParticipants(participants.map(p => p._id))
+                setCurrency('IDR'); setExchangeRate(1); setOriginalPrice(0);
+            }
         }
-    }, [editData, participants, isOpen])
+    }, [editData, participants, isOpen, session])
 
     const fetchCategories = async () => {
         try {
@@ -67,7 +89,27 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
         } catch { toast.error(t.common.failed) }
     }
 
-    const calculateTotal = () => price * quantity
+    const fetchExchangeRate = async (code: string) => {
+        if (code === 'IDR') {
+            setExchangeRate(1)
+            return
+        }
+        try {
+            const res = await fetch(`https://api.exchangerate-api.com/v4/latest/${code}`)
+            if (res.ok) {
+                const data = await res.json()
+                const rate = data.rates['IDR']
+                if (rate) {
+                    setExchangeRate(rate)
+                    setPrice(Math.round(originalPrice * rate))
+                }
+            }
+        } catch {
+            toast.error('Gagal mengambil kurs terbaru')
+        }
+    }
+
+    const calculateTotal = () => (currency === 'IDR' ? price : Math.round(originalPrice * exchangeRate)) * quantity
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -76,9 +118,29 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
             return
         }
         setLoading(true)
-        const total = calculateTotal(); const expenseId = editData?._id
+        const finalUnitPrice = currency === 'IDR' ? price : Math.round(originalPrice * exchangeRate)
+        const total = finalUnitPrice * quantity
+        const expenseId = editData?._id
         try {
-            const res = await fetch('/api/expenses', { method: editData ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ holidayPlanId: planId, _id: expenseId, itemName, detail, price, quantity, total, collectorId, downPayment, categoryId: categoryId || null }) })
+            const res = await fetch('/api/expenses', {
+                method: editData ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    holidayPlanId: planId,
+                    _id: expenseId,
+                    itemName,
+                    detail,
+                    price: finalUnitPrice,
+                    quantity,
+                    total,
+                    currency,
+                    exchangeRate,
+                    originalPrice: currency === 'IDR' ? finalUnitPrice : originalPrice,
+                    collectorId,
+                    downPayment,
+                    categoryId: categoryId || null
+                })
+            })
             if (!res.ok) throw new Error()
             const savedExpense = await res.json(); const finalExpenseId = expenseId || savedExpense._id
 
@@ -132,14 +194,66 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                                 <input type="text" value={detail} onChange={(e) => setDetail(e.target.value)} className="w-full pl-10 pr-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-bold text-sm text-gray-900 focus:bg-white focus:border-primary-500 transition-all" placeholder="E.g. Room 2" />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'HARGA SATUAN' : 'UNIT PRICE'}</label>
-                            <input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900" />
+                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'MATA UANG' : 'CURRENCY'}</label>
+                                <div className="relative group">
+                                    <select
+                                        value={currency}
+                                        onChange={(e) => {
+                                            const newCurrency = e.target.value
+                                            if (newCurrency !== 'IDR' && !isPremium) {
+                                                toast.error('Fitur Premium', { description: 'Multi-currency hanya tersedia untuk member Premium.' })
+                                                return
+                                            }
+                                            setCurrency(newCurrency)
+                                            fetchExchangeRate(newCurrency)
+                                        }}
+                                        className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900 appearance-none cursor-pointer"
+                                    >
+                                        {currencies.map(c => <option key={c.code} value={c.code}>{c.code} - {c.name}</option>)}
+                                    </select>
+                                    {!isPremium && <Sparkles className="absolute right-10 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-500 fill-amber-500" />}
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'HARGA' : 'PRICE'} ({currency})</label>
+                                <input
+                                    type="number"
+                                    value={currency === 'IDR' ? price : originalPrice}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value)
+                                        if (currency === 'IDR') setPrice(val)
+                                        else setOriginalPrice(val)
+                                    }}
+                                    className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'JUMLAH' : 'QUANTITY'}</label>
+                                <input type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900" />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'JUMLAH' : 'QUANTITY'}</label>
-                            <input type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900" />
-                        </div>
+                        {currency !== 'IDR' && (
+                            <div className="md:col-span-2 p-6 bg-slate-900 rounded-2xl text-white flex items-center justify-between animate-in slide-in-from-top-4">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Kurs Konversi (1 {currency} = ? IDR)</p>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="number"
+                                            value={exchangeRate}
+                                            onChange={(e) => setExchangeRate(Number(e.target.value))}
+                                            className="bg-slate-800 border-none rounded-lg px-4 py-2 font-black text-sm w-32 outline-none focus:ring-2 focus:ring-primary-500"
+                                        />
+                                        <span className="font-black text-sm">IDR</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Hasil (Est. IDR)</p>
+                                    <p className="text-lg font-black">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(originalPrice * exchangeRate)}</p>
+                                </div>
+                            </div>
+                        )}
                         <div className="md:col-span-2 space-y-2">
                             <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'KATEGORI' : 'CATEGORY'}</label>
                             <div className="flex gap-2">

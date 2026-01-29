@@ -13,6 +13,7 @@ import {
     Note,
     Checklist
 } from '@/models'
+import mongoose from 'mongoose'
 
 export async function GET(
     req: NextRequest,
@@ -22,17 +23,28 @@ export async function GET(
         const { id } = params
         await dbConnect()
 
-        // Get basic plan info first to check if public
-        const plan = await HolidayPlan.findById(id)
-            .populate('ownerId', 'username name')
-            .populate('adminIds', 'username name')
-            .lean() as any
+        // Get basic plan info first
+        let plan;
+        if (mongoose.Types.ObjectId.isValid(id)) {
+            plan = await HolidayPlan.findById(id)
+                .populate('ownerId', 'username name')
+                .populate('adminIds', 'username name')
+                .lean() as any
+        }
+
+        if (!plan) {
+            plan = await HolidayPlan.findOne({ slug: id })
+                .populate('ownerId', 'username name')
+                .populate('adminIds', 'username name')
+                .lean() as any
+        }
 
         if (!plan) {
             return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
         }
 
-        // Gather all data in parallel
+        // Gather all data in parallel using the actual plan ID
+        const finalId = plan._id
         const [
             rundowns,
             participants,
@@ -43,18 +55,18 @@ export async function GET(
             notes,
             checklists
         ] = await Promise.all([
-            Rundown.find({ holidayPlanId: id }).sort({ order: 1, date: 1 }).lean(),
-            Participant.find({ holidayPlanId: id }).sort({ order: 1 }).lean(),
-            ExpenseCategory.find({ holidayPlanId: id }).sort({ order: 1 }).lean(),
-            ExpenseItem.find({ holidayPlanId: id }).populate('categoryId').sort({ createdAt: 1 }).lean(),
-            Contribution.find({ holidayPlanId: id }).populate('participantId').populate('expenseItemId').lean(),
-            SplitBill.find({ holidayPlanId: id })
+            Rundown.find({ holidayPlanId: finalId }).sort({ order: 1, date: 1 }).lean(),
+            Participant.find({ holidayPlanId: finalId }).sort({ order: 1 }).lean(),
+            ExpenseCategory.find({ holidayPlanId: finalId }).sort({ order: 1 }).lean(),
+            ExpenseItem.find({ holidayPlanId: finalId }).populate('categoryId').sort({ createdAt: 1 }).lean(),
+            Contribution.find({ holidayPlanId: finalId }).populate('participantId').populate('expenseItemId').lean(),
+            SplitBill.find({ holidayPlanId: finalId })
                 .populate('payerId', 'name')
                 .populate('participantPayments.participantId', 'name')
                 .populate('items.involvedParticipants', 'name')
                 .lean(),
-            Note.findOne({ holidayPlanId: id }).lean(),
-            Checklist.find({ holidayPlanId: id }).sort({ updatedAt: -1 }).lean()
+            Note.findOne({ holidayPlanId: finalId }).lean(),
+            Checklist.find({ holidayPlanId: finalId }).sort({ updatedAt: -1 }).lean()
         ])
 
         return NextResponse.json({
