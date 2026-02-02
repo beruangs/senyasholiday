@@ -20,10 +20,10 @@ export async function POST(req: NextRequest) {
         if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
 
         // Security & Premium Check
-        const userId = (session.user as any).id
-        const isOwner = plan.ownerId.toString() === userId
-        const isAdmin = plan.admins?.some((admin: any) => admin.userId.toString() === userId)
-        const isSuperadmin = (session.user as any).role === 'superadmin'
+        const userId = (session.user as any)?.id
+        const isOwner = plan.ownerId?.toString() === userId
+        const isAdmin = (plan as any).adminIds?.some((id: any) => id.toString() === userId)
+        const isSuperadmin = (session.user as any)?.role === 'superadmin'
         const isPremium = (session.user as any).isPremium || isSuperadmin
 
         if (!isOwner && !isAdmin && !isSuperadmin) return NextResponse.json({ error: 'Access denied' }, { status: 403 })
