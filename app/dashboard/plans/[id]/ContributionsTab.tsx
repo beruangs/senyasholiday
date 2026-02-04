@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { Check, X, DollarSign, ChevronDown, Users, AlertTriangle, History, Clock, ArrowUpRight, ArrowDownRight, Settings, CreditCard, ChevronUp, Wallet, CheckCircle, Loader2 } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { Check, X, DollarSign, ChevronDown, Users, AlertTriangle, History, Clock, ArrowUpRight, ArrowDownRight, Settings, CreditCard, ChevronUp, Wallet, CheckCircle, Loader2, MessageCircle, Share2, Download } from 'lucide-react'
 import { toast } from 'sonner'
+import { toBlob } from 'html-to-image'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface PaymentHistoryItem { _id: string; contributionId: string; participantId: { _id: string; name: string } | string; expenseItemId?: { _id: string; itemName: string } | string; action: string; previousAmount: number; newAmount: number; changeAmount: number; paymentMethod: string; note?: string; createdAt: string; }
@@ -25,6 +26,8 @@ export default function ContributionsTab({ planId, readOnly }: { planId: string;
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [isCapturing, setIsCapturing] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { fetchData() }, [planId])
 
@@ -111,6 +114,80 @@ export default function ContributionsTab({ planId, readOnly }: { planId: string;
     let s = 0; let p = 0; let k = 0; collections.forEach(g => { s += g.totalShare; p += g.totalPaid; k += g.totalKurang; }); return { s, p, k }
   }, [collections])
 
+  const handleDownloadImage = async (specificRef?: React.RefObject<HTMLDivElement>, fileName?: string) => {
+    const target = specificRef?.current || containerRef.current
+    if (!target) return
+    setIsCapturing(true)
+    const toastId = toast.loading(language === 'id' ? 'Menyiapkan gambar...' : 'Preparing images...')
+
+    if (!specificRef) {
+      await new Promise(r => setTimeout(r, 100))
+    }
+
+    try {
+      const blob = await toBlob(target, {
+        backgroundColor: '#ffffff',
+        style: {
+          padding: '20px',
+          borderRadius: '20px',
+          height: 'auto',
+          overflow: 'visible'
+        },
+        filter: (node) => {
+          const exclusionClasses = ['share-exclude', 'lucide-history', 'lucide-chevron-down', 'lucide-settings', 'lucide-plus', 'lucide-x', 'lucide-message-circle', 'lucide-image']
+          const className = (node as HTMLElement).className || ''
+          const nodeName = (node as HTMLElement).tagName || ''
+          if (nodeName === 'BUTTON' && className.includes('share-exclude')) return false
+          return !exclusionClasses.some(cls => typeof className === 'string' && className.includes(cls))
+        }
+      })
+
+      if (!blob) throw new Error('Failed to generate image')
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${fileName || `senyas-holiday-iuran-${planId}`}.png`
+      a.click()
+      URL.revokeObjectURL(url)
+
+      toast.success(language === 'id' ? 'Gambar PNG berhasil diunduh!' : 'PNG image downloaded successfully!', { id: toastId })
+    } catch (error) {
+      console.error('Download error:', error)
+      toast.error(t.common.failed, { id: toastId })
+    } finally {
+      setIsCapturing(false)
+    }
+  }
+
+  const handleSendWhatsAppText = (group?: any) => {
+    let text = `*SEN Yas Holiday - ${language === 'id' ? 'RINCIAN IURAN' : 'CONTRIBUTION DETAILS'}*\n\n`
+
+    if (group) {
+      text += `*${language === 'id' ? 'PENGUMPUL' : 'COLLECTOR'}: ${group.collectorName.toUpperCase()}*\n`
+      text += `_Items: ${group.itemNames.join(' · ')}_\n\n`
+      group.participantSummaries.forEach((s: any) => {
+        text += `• *${s.participantName}*\n`
+        text += `  Iuran: ${formatCurrency(s.totalHarusBayar)}\n`
+        text += `  Bayar: ${formatCurrency(s.totalTerbayar)}\n`
+        text += `  ${s.totalKurang > 0 ? `*Sisa: ${formatCurrency(s.totalKurang)}*` : `✅ *${language === 'id' ? 'LUNAS' : 'SETTLED'}*`}\n\n`
+      })
+      text += `*TOTAL SISA: ${formatCurrency(group.totalKurang)}*`
+    } else {
+      collections.forEach(g => {
+        text += `*Kolektor: ${g.collectorName}*\n`
+        g.participantSummaries.forEach((s: any) => {
+          text += `- ${s.participantName}: ${s.totalKurang > 0 ? `Kurang ${formatCurrency(s.totalKurang)}` : 'LUNAS'}\n`
+        })
+        text += `Total Sisa: ${formatCurrency(g.totalKurang)}\n\n`
+      })
+      text += `*GRAND TOTAL SISA: ${formatCurrency(totalStats.k)}*`
+    }
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`
+    window.open(url, '_blank')
+  }
+
   if (loading) return null
 
   return (
@@ -123,10 +200,27 @@ export default function ContributionsTab({ planId, readOnly }: { planId: string;
             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{language === 'id' ? 'PEMBAYARAN & LIMIT' : 'PAYMENTS & LIMITS'}</p>
           </div>
         </div>
-        <button onClick={() => { setShowHistoryModal(true); fetchPaymentHistory(); }} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 text-gray-400 hover:text-primary-600 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest shadow-sm"><History className="w-3.5 h-3.5" /> {language === 'id' ? 'Riwayat' : 'History'}</button>
+        <div className="flex items-center gap-2 share-exclude">
+          <button
+            onClick={() => handleDownloadImage()}
+            disabled={isCapturing}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white hover:bg-black rounded-xl transition-all font-black text-[9px] uppercase tracking-widest shadow-sm disabled:opacity-50"
+          >
+            {isCapturing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            {language === 'id' ? 'Download PNG' : 'Download PNG'}
+          </button>
+          <button
+            onClick={() => handleSendWhatsAppText()}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest shadow-sm"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            {language === 'id' ? 'Kirim Teks WA' : 'Send WA Text'}
+          </button>
+          <button onClick={() => { setShowHistoryModal(true); fetchPaymentHistory(); }} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 text-gray-400 hover:text-primary-600 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest shadow-sm"><History className="w-3.5 h-3.5" /> {language === 'id' ? 'Riwayat' : 'History'}</button>
+        </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4" ref={containerRef}>
         {collections.map((group) => (
           <div key={group.collectorId} className={`group bg-white border border-gray-100 rounded-[1.5rem] overflow-hidden transition-all duration-500 ${openAccordion === group.collectorId ? 'shadow-xl border-primary-100' : 'hover:shadow-lg'}`}>
             <button onClick={() => setOpenAccordion(openAccordion === group.collectorId ? null : group.collectorId)} className={`w-full px-6 py-4 flex items-center justify-between transition-all ${openAccordion === group.collectorId ? 'bg-primary-50/30' : 'bg-white'}`}>
@@ -139,23 +233,62 @@ export default function ContributionsTab({ planId, readOnly }: { planId: string;
                   <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-0.5">REMAINING</span>
                   <span className={`text-[11px] font-black ${group.totalKurang > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{group.totalKurang > 0 ? formatCurrency(group.totalKurang) : 'LUNAS'}</span>
                 </div>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${openAccordion === group.collectorId ? 'rotate-180 bg-primary-100 text-primary-600' : 'bg-gray-50 text-gray-300'}`}><ChevronDown className="w-4 h-4" /></div>
+                <div className="flex items-center gap-2 share-exclude">
+                  <button
+                    title="Download Image"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const target = e.currentTarget.closest('.group');
+                      if (target) {
+                        setOpenAccordion(group.collectorId);
+                        setTimeout(() => {
+                          handleDownloadImage({ current: target as HTMLDivElement }, `iuran-${group.collectorName.toLowerCase().replace(/\s+/g, '-')}`);
+                        }, 100);
+                      }
+                    }}
+                    className="p-2 bg-slate-900 text-white hover:bg-black rounded-lg transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                  <button
+                    title="Send WhatsApp Text"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSendWhatsAppText(group);
+                    }}
+                    className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </button>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${openAccordion === group.collectorId ? 'rotate-180 bg-primary-100 text-primary-600' : 'bg-gray-50 text-gray-300'}`}><ChevronDown className="w-4 h-4" /></div>
+                </div>
               </div>
             </button>
 
-            {openAccordion === group.collectorId && (
+            {(openAccordion === group.collectorId || isCapturing) && (
               <div className="px-6 pb-6 pt-3 space-y-6 animate-in slide-in-from-top-2 duration-300">
                 <div className="p-3 bg-gray-50/50 rounded-xl border border-gray-100 flex items-center gap-2 overflow-hidden"><span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">Items:</span><p className="text-[8px] font-black text-gray-400 uppercase tracking-tight truncate">{group.itemNames.join(' · ')}</p></div>
                 <div className="overflow-x-auto rounded-[1.2rem] border border-gray-100"><table className="w-full text-left uppercase text-[9px]">
-                  <thead><tr className="bg-gray-50 border-b border-gray-100"><th className="px-5 py-3 font-black tracking-widest text-gray-400">Nama</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Iuran</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Limit</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Harus</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Bayar</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Status</th>{!readOnly && <th className="px-5 py-3 font-black tracking-widest text-gray-400 text-center">Aksi</th>}</tr></thead>
+                  <thead><tr className="bg-gray-50 border-b border-gray-100"><th className="px-5 py-3 font-black tracking-widest text-gray-400">Nama</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Iuran</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Limit</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Harus</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Bayar</th><th className="px-5 py-3 font-black tracking-widest text-gray-400 text-right">Status</th>{!readOnly && <th className="px-5 py-3 font-black tracking-widest text-gray-400 text-center share-exclude">Aksi</th>}</tr></thead>
                   <tbody className="divide-y divide-gray-50">{group.participantSummaries.map((s: any) => {
                     const hasMax = s.contributions.some((c: any) => typeof c.maxPay === 'number' && c.maxPay < c.amount); const curLimit = hasMax ? s.contributions.reduce((sum: any, c: any) => sum + (c.maxPay ?? c.amount), 0) : null
                     return (<tr key={s.participantId} className="hover:bg-primary-50/10 transition-all"><td className="px-5 py-4 font-black text-gray-900">{s.participantName}</td><td className="px-5 py-4 text-right font-black text-gray-300">{formatCurrency(s.totalIuran)}</td>
-                      <td className="px-5 py-4 text-right">{!readOnly ? <button onClick={() => { setShowMaxPayModal(s.contributions[0]._id); setEditMaxPayValue(curLimit); setEditMaxPayName(s.participantName); }} className={`px-2.5 py-1 rounded-full font-black uppercase tracking-widest text-[8px] ${hasMax ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-gray-300'}`}>{hasMax ? formatCurrency(curLimit) : 'SET LIMIT'}</button> : <span className="text-gray-200">{hasMax ? formatCurrency(curLimit) : '-'}</span>}</td>
+                      <td className="px-5 py-4 text-right">
+                        {!readOnly ? (
+                          <button
+                            onClick={() => { setShowMaxPayModal(s.contributions[0]._id); setEditMaxPayValue(curLimit); setEditMaxPayName(s.participantName); }}
+                            className={`px-2.5 py-1 rounded-full font-black uppercase tracking-widest text-[8px] ${hasMax ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-gray-300'} ${!hasMax && isCapturing ? 'opacity-0' : ''} ${!hasMax ? 'share-exclude' : ''}`}
+                          >
+                            {hasMax ? formatCurrency(curLimit) : 'SET LIMIT'}
+                          </button>
+                        ) : (
+                          <span className="text-gray-200">{hasMax ? formatCurrency(curLimit) : '-'}</span>
+                        )}
+                      </td>
                       <td className={`px-5 py-4 text-right font-black ${hasMax ? 'text-amber-600' : 'text-gray-900'}`}>{formatCurrency(s.totalHarusBayar)}</td>
                       <td className="px-5 py-4 text-right font-black text-emerald-600">{formatCurrency(s.totalTerbayar)}</td>
                       <td className="px-5 py-4 text-right font-black">{s.totalKurang > 0 ? <span className="text-rose-600">{formatCurrency(s.totalKurang)}</span> : <span className="text-emerald-600">LUNAS</span>}</td>
-                      {!readOnly && <td className="px-5 py-4 text-center"><button onClick={() => { setEditPaymentValue(s.totalTerbayar); setShowPaymentForm(s.contributions[0]._id); }} className="px-4 py-1.5 bg-primary-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest shadow-md">INPUT</button></td>}
+                      {!readOnly && <td className="px-5 py-4 text-center share-exclude"><button onClick={() => { setEditPaymentValue(s.totalTerbayar); setShowPaymentForm(s.contributions[0]._id); }} className="px-4 py-1.5 bg-primary-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest shadow-md">INPUT</button></td>}
                     </tr>)
                   })}</tbody>
                 </table></div>
