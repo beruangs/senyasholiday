@@ -25,6 +25,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
     const [quantity, setQuantity] = useState(1)
     const [collectorId, setCollectorId] = useState('')
     const [downPayment, setDownPayment] = useState(0)
+    const [isPaid, setIsPaid] = useState(false)
     const [categoryId, setCategoryId] = useState('')
     const [categories, setCategories] = useState<any[]>([])
     const [showNewCategory, setShowNewCategory] = useState(false)
@@ -52,6 +53,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
             if (editData) {
                 setItemName(editData.itemName); setDetail(editData.detail || ''); setPrice(editData.price); setQuantity(editData.quantity);
                 setCollectorId(editData.collectorId?._id || editData.collectorId || ''); setDownPayment(editData.downPayment || 0);
+                setIsPaid(editData.isPaid || false);
                 setCategoryId(editData.categoryId?._id || editData.categoryId || '');
                 setCurrency(editData.currency || 'IDR');
                 setExchangeRate(editData.exchangeRate || 1);
@@ -148,6 +150,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                     originalPrice: currency === 'IDR' ? finalUnitPrice : originalPrice,
                     collectorId,
                     downPayment,
+                    isPaid,
                     categoryId: categoryId || null,
                     receiptUrl: receiptUrl
                 })
@@ -315,11 +318,34 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, planId, parti
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">DP %</label>
+                            <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">{language === 'id' ? 'DP (UANG MUKA)' : 'DOWN PAYMENT'} ({currency})</label>
                             <div className="relative group">
-                                <input type="number" min="0" max="100" value={downPayment} onChange={(e) => setDownPayment(Number(e.target.value))} className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900" />
-                                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xs">%</span>
+                                <input
+                                    type="number"
+                                    value={currency === 'IDR' ? downPayment : Math.round(downPayment / exchangeRate)}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setDownPayment(currency === 'IDR' ? val : Math.round(val * exchangeRate));
+                                    }}
+                                    className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none font-black text-sm text-gray-900"
+                                    placeholder="0"
+                                />
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-gray-50 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-emerald-50 transition-all border border-transparent hover:border-emerald-100" onClick={() => setIsPaid(!isPaid)}>
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isPaid ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-white text-gray-300'}`}>
+                                <Check className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-black text-gray-900 leading-none mb-1">{language === 'id' ? 'Lunas / Sudah Dibayar' : 'Fully Paid / Settled'}</p>
+                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none">{language === 'id' ? 'TANDAI BARANG INI SUDAH DIBAYAR SEMUA' : 'MARK THIS ITEM AS FULLY PAID'}</p>
+                            </div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isPaid ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-gray-200'}`}>
+                            {isPaid && <Check className="w-3.5 h-3.5" />}
                         </div>
                     </div>
 

@@ -122,6 +122,7 @@ const expenseItemSchema = new Schema({
   originalPrice: { type: Number },
   collectorId: { type: Schema.Types.ObjectId, ref: 'Participant' },
   downPayment: { type: Number, default: 0 },
+  isPaid: { type: Boolean, default: false },
   receiptUrl: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 })

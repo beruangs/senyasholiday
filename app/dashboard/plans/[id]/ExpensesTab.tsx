@@ -84,6 +84,20 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
     } catch (error) { toast.error(t.common.loading); }
   }
 
+  const handleTogglePaid = async (id: string, isPaid: boolean) => {
+    try {
+      const res = await fetch('/api/expenses', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _id: id, isPaid })
+      })
+      if (res.ok) {
+        toast.success(isPaid ? (language === 'id' ? 'Ditandai lunas' : 'Marked as paid') : (language === 'id' ? 'Batal lunas' : 'Marked as unpaid'))
+        fetchData()
+      }
+    } catch { toast.error(t.common.failed) }
+  }
+
   const handleAutoCategorize = async () => {
     setIsCategorizing(true)
     try {
@@ -258,7 +272,7 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
       ) : (
         <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-3"}>
           {filteredExpenses.map((exp) => (
-            <ExpenseCard key={exp._id} expense={exp} onEdit={handleEdit} onDelete={handleDelete} readOnly={isCompleted} t={t} language={language} />
+            <ExpenseCard key={exp._id} expense={exp} onEdit={handleEdit} onDelete={handleDelete} onTogglePaid={handleTogglePaid} readOnly={isCompleted} t={t} language={language} />
           ))}
         </div>
       )}

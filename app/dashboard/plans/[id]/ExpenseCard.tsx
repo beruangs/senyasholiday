@@ -1,19 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { MoreVertical, Edit2, Trash2, ChevronDown, ChevronUp, User, Wallet } from 'lucide-react'
+import { MoreVertical, Edit2, Trash2, ChevronDown, ChevronUp, User, Wallet, Check } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface ExpenseCardProps {
     expense: any
     onEdit: (expense: any) => void
     onDelete: (id: string) => void
+    onTogglePaid?: (id: string, isPaid: boolean) => void
     readOnly?: boolean
     t: any
     language: string
 }
 
-export default function ExpenseCard({ expense, onEdit, onDelete, readOnly, t, language }: ExpenseCardProps) {
+export default function ExpenseCard({ expense, onEdit, onDelete, onTogglePaid, readOnly, t, language }: ExpenseCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [showMenu, setShowMenu] = useState(false)
 
@@ -32,7 +33,14 @@ export default function ExpenseCard({ expense, onEdit, onDelete, readOnly, t, la
                             <Wallet className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-base font-black text-gray-900 truncate leading-tight tracking-tight group-hover:text-primary-600 transition-colors">{expense.itemName}</h3>
+                            <div className="flex items-center gap-2">
+                                <h3 className={`text-base font-black truncate leading-tight tracking-tight transition-all ${expense.isPaid ? 'text-gray-400 line-through' : 'text-gray-900 group-hover:text-primary-600'}`}>{expense.itemName}</h3>
+                                {expense.isPaid && (
+                                    <div className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[6px] font-black rounded tracking-widest uppercase border border-emerald-200">
+                                        LUNAS
+                                    </div>
+                                )}
+                            </div>
                             <div className="flex items-center gap-2 mt-0.5">
                                 <p className="text-[7px] font-black text-gray-300 tracking-widest font-bold uppercase">By {expense.collectorName || '-'}</p>
                                 {expense.categoryId && (
@@ -44,27 +52,29 @@ export default function ExpenseCard({ expense, onEdit, onDelete, readOnly, t, la
                         </div>
                     </div>
 
-                    {!readOnly && (
-                        <div className="flex items-center gap-2 shrink-0">
-                            {expense.currency && expense.currency !== 'IDR' && (
-                                <div className="px-2 py-1 bg-slate-900 text-white rounded-lg text-[7px] font-black uppercase tracking-widest shadow-lg">
-                                    {expense.originalPrice} {expense.currency}
-                                </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {!readOnly && onTogglePaid && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onTogglePaid(expense._id, !expense.isPaid); }}
+                                className={`p-1.5 rounded-lg transition-all ${expense.isPaid ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-gray-50 text-gray-300 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                                title={expense.isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                            >
+                                <Check className={`w-4 h-4 ${expense.isPaid ? 'font-black' : ''}`} />
+                            </button>
+                        )}
+                        <div className="relative">
+                            <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 hover:bg-gray-50 rounded-lg transition-all text-gray-300 hover:text-primary-600"><MoreVertical className="w-4 h-4" /></button>
+                            {showMenu && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                                    <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 animate-in zoom-in-95 duration-200">
+                                        <button onClick={() => { onEdit(expense); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase text-gray-600 hover:bg-primary-50 hover:text-primary-600 flex items-center gap-2 transition-colors tracking-widest"><Edit2 className="w-3.5 h-3.5" /> {t.common.edit}</button>
+                                        <button onClick={() => { onDelete(expense._id); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase text-rose-500 hover:bg-rose-50 flex items-center gap-2 transition-colors tracking-widest"><Trash2 className="w-3.5 h-3.5" /> {t.common.delete}</button>
+                                    </div>
+                                </>
                             )}
-                            <div className="relative">
-                                <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 hover:bg-gray-50 rounded-lg transition-all text-gray-300 hover:text-primary-600"><MoreVertical className="w-4 h-4" /></button>
-                                {showMenu && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                                        <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 animate-in zoom-in-95 duration-200">
-                                            <button onClick={() => { onEdit(expense); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase text-gray-600 hover:bg-primary-50 hover:text-primary-600 flex items-center gap-2 transition-colors tracking-widest"><Edit2 className="w-3.5 h-3.5" /> {t.common.edit}</button>
-                                            <button onClick={() => { onDelete(expense._id); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase text-rose-500 hover:bg-rose-50 flex items-center gap-2 transition-colors tracking-widest"><Trash2 className="w-3.5 h-3.5" /> {t.common.delete}</button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-6">
@@ -80,7 +90,12 @@ export default function ExpenseCard({ expense, onEdit, onDelete, readOnly, t, la
 
                 <div className="mt-auto">
                     <div className="flex justify-between items-center text-[7px] font-black uppercase tracking-widest mb-1.5 opacity-60">
-                        <span>CONTRIBUTION</span>
+                        <div className="flex items-center gap-2">
+                            <span>CONTRIBUTION</span>
+                            {expense.downPayment > 0 && !expense.isPaid && (
+                                <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-md">DP {formatCurrency(expense.downPayment)}</span>
+                            )}
+                        </div>
                         <span>{expense.contributorCount || 0} GUESTS</span>
                     </div>
                     <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-6">
