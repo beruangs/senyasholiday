@@ -59,8 +59,19 @@ export default function SuperadminClient({ session }: any) {
     const fetchPlans = async () => { try { const res = await fetch('/api/plans'); if (res.ok) setPlans(await res.json()); } catch { } }
     const fetchPruneStats = async () => { try { const res = await fetch('/api/admin/prune'); if (res.ok) setPruneStats(await res.json()); } catch { } }
 
+    const [pruneConfirm, setPruneConfirm] = useState({ isOpen: false, type: '', title: '' });
+
     const executePrune = async (type: string) => {
-        if (!confirm(language === 'id' ? 'Anda yakin ingin menghapus data ini secara permanen?' : 'Are you sure you want to permanently delete this data?')) return;
+        setPruneConfirm({
+            isOpen: true,
+            type,
+            title: type === 'skeleton' ? 'Prune Skeleton Plans' : 'Purge Trash'
+        });
+    }
+
+    const handleConfirmPrune = async () => {
+        const type = pruneConfirm.type;
+        setPruneConfirm(prev => ({ ...prev, isOpen: false }));
         setPruning(type)
         try {
             const res = await fetch('/api/admin/prune', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }) })
@@ -793,6 +804,16 @@ export default function SuperadminClient({ session }: any) {
                 title="Schedules Eradication"
                 message={`This will permanently remove trip "${deletePlanConfirm.title}". All rundown items, expenses, and split bills will be lost forever.`}
                 confirmText="ERADICATE PLAN"
+                variant="danger"
+            />
+
+            <ConfirmModal
+                isOpen={pruneConfirm.isOpen}
+                onClose={() => setPruneConfirm({ ...pruneConfirm, isOpen: false })}
+                onConfirm={handleConfirmPrune}
+                title={pruneConfirm.title}
+                message={language === 'id' ? 'Anda yakin ingin menghapus data ini secara permanen?' : 'Are you sure you want to permanently delete this data?'}
+                confirmText="PURGE NOW"
                 variant="danger"
             />
 

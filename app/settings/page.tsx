@@ -9,12 +9,14 @@ import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTheme } from '@/context/ThemeContext'
 import { Palette } from 'lucide-react'
+import ConfirmModal from '@/components/ConfirmModal'
 
 export default function SettingsPage() {
     const { data: session, status, update } = useSession(); const router = useRouter(); const { language, setLanguage, t } = useLanguage(); const { theme, setTheme } = useTheme()
     const [showPassword, setShowPassword] = useState(false); const [userProfile, setUserProfile] = useState<any>(null); const [loading, setLoading] = useState(false); const [profileLoading, setProfileLoading] = useState(true)
     const [formData, setFormData] = useState({ name: '', newPassword: '', confirmPassword: '', profileImage: '', defaultCurrency: 'IDR' })
     const [profileUploading, setProfileUploading] = useState(false)
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, loading: false })
 
     useEffect(() => {
         if (status === 'unauthenticated') router.push('/login');
@@ -103,21 +105,28 @@ export default function SettingsPage() {
     }
 
     const handleDeleteAccount = async () => {
-        if (!confirm(t.settings.confirm_delete_account)) return
-        setLoading(true)
-        try {
-            const res = await fetch('/api/user/settings', { method: 'DELETE' })
-            if (res.ok) {
-                toast.success(t.common.success)
-                import('next-auth/react').then(({ signOut }) => signOut({ callbackUrl: '/' }))
-            } else {
-                toast.error(t.common.failed)
+        setConfirmModal({
+            isOpen: true,
+            title: language === 'id' ? 'Hapus Akun?' : 'Delete Account?',
+            message: t.settings.confirm_delete_account,
+            loading: false,
+            onConfirm: async () => {
+                setConfirmModal(prev => ({ ...prev, loading: true }))
+                try {
+                    const res = await fetch('/api/user/settings', { method: 'DELETE' })
+                    if (res.ok) {
+                        toast.success(t.common.success)
+                        import('next-auth/react').then(({ signOut }) => signOut({ callbackUrl: '/' }))
+                    } else {
+                        toast.error(t.common.failed)
+                    }
+                } catch {
+                    toast.error(t.common.failed)
+                } finally {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false }))
+                }
             }
-        } catch {
-            toast.error(t.common.failed)
-        } finally {
-            setLoading(false)
-        }
+        })
     }
 
     if (status === 'loading' || profileLoading) return <div className="min-h-screen bg-white flex items-center justify-center font-bold"><Loader2 className="w-10 h-10 animate-spin text-primary-600" /></div>
@@ -302,6 +311,17 @@ export default function SettingsPage() {
                     </div>
                 )}
             </div>
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                loading={confirmModal.loading}
+                confirmText={t.common.delete}
+                cancelText={t.common.cancel}
+            />
         </div>
     )
 }

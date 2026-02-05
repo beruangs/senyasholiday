@@ -6,6 +6,7 @@ import { Plus, Receipt, Loader2 } from 'lucide-react'
 import SplitBillCard from './SplitBillCard'
 import SplitBillModal from './SplitBillModal'
 import { useLanguage } from '@/context/LanguageContext'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface SplitBillTabProps {
     planId: string
@@ -19,6 +20,7 @@ export default function SplitBillTab({ planId, isCompleted }: SplitBillTabProps)
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [editingBill, setEditingBill] = useState<any>(null)
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, loading: false })
 
     useEffect(() => {
         fetchData()
@@ -51,14 +53,23 @@ export default function SplitBillTab({ planId, isCompleted }: SplitBillTabProps)
     const handleEdit = (bill: any) => { setEditingBill(bill); setShowModal(true); }
 
     const handleDelete = async (billId: string) => {
-        if (!confirm(t.common.confirm_delete)) return
-        try {
-            const res = await fetch(`/api/split-bills/${billId}`, { method: 'DELETE' })
-            if (res.ok) {
-                toast.success(`${t.plan.split_bill} ${t.plan.delete_success}`)
-                fetchData()
+        setConfirmModal({
+            isOpen: true,
+            title: language === 'id' ? 'Hapus Tagihan?' : 'Delete Bill?',
+            message: t.common.confirm_delete,
+            loading: false,
+            onConfirm: async () => {
+                setConfirmModal(prev => ({ ...prev, loading: true }))
+                try {
+                    const res = await fetch(`/api/split-bills/${billId}`, { method: 'DELETE' })
+                    if (res.ok) {
+                        toast.success(`${t.plan.split_bill} ${t.plan.delete_success}`)
+                        fetchData()
+                    }
+                } catch (error) { toast.error(t.common.loading) }
+                finally { setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false })) }
             }
-        } catch (error) { toast.error(t.common.loading) }
+        })
     }
 
     const handlePaymentUpdate = async (billId: string, participantId: string, paidAmount: number, isPaid: boolean) => {
@@ -117,6 +128,17 @@ export default function SplitBillTab({ planId, isCompleted }: SplitBillTabProps)
             {showModal && (
                 <SplitBillModal isOpen={showModal} onClose={() => setShowModal(false)} onSuccess={() => { setShowModal(false); fetchData(); }} planId={planId} participants={participants} editData={editingBill} t={t} language={language} />
             )}
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                loading={confirmModal.loading}
+                confirmText={t.common.delete}
+                cancelText={t.common.cancel}
+            />
         </div>
     )
 }

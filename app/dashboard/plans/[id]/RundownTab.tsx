@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { id, enUS } from 'date-fns/locale'
 import { useLanguage } from '@/context/LanguageContext'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface Rundown {
   _id?: string
@@ -40,6 +41,7 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
     location: '',
     notes: '',
   })
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, loading: false })
 
   const formRef = useRef<HTMLDivElement>(null)
 
@@ -133,14 +135,23 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
   }
 
   const deleteRundown = async (id: string) => {
-    if (!confirm(t.common.confirm_delete)) return
-    try {
-      const res = await fetch(`/api/rundowns?id=${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast.success(`${t.plan.rundown} ${t.plan.delete_success}`)
-        fetchRundowns()
+    setConfirmModal({
+      isOpen: true,
+      title: language === 'id' ? 'Hapus Agenda?' : 'Delete Agenda?',
+      message: t.common.confirm_delete,
+      loading: false,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, loading: true }))
+        try {
+          const res = await fetch(`/api/rundowns?id=${id}`, { method: 'DELETE' })
+          if (res.ok) {
+            toast.success(`${t.plan.rundown} ${t.plan.delete_success}`)
+            fetchRundowns()
+          }
+        } catch (error) { toast.error(t.common.loading); }
+        finally { setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false })) }
       }
-    } catch (error) { toast.error(t.common.loading); }
+    })
   }
 
   const handleAIGenerate = async () => {
@@ -534,6 +545,16 @@ export default function RundownTab({ planId, isCompleted }: { planId: string; is
           ))}
         </div>
       )}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        loading={confirmModal.loading}
+        confirmText={t.common.delete}
+        cancelText={t.common.cancel}
+      />
     </div>
   )
 }

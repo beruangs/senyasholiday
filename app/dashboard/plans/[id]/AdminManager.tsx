@@ -5,6 +5,7 @@ import { UserPlus, X, Crown, User, Check, Loader2, AtSign, Trash2, Clock, XCircl
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface Admin { _id: string; username: string; name: string; status?: 'confirmed' | 'pending'; }
 interface AdminManagerProps { planId: string; isOwner: boolean; isSenPlan?: boolean; userRole?: string; }
@@ -14,6 +15,7 @@ export default function AdminManager({ planId, isOwner, isSenPlan, userRole }: A
     const [owner, setOwner] = useState<Admin | null>(null); const [admins, setAdmins] = useState<Admin[]>([]); const [pendingAdmins, setPendingAdmins] = useState<Admin[]>([]); const [loading, setLoading] = useState(true)
     const [showAddForm, setShowAddForm] = useState(false); const [usernameInput, setUsernameInput] = useState(''); const [checking, setChecking] = useState(false); const [userFound, setUserFound] = useState<Admin | null>(null); const [checkError, setCheckError] = useState('')
     const [adding, setAdding] = useState(false); const [removingId, setRemovingId] = useState<string | null>(null)
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, loading: false })
 
     const canManage = isOwner || (isSenPlan && userRole === 'superadmin')
     const isPremium = (session?.user as any)?.isPremium || userRole === 'superadmin'
@@ -57,11 +59,20 @@ export default function AdminManager({ planId, isOwner, isSenPlan, userRole }: A
     }
 
     const handleRemove = async (adminId: string, type: 'admin' | 'pending') => {
-        if (!confirm(t.common.confirm_delete)) return; setRemovingId(adminId)
-        try {
-            const res = await fetch(`/api/plans/admin-invite?planId=${planId}&userId=${adminId}&type=${type}`, { method: 'DELETE' })
-            if (res.ok) { toast.success(t.common.success); fetchAdmins(); }
-        } catch { toast.error(t.common.failed) } finally { setRemovingId(null) }
+        setConfirmModal({
+            isOpen: true,
+            title: language === 'id' ? 'Hapus Admin?' : 'Remove Admin?',
+            message: t.common.confirm_delete,
+            loading: false,
+            onConfirm: async () => {
+                setConfirmModal(prev => ({ ...prev, loading: true }))
+                try {
+                    const res = await fetch(`/api/plans/${planId}/admin-invite?planId=${planId}&userId=${adminId}&type=${type}`, { method: 'DELETE' })
+                    if (res.ok) { toast.success(t.common.success); fetchAdmins(); }
+                } catch { toast.error(t.common.failed) }
+                finally { setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false })) }
+            }
+        })
     }
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-6 w-6 text-primary-600" /></div>
@@ -108,6 +119,17 @@ export default function AdminManager({ planId, isOwner, isSenPlan, userRole }: A
                 {pendingAdmins.map(a => (<div key={a._id} className="p-5 bg-gray-50/50 border border-gray-100 rounded-[1.2rem] flex items-center gap-4 relative opacity-70 group hover:opacity-100 transition-all"><div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-300 font-black text-lg uppercase">{a.name[0]}</div><div><p className="text-xs font-black text-gray-900 leading-none mb-1">{a.name}</p><p className="text-[7px] text-primary-400 font-black tracking-widest mt-0.5">PENDING</p></div><div className="ml-auto">{canManage && <button onClick={() => handleRemove(a._id, 'pending')} className="p-2 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"><XCircle className="w-3.5 h-3.5" /></button>}</div></div>))}
             </div>
             {admins.length === 0 && pendingAdmins.length === 0 && <div className="text-center py-10 bg-gray-50/30 rounded-[1.5rem] border border-dashed border-gray-200 font-black uppercase text-gray-300 text-[9px] tracking-[0.3em]">No collaborators yet</div>}
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                loading={confirmModal.loading}
+                confirmText={t.common.delete}
+                cancelText={t.common.cancel}
+            />
         </div>
     )
 }

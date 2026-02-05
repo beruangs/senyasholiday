@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, Users as UsersIcon, X, Check, Search, UserPlus, FileText, Info, Loader2, Edit3, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface Participant {
   _id?: string
@@ -25,6 +26,7 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, loading: false })
 
   useEffect(() => {
     fetchParticipants()
@@ -91,14 +93,23 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
   }
 
   const deleteParticipant = async (id: string, participantName: string) => {
-    if (!confirm(`${t.common.confirm_delete} (${participantName})`)) return
-    try {
-      const res = await fetch(`/api/participants?id=${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast.success(`${t.plan.participant_name} ${t.plan.delete_success}`)
-        fetchParticipants();
+    setConfirmModal({
+      isOpen: true,
+      title: language === 'id' ? 'Hapus Peserta?' : 'Delete Guest?',
+      message: `${t.common.confirm_delete} (${participantName})`,
+      loading: false,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, loading: true }))
+        try {
+          const res = await fetch(`/api/participants?id=${id}`, { method: 'DELETE' })
+          if (res.ok) {
+            toast.success(`${t.plan.participant_name} ${t.plan.delete_success}`)
+            fetchParticipants();
+          }
+        } catch (error) { toast.error(t.common.loading) }
+        finally { setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false })) }
       }
-    } catch (error) { toast.error(t.common.loading) }
+    })
   }
 
   const filteredParticipants = participants.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -212,6 +223,17 @@ export default function ParticipantsTab({ planId, isCompleted }: { planId: strin
           <p className="text-primary-700/50 text-[9px] font-bold leading-relaxed mt-0.5 uppercase tracking-wide">{language === 'id' ? 'Gunakan fitur massal jika ingin mengimpor nama dari WhatsApp atau Spreadsheet dengan cepat.' : 'Use bulk feature to quickly import names from WhatsApp or Spreadsheets.'}</p>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        loading={confirmModal.loading}
+        confirmText={t.common.delete}
+        cancelText={t.common.cancel}
+      />
     </div>
   )
 }

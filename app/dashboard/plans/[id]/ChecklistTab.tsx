@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, CheckCircle2, Circle, Loader2, Sparkles, ClipboardList, CheckSquare, Target } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface ChecklistItem {
     _id: string
@@ -18,6 +19,7 @@ export default function ChecklistTab({ planId, planTitle = '', destination = '',
     const [loading, setLoading] = useState(true)
     const [adding, setAdding] = useState(false)
     const [newItem, setNewItem] = useState('')
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, loading: false })
 
     useEffect(() => {
         fetchChecklist()
@@ -63,14 +65,23 @@ export default function ChecklistTab({ planId, planTitle = '', destination = '',
     }
 
     const deleteItem = async (itemId: string) => {
-        if (!confirm(t.common.confirm_delete)) return
-        try {
-            const res = await fetch(`/api/plans/${planId}/checklist?id=${itemId}`, { method: 'DELETE' })
-            if (res.ok) {
-                setItems(items.filter(it => it._id !== itemId))
-                toast.success(`${t.plan.checklist} ${t.plan.delete_success}`)
+        setConfirmModal({
+            isOpen: true,
+            title: language === 'id' ? 'Hapus Item?' : 'Delete Item?',
+            message: t.common.confirm_delete,
+            loading: false,
+            onConfirm: async () => {
+                setConfirmModal(prev => ({ ...prev, loading: true }))
+                try {
+                    const res = await fetch(`/api/plans/${planId}/checklist?id=${itemId}`, { method: 'DELETE' })
+                    if (res.ok) {
+                        setItems(items.filter(it => it._id !== itemId))
+                        toast.success(`${t.plan.checklist} ${t.plan.delete_success}`)
+                    }
+                } catch (error) { toast.error(t.common.loading) }
+                finally { setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false })) }
             }
-        } catch (error) { toast.error(t.common.loading) }
+        })
     }
 
     const getSmartRecommendations = () => {
@@ -170,6 +181,17 @@ export default function ChecklistTab({ planId, planTitle = '', destination = '',
                     </div>
                 )}
             </div>
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                loading={confirmModal.loading}
+                confirmText={t.common.delete}
+                cancelText={t.common.cancel}
+            />
         </div>
     )
 }

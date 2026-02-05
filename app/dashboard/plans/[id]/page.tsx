@@ -18,6 +18,7 @@ import TravelDocumentTab from './VaultTab'
 import SuggestionButton from '@/components/SuggestionButton'
 import OfflineSync from '@/components/OfflineSync'
 import { useLanguage } from '@/context/LanguageContext'
+import ConfirmModal from '@/components/ConfirmModal'
 
 type Tab = 'info' | 'rundown' | 'expenses' | 'participants' | 'rincian' | 'note' | 'checklist' | 'splitbill' | 'personalize' | 'vault'
 
@@ -31,6 +32,7 @@ export default function PlanDetailPage() {
   const [aiConsulting, setAiConsulting] = useState(false); const [aiAdvice, setAiAdvice] = useState<string | null>(null); const [userBudget, setUserBudget] = useState('');
   const [weatherData, setWeatherData] = useState<any>(null); const [weatherLoading, setWeatherLoading] = useState(false);
   const [isOfflineData, setIsOfflineData] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, loading: false })
 
   useEffect(() => {
     fetchPlan()
@@ -191,11 +193,20 @@ export default function PlanDetailPage() {
   }
 
   const handleDeleteImage = async (type: 'banner' | 'logo') => {
-    if (!confirm(t.common.confirm_delete)) return; setUploading(true)
-    try {
-      const res = await fetch(`/api/plans/${planId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [type === 'banner' ? 'bannerImage' : 'logoImage']: null }), })
-      if (res.ok) { toast.success(t.common.success); fetchPlan(); }
-    } catch { toast.error(t.common.failed) } finally { setUploading(false) }
+    setConfirmModal({
+      isOpen: true,
+      title: language === 'id' ? 'Hapus Gambar?' : 'Delete Image?',
+      message: t.common.confirm_delete,
+      loading: false,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, loading: true }))
+        try {
+          const res = await fetch(`/api/plans/${planId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [type === 'banner' ? 'bannerImage' : 'logoImage']: null }), })
+          if (res.ok) { toast.success(t.common.success); fetchPlan(); }
+        } catch { toast.error(t.common.failed) }
+        finally { setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false })) }
+      }
+    })
   }
 
   const handleConsultAI = async (action: 'budget' | 'tips') => {
@@ -809,6 +820,17 @@ export default function PlanDetailPage() {
           </div>
         )
       }
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        loading={confirmModal.loading}
+        confirmText={t.common.delete}
+        cancelText={t.common.cancel}
+      />
     </div >
   )
 }

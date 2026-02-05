@@ -8,6 +8,7 @@ import ExpenseCard from './ExpenseCard'
 import ExpenseModal from './ExpenseModal'
 import ContributionsTab from './ContributionsTab'
 import { useLanguage } from '@/context/LanguageContext'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface ExpensesTabProps {
   planId: string
@@ -25,6 +26,7 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [isCategorizing, setIsCategorizing] = useState(false)
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, loading: false })
 
   useEffect(() => {
     fetchData()
@@ -74,14 +76,23 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
   const handleEdit = (expense: any) => { setEditingExpense(expense); setShowModal(true); }
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t.common.confirm_delete)) return
-    try {
-      const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast.success(`${t.plan.finance} ${t.plan.delete_success}`)
-        fetchData()
-      } else { toast.error('Failed to delete expense'); }
-    } catch (error) { toast.error(t.common.loading); }
+    setConfirmModal({
+      isOpen: true,
+      title: language === 'id' ? 'Hapus Pengeluaran?' : 'Delete Expense?',
+      message: t.common.confirm_delete,
+      loading: false,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, loading: true }))
+        try {
+          const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE' })
+          if (res.ok) {
+            toast.success(`${t.plan.finance} ${t.plan.delete_success}`)
+            fetchData()
+          } else { toast.error('Failed to delete expense'); }
+        } catch (error) { toast.error(t.common.loading); }
+        finally { setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false })) }
+      }
+    })
   }
 
   const handleTogglePaid = async (id: string, isPaid: boolean) => {
@@ -287,6 +298,17 @@ export default function ExpensesTab({ planId, isCompleted }: ExpensesTabProps) {
       {showModal && (
         <ExpenseModal isOpen={showModal} onClose={() => setShowModal(false)} onSuccess={() => { setShowModal(false); fetchData(); }} planId={planId} participants={participants} editData={editingExpense} />
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        loading={confirmModal.loading}
+        confirmText={t.common.delete}
+        cancelText={t.common.cancel}
+      />
     </div>
   )
 }

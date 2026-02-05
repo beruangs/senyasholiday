@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface TravelDocument {
     _id?: string
@@ -34,6 +35,7 @@ export default function TravelDocumentTab({ planId, isCompleted, userRole }: { p
         fileType: 'text',
         notes: '',
     })
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, loading: false })
 
     const isPremium = (session?.user as any)?.isPremium || userRole === 'superadmin'
     const formRef = useRef<HTMLDivElement>(null)
@@ -130,16 +132,26 @@ export default function TravelDocumentTab({ planId, isCompleted, userRole }: { p
     }
 
     const deleteDocument = async (docId: string) => {
-        if (!confirm('Hapus dokumen ini dari Vault?')) return
-        try {
-            const res = await fetch(`/api/plans/${planId}/documents/${docId}`, { method: 'DELETE' })
-            if (res.ok) {
-                toast.success('Document removed')
-                fetchDocuments()
+        setConfirmModal({
+            isOpen: true,
+            title: language === 'id' ? 'Hapus Dokumen?' : 'Delete Document?',
+            message: language === 'id' ? 'Hapus dokumen ini dari Vault?' : 'Remove this document from Vault?',
+            loading: false,
+            onConfirm: async () => {
+                setConfirmModal(prev => ({ ...prev, loading: true }))
+                try {
+                    const res = await fetch(`/api/plans/${planId}/documents/${docId}`, { method: 'DELETE' })
+                    if (res.ok) {
+                        toast.success('Document removed')
+                        fetchDocuments()
+                    }
+                } catch (error) {
+                    toast.error('Failed to delete')
+                } finally {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false }))
+                }
             }
-        } catch (error) {
-            toast.error('Failed to delete')
-        }
+        })
     }
 
     const getCategoryIcon = (cat: string) => {
@@ -338,6 +350,17 @@ export default function TravelDocumentTab({ planId, isCompleted, userRole }: { p
                     ))}
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                loading={confirmModal.loading}
+                confirmText={t.common.delete}
+                cancelText={t.common.cancel}
+            />
         </div>
     )
 }
