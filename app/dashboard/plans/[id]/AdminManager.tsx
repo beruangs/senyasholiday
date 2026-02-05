@@ -33,11 +33,13 @@ export default function AdminManager({ planId, isOwner, isSenPlan, userRole }: A
 
     useEffect(() => {
         const clean = usernameInput.trim().toLowerCase().replace(/^@/, '')
-        if (clean.length < 3) { setUserFound(null); setCheckError(''); return; }
+        if (clean.length < 2) { setUserFound(null); setCheckError(''); return; }
         setChecking(true); setCheckError(''); setUserFound(null);
         const timeout = setTimeout(async () => {
             try {
-                const res = await fetch(`/api/plans/admin-invite?username=${clean}`)
+                // Try searching with the original input if it doesn't have @, otherwise use clean
+                const searchTerm = usernameInput.trim().startsWith('@') ? clean : usernameInput.trim()
+                const res = await fetch(`/api/plans/admin-invite?username=${encodeURIComponent(searchTerm)}`)
                 const data = await res.json()
                 if (data.exists) {
                     if (data.error) setCheckError(data.error);
@@ -48,7 +50,7 @@ export default function AdminManager({ planId, isOwner, isSenPlan, userRole }: A
             } catch { setCheckError('Error') } finally { setChecking(false) }
         }, 500)
         return () => clearTimeout(timeout)
-    }, [usernameInput])
+    }, [usernameInput, owner, admins, pendingAdmins])
 
     const handleAdd = async () => {
         if (!userFound) return; setAdding(true);
@@ -111,8 +113,13 @@ export default function AdminManager({ planId, isOwner, isSenPlan, userRole }: A
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="p-5 bg-white border border-gray-100 rounded-[1.2rem] flex items-center gap-4 shadow-sm relative overflow-hidden group hover:border-amber-100 hover:shadow-md transition-all">
                     <div className="absolute right-0 top-0 p-3 opacity-5 group-hover:scale-110 transition-all"><Crown className="w-8 h-8 text-amber-600" /></div>
-                    <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 font-black text-lg uppercase shadow-sm">O</div>
-                    <div><p className="text-xs font-black text-gray-900 leading-none mb-1">{owner?.name}</p><p className="text-[8px] text-gray-400 font-bold">@{owner?.username}</p></div>
+                    <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 font-black text-lg uppercase shadow-sm">
+                        {owner ? (owner.name?.[0] || 'U') : 'S'}
+                    </div>
+                    <div>
+                        <p className="text-xs font-black text-gray-900 leading-none mb-1">{owner ? owner.name : 'SEN SYSTEM'}</p>
+                        <p className="text-[8px] text-gray-400 font-bold">@{owner ? owner.username : 'sensystem'}</p>
+                    </div>
                     <span className="ml-auto px-2.5 py-1 bg-amber-600 text-white rounded-full text-[6px] font-black uppercase shadow-sm">OWNER</span>
                 </div>
                 {admins.map(a => (<div key={a._id} className="p-5 bg-white border border-gray-100 rounded-[1.2rem] flex items-center gap-4 shadow-sm hover:border-primary-100 hover:shadow-md transition-all"><div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 font-black text-lg uppercase">{a.name[0]}</div><div><p className="text-xs font-black text-gray-900 leading-none mb-1">{a.name}</p><p className="text-[8px] text-gray-400 font-bold">@{a.username}</p></div><div className="ml-auto flex items-center gap-1.5"><span className="px-2.5 py-1 bg-gray-50 text-gray-400 rounded-full text-[6px] font-black uppercase">EDITOR</span>{canManage && <button onClick={() => handleRemove(a._id, 'admin')} className="p-2 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"><Trash2 className="w-3.5 h-3.5" /></button>}</div></div>))}

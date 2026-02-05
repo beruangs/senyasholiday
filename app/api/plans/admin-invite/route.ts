@@ -19,13 +19,23 @@ export async function GET(req: NextRequest) {
 
         await dbConnect()
         const { searchParams } = new URL(req.url)
-        const username = searchParams.get('username')?.trim().toLowerCase()
+        let queryStr = searchParams.get('username')?.trim() || ''
 
-        if (!username) {
+        // Sanitize: remove @ at the start if present
+        const cleanQuery = queryStr.toLowerCase().replace(/^@/, '')
+
+        if (!cleanQuery) {
             return NextResponse.json({ error: 'Username required' }, { status: 400 })
         }
 
-        const user = await User.findOne({ username }).select('_id username name')
+        // Search by username (exact) OR name (exact, case-insensitive)
+        const user = await User.findOne({
+            $or: [
+                { username: cleanQuery },
+                { name: { $regex: new RegExp(`^${queryStr}$`, 'i') } },
+                { name: { $regex: new RegExp(`^${cleanQuery}$`, 'i') } }
+            ]
+        }).select('_id username name')
 
         if (!user) {
             return NextResponse.json({ exists: false })
